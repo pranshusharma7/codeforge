@@ -1,0 +1,35 @@
+{
+  "name": "Super Linter & Typo Guard",
+  "version": "1.0.0",
+  "author": "CodeForge Community",
+  "description": "Extra typo fixes for Python, JS, and C++ keywords with instant auto-fix.",
+  "category": "linter",
+  "icon": "🪄",
+  "tags": ["autocorrect", "linter", "syntax", "rules"],
+  "linterRules": [
+    {
+      "pattern": "\\bcosnt\\b",
+      "replacement": "const",
+      "message": "Corrected 'cosnt' typo to 'const'",
+      "languages": ["javascript", "typescript"]
+    },
+    {
+      "pattern": "\\bretusrn\\b",
+      "replacement": "return",
+      "message": "Corrected 'retusrn' typo to 'return'",
+      "languages": ["javascript", "typescript", "python", "cpp", "java"]
+    },
+    {
+      "pattern": "\\bwhiel\\b",
+      "replacement": "while",
+      "message": "Corrected 'whiel' typo to 'while'",
+      "languages": ["javascript", "typescript", "python", "cpp", "java"]
+    },
+    {
+      "pattern": "\\bclas\\b",
+      "replacement": "class",
+      "message": "Corrected 'clas' typo to 'class'",
+      "languages": ["javascript", "typescript", "python", "cpp", "java"]
+    }
+  ]
+}

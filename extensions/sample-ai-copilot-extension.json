@@ -1,0 +1,29 @@
+{
+  "name": "Custom AI Code Suggestions",
+  "version": "1.0.0",
+  "author": "User / Community",
+  "description": "Custom prompt triggers & multi-line code predictions with Tab-to-accept.",
+  "category": "ai",
+  "icon": "⚡",
+  "tags": ["ai", "copilot", "custom", "autocomplete"],
+  "completions": [
+    {
+      "trigger": "fetchData",
+      "prediction": "async function fetchData(url: string) {\n  const res = await fetch(url);\n  if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);\n  return await res.json();\n}",
+      "description": "Async fetch helper with status check",
+      "languages": ["javascript", "typescript"]
+    },
+    {
+      "trigger": "read_file",
+      "prediction": "def read_file(filepath: str) -> str:\n    with open(filepath, 'r', encoding='utf-8') as f:\n        return f.read()",
+      "description": "Python safe file reader context manager",
+      "languages": ["python"]
+    },
+    {
+      "trigger": "memoize",
+      "prediction": "const memoize = (fn) => {\n  const cache = new Map();\n  return (...args) => {\n    const key = JSON.stringify(args);\n    if (cache.has(key)) return cache.get(key);\n    const result = fn(...args);\n    cache.set(key, result);\n    return result;\n  };\n};",
+      "description": "High-performance JavaScript memoize wrapper",
+      "languages": ["javascript", "typescript"]
+    }
+  ]
+}

@@ -1,0 +1,173 @@
+import { defineConfig, type Plugin } from 'vite'
+import react from '@vitejs/plugin-react'
+import tailwindcss from '@tailwindcss/vite'
+import path from 'node:path'
+import http from 'node:http'
+
+/**
+ * CodeForge Live Server Plugin
+ * Automatically starts an internal HTTP server for previewing HTML documents
+ * on port 5500 with instant hot-reload support.
+ */
+function codeForgeLiveServerPlugin(): Plugin {
+  let currentHtml = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Live Server : 5500</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 40px 20px; background: #0f172a; color: #f8fafc; text-align: center; }
+    .container { max-width: 600px; margin: 0 auto; background: #1e293b; padding: 32px; border-radius: 16px; border: 1px solid #334155; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5); }
+    h1 { color: #38bdf8; font-size: 26px; margin-top: 0; display: flex; align-items: center; justify-content: center; gap: 8px; }
+    p { color: #94a3b8; font-size: 15px; line-height: 1.6; }
+    .badge { display: inline-flex; align-items: center; gap: 6px; background: rgba(52, 211, 153, 0.15); border: 1px solid rgba(52, 211, 153, 0.35); padding: 8px 16px; border-radius: 9999px; color: #34d399; font-family: monospace; font-size: 13px; font-weight: 600; margin: 16px 0; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: #34d399; box-shadow: 0 0 8px #34d399; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1><span>📡</span> Live Server Running</h1>
+    <div class="badge"><div class="dot"></div> http://127.0.0.1:5500/</div>
+    <p>Switch to CodeForge editor and open or edit any <strong>HTML</strong> file. Your changes will automatically reflect here with instant hot reload!</p>
+  </div>
+</body>
+</html>`
+  let version = 1
+  let serverInstance: http.Server | null = null
+
+  const getInjectedHtml = (html: string) => {
+    const liveReloadScript = `
+<!-- CodeForge Live Server Hot Reload -->
+<script>
+(function() {
+  var lastVer = ${version};
+  setInterval(async function() {
+    try {
+      var res = await fetch('/__live_version__');
+      var ver = await res.text();
+      if (lastVer && ver && parseInt(ver) !== lastVer) {
+        lastVer = parseInt(ver);
+        console.log('[Live Server] Hot reloading due to CodeForge editor changes...');
+        location.reload();
+      }
+    } catch(e) {}
+  }, 750);
+})();
+</script>`
+    if (html.includes('</body>')) {
+      return html.replace('</body>', `${liveReloadScript}</body>`)
+    }
+    return `${html}${liveReloadScript}`
+  }
+
+  return {
+    name: 'codeforge-live-server',
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        if (req.method === 'POST' && req.url === '/__update_live_html__') {
+          let body = ''
+          req.on('data', chunk => {
+            body += chunk.toString()
+          })
+          req.on('end', () => {
+            try {
+              const data = JSON.parse(body)
+              if (data && typeof data.html === 'string') {
+                currentHtml = data.html
+                version++
+              }
+              res.writeHead(200, { 'Content-Type': 'application/json' })
+              res.end(JSON.stringify({ ok: true, version }))
+            } catch (err) {
+              res.writeHead(400, { 'Content-Type': 'application/json' })
+              res.end(JSON.stringify({ error: 'Invalid JSON' }))
+            }
+          })
+          return
+        }
+
+        if (req.url === '/__live_version__') {
+          res.writeHead(200, {
+            'Content-Type': 'text/plain',
+            'Access-Control-Allow-Origin': '*',
+          })
+          res.end(String(version))
+          return
+        }
+
+        next()
+      })
+
+      // Start internal preview server on port 5500
+      try {
+        const liveServer = http.createServer((req, res) => {
+          res.setHeader('Access-Control-Allow-Origin', '*')
+          res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS')
+
+          if (req.url === '/__live_version__') {
+            res.writeHead(200, { 'Content-Type': 'text/plain' })
+            res.end(String(version))
+            return
+          }
+
+          res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' })
+          res.end(getInjectedHtml(currentHtml))
+        })
+
+        liveServer.on('error', (err: any) => {
+          if (err.code === 'EADDRINUSE') {
+            console.log('📡 Port 5500 already active')
+          } else {
+            console.warn('📡 Live Server notice:', err.message)
+          }
+        })
+
+        liveServer.listen(5500, '127.0.0.1', () => {
+          serverInstance = liveServer
+          console.log('📡 CodeForge Live Server ready at http://127.0.0.1:5500/')
+        })
+      } catch (e) {
+        console.warn('Failed to bind Live Server port 5500:', e)
+      }
+    },
+    closeBundle() {
+      if (serverInstance) {
+        try { serverInstance.close() } catch {}
+      }
+    },
+  }
+}
+
+// Vite config — https://vitejs.dev/config/
+export default defineConfig({
+  plugins: [
+    react(),
+    tailwindcss(),
+    codeForgeLiveServerPlugin(),
+  ],
+  resolve: {
+    alias: {
+      '@': path.resolve(import.meta.dirname, './src'),
+    },
+  },
+  server: {
+    host: '0.0.0.0',
+    port: parseInt(process.env.PORT || '8443'),
+    proxy: {
+      '/api/github-oauth': {
+        target: 'https://github.com',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/github-oauth/, ''),
+        headers: {
+          Accept: 'application/json',
+        },
+      },
+    },
+  },
+  build: {
+    outDir: 'dist',
+    sourcemap: false,
+    chunkSizeWarningLimit: 3000,
+  },
+})
