@@ -53,19 +53,7 @@ html, body, #root {
   text-rendering: optimizeLegibility;
 }
 
-/* ── Monaco Editor Buttery Smoothness ────────────────────────────────────────── */
-.monaco-editor,
-.monaco-editor .inputarea.ime-input {
-  -webkit-font-smoothing: subpixel-antialiased !important;
-  text-rendering: optimizeLegibility !important;
-  letter-spacing: -0.15px;
-}
-.monaco-editor .cursor {
-  transition: all 0.06s cubic-bezier(0.16, 1, 0.3, 1) !important;
-}
-.monaco-editor .lines-content {
-  will-change: transform;
-}
+
 
 /* ── Scrollbars ────────────────────────────────────────────────────────────── */
 ::-webkit-scrollbar { width: 6px; height: 6px; }

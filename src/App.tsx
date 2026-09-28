@@ -322,7 +322,7 @@ export default function App() {
 
   // derived
   const activeTabObj = tabs.find(t => t.id === activeTab) ?? tabs[0]
-  const emptyFallbackTab: Tab = { id: '', name: 'untitled.txt', lang: 'plaintext', code: '' }
+  const emptyFallbackTab: Tab = { id: '', name: 'untitled.py', lang: 'python', code: '' }
   const curTab = activeTabObj ?? emptyFallbackTab
   const hasOpenTab = Boolean(activeTabObj)
   const curLang = getLangById(curTab.lang)
@@ -1138,19 +1138,32 @@ export default function App() {
   // ── Run ──────────────────────────────────────────────────────────────────
   const handleRun = useCallback(async () => {
     if (running) return
+    let activeTabToUse = curTab
+    let codeToRun = getActiveCode()
+
     if (!hasOpenTab) {
-      showToast('⚠️ No file open to run. Create or open a file first.')
-      return
+      if (codeToRun.trim()) {
+        const newTabItem: Tab = { id: crypto.randomUUID(), name: 'untitled.py', lang: 'python', code: codeToRun }
+        setTabs([newTabItem])
+        setActiveTab(newTabItem.id)
+        activeTabToUse = newTabItem
+      } else {
+        showToast('⚠️ No code to run. Write some code first!')
+        return
+      }
     }
+
     setRunning(true); setResult(null); setConsTab('output'); setBottomPanelOpen(true)
     try {
-      const codeToRun = getActiveCode()
-      if (curLang.judge0Id === 0) {
-        if (curLang.id === 'json') {
+      let langToRun = getLangById(activeTabToUse.lang)
+      // If user typed code in a plaintext or untitled.txt file, run as Python
+      let targetJudge0Id = langToRun.judge0Id
+      if (targetJudge0Id === 0) {
+        if (langToRun.id === 'json') {
           try {
             JSON.parse(codeToRun)
             setResult({
-              stdout: `✓ Valid JSON Syntax!\nFile: ${curTab.name}\nSize: ${codeToRun.length} bytes\nLines: ${codeToRun.split('\n').length}`,
+              stdout: `✓ Valid JSON Syntax!\nFile: ${activeTabToUse.name}\nSize: ${codeToRun.length} bytes\nLines: ${codeToRun.split('\n').length}`,
               stderr: null,
               compile_output: null,
               status: { id: 3, description: 'Accepted' },
@@ -1169,23 +1182,17 @@ export default function App() {
               exit_code: 1,
             })
           }
+          return
         } else {
-          setResult({
-            stdout: `📄 ${curLang.label} Document (${curTab.name})\nContent length: ${codeToRun.length} characters (${codeToRun.split('\n').length} lines).`,
-            stderr: null,
-            compile_output: null,
-            status: { id: 3, description: 'Accepted' },
-            time: '0.001',
-            memory: 1024,
-            exit_code: 0,
-          })
+          // Fallback plain text with code: execute with Python 3
+          targetJudge0Id = 71
         }
-        return
       }
-      const res = await executeCode({ sourceCode: codeToRun, languageId: curLang.judge0Id, stdin })
+
+      const res = await executeCode({ sourceCode: codeToRun, languageId: targetJudge0Id, stdin })
       setResult(res)
     } finally { setRunning(false) }
-  }, [running, hasOpenTab, curTab, getActiveCode, curLang, stdin])
+  }, [running, hasOpenTab, curTab, getActiveCode, stdin])
   handleRunRef.current = handleRun
 
   // ── AI ───────────────────────────────────────────────────────────────────
@@ -1679,8 +1686,8 @@ export default function App() {
     renderLineHighlight: 'all' as const,
     scrollBeyondLastLine: false,
     smoothScrolling: true,
-    cursorSmoothCaretAnimation: 'on' as const,
-    cursorBlinking: 'smooth' as const,
+    cursorSmoothCaretAnimation: 'off' as const,
+    cursorBlinking: 'blink' as const,
     cursorStyle: 'line' as const,
     cursorWidth: 2,
     bracketPairColorization: { enabled: true, independentColorPoolPerBracketType: true },
@@ -1691,13 +1698,13 @@ export default function App() {
       indentation: true,
       highlightActiveIndentation: true,
     },
-    autoClosingBrackets: 'always' as const,
-    autoClosingQuotes: 'always' as const,
-    autoClosingOvertype: 'always' as const,
+    autoClosingBrackets: 'languageDefined' as const,
+    autoClosingQuotes: 'languageDefined' as const,
+    autoClosingOvertype: 'auto' as const,
     autoSurround: 'languageDefined' as const,
-    autoIndent: 'full' as const,
-    formatOnPaste: true,
-    formatOnType: true,
+    autoIndent: 'advanced' as const,
+    formatOnPaste: false,
+    formatOnType: false,
     tabSize: 2,
     insertSpaces: true,
     renderWhitespace: 'selection' as const,

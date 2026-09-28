@@ -26,8 +26,44 @@ export const STATUS = {
 // Judge0 public CE instance
 const JUDGE0_URL = 'https://ce.judge0.com'
 
-async function sleep(ms: number) {
+function sleep(ms: number) {
   return new Promise(r => setTimeout(r, ms))
+}
+
+/**
+ * Unicode-safe base64 encoder
+ */
+function encodeB64(str: string): string {
+  try {
+    return btoa(encodeURIComponent(str).replace(/%([0-9A-F]{2})/g, (_, p1) => String.fromCharCode(parseInt(p1, 16))))
+  } catch {
+    try {
+      return btoa(unescape(encodeURIComponent(str)))
+    } catch {
+      return btoa(str)
+    }
+  }
+}
+
+/**
+ * Unicode-safe base64 decoder
+ */
+function decodeB64(b64: string | null | undefined): string | null {
+  if (!b64) return null
+  try {
+    const binary = atob(b64)
+    const bytes = new Uint8Array(binary.length)
+    for (let i = 0; i < binary.length; i++) {
+      bytes[i] = binary.charCodeAt(i)
+    }
+    return new TextDecoder('utf-8').decode(bytes)
+  } catch {
+    try {
+      return decodeURIComponent(escape(atob(b64)))
+    } catch {
+      return atob(b64)
+    }
+  }
 }
 
 export async function executeCode(params: {
@@ -37,323 +73,147 @@ export async function executeCode(params: {
 }): Promise<ExecutionResult> {
   const startTime = performance.now()
 
+  // 1. Submit code asynchronously to Judge0 with base64 encoding (avoids queue bottlenecks and character corruption)
   try {
-    const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), 9000)
-
-    // 1. Fast Synchronous Execution Attempt (wait=true)
-    const submitRes = await fetch(`${JUDGE0_URL}/submissions?base64_encoded=false&wait=true`, {
+    const subRes = await fetch(`${JUDGE0_URL}/submissions?base64_encoded=true&wait=false`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      signal: controller.signal,
       body: JSON.stringify({
-        source_code: params.sourceCode,
+        source_code: encodeB64(params.sourceCode),
         language_id: params.languageId,
-        stdin: params.stdin ?? '',
+        stdin: encodeB64(params.stdin ?? ''),
         cpu_time_limit: 10,
         memory_limit: 256000,
       }),
     })
 
-    clearTimeout(timeoutId)
+    if (subRes.ok) {
+      const subData = await subRes.json()
+      if (subData?.token) {
+        const token = subData.token
+        // Poll for completion (max 25 attempts, ~15 seconds total)
+        for (let i = 0; i < 25; i++) {
+          await sleep(i === 0 ? 500 : Math.min(800, 400 + i * 50))
+          try {
+            const pollRes = await fetch(
+              `${JUDGE0_URL}/submissions/${token}?base64_encoded=true&fields=stdout,stderr,compile_output,status,time,memory,exit_code,message`,
+            )
+            if (pollRes.ok) {
+              const resData = await pollRes.json()
+              const statusId = resData?.status?.id ?? 0
 
-    if (submitRes.ok) {
-      const directResult = await submitRes.json()
-      // If wait=true resolved directly to a completed status
-      if (directResult && directResult.status && directResult.status.id > 2) {
-        return directResult as ExecutionResult
-      }
+              // status.id: 1 = In Queue, 2 = Processing, > 2 = Finished
+              if (statusId > 2) {
+                const stdout = decodeB64(resData.stdout)
+                const stderr = decodeB64(resData.stderr)
+                const compile_output = decodeB64(resData.compile_output) || (resData.message ? decodeB64(resData.message) : null)
 
-      // If Judge0 returned a token that is still processing, poll with exponential backoff
-      if (directResult?.token) {
-        const token = directResult.token
-        for (let i = 0; i < 8; i++) {
-          await sleep(500 + i * 300)
-          const pollRes = await fetch(
-            `${JUDGE0_URL}/submissions/${token}?base64_encoded=false&fields=stdout,stderr,compile_output,status,time,memory,exit_code,message`,
-          )
-          if (pollRes.ok) {
-            const pollData: ExecutionResult = await pollRes.json()
-            if (pollData?.status?.id && pollData.status.id > 2) {
-              return pollData
+                return {
+                  stdout,
+                  stderr,
+                  compile_output,
+                  status: resData.status || { id: 3, description: 'Accepted' },
+                  time: resData.time || ((performance.now() - startTime) / 1000).toFixed(3),
+                  memory: resData.memory ? Math.round(resData.memory) : null,
+                  exit_code: resData.exit_code ?? 0,
+                  message: resData.message ? decodeB64(resData.message) : null,
+                }
+              }
             }
+          } catch (pollErr) {
+            console.warn('Judge0 poll attempt failed, retrying...', pollErr)
           }
         }
       }
     }
   } catch (netErr) {
-    console.info('Judge0 cloud API busy or offline, switching to fast native runtime engine:', netErr)
+    console.warn('Judge0 submission error:', netErr)
   }
 
-  // 2. Resilient Native Engine Fallback (guarantees seamless, zero-fail execution for all users)
+  // 2. Client-side execution for JavaScript & TypeScript (instant zero-network execution)
+  if (params.languageId === 63 || params.languageId === 74) {
+    return runBrowserJS(params.sourceCode, params.languageId, params.stdin, startTime)
+  }
+
+  // 3. Fallback when network is offline or Judge0 service is busy
   const elapsed = ((performance.now() - startTime) / 1000).toFixed(3)
-  return runNativeEngine(params.sourceCode, params.languageId, params.stdin, elapsed)
+  return {
+    stdout: null,
+    stderr: `⚠️ Execution service is currently busy or unreachable.\nPlease verify your internet connection and try running again in a few moments.`,
+    compile_output: null,
+    status: { id: 13, description: 'Service Unavailable' },
+    time: elapsed,
+    memory: null,
+    exit_code: 1,
+  }
 }
 
 /**
- * High-reliability Native Execution Engine:
- * - Runs real JavaScript and TypeScript code with captured console streams.
- * - Parses and computes Python prints, variables, arithmetic, loops and functions.
- * - Provides clean syntax checking and formatted output across all languages.
+ * Isolated browser runner for JS & TS
  */
-function runNativeEngine(code: string, langId: number, stdin?: string, elapsed?: string): ExecutionResult {
-  const time = elapsed || (0.015 + Math.random() * 0.02).toFixed(3)
-  const memory = Math.floor(3200 + Math.random() * 1200)
+function runBrowserJS(code: string, langId: number, stdin?: string, startTime: number = performance.now()): ExecutionResult {
+  const logs: string[] = []
+  const originalLog = console.log
+  const originalError = console.error
+  const originalWarn = console.warn
+  const originalInfo = console.info
 
-  // ── JavaScript (63) & TypeScript (74) Real In-Browser Runner ───────────────
-  if (langId === 63 || langId === 74) {
-    const logs: string[] = []
-    const originalLog = console.log
-    const originalError = console.error
-    const originalWarn = console.warn
-    const originalInfo = console.info
-
-    try {
-      console.log = (...args: any[]) => {
-        logs.push(args.map(a => (typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a))).join(' '))
-      }
-      console.error = (...args: any[]) => {
-        logs.push('[error] ' + args.map(a => String(a)).join(' '))
-      }
-      console.warn = (...args: any[]) => {
-        logs.push('[warn] ' + args.map(a => String(a)).join(' '))
-      }
-      console.info = (...args: any[]) => {
-        logs.push(args.map(a => String(a)).join(' '))
-      }
-
-      // Strip simple TypeScript type annotations if needed
-      let executable = code
-      if (langId === 74) {
-        executable = code
-          .replace(/:\s*(string|number|boolean|any|void|unknown|never|Record<.*?>|Array<.*?>|\w+\[\])/g, '')
-          .replace(/interface\s+\w+\s*\{[\s\S]*?\}/g, '')
-          .replace(/type\s+\w+\s*=[\s\S]*?;/g, '')
-          .replace(/as\s+\w+/g, '')
-      }
-
-      // Execute in isolated function context
-      const fn = new Function('stdin', executable)
-      const res = fn(stdin || '')
-
-      // If user returned a value without console.log
-      if (logs.length === 0 && res !== undefined) {
-        logs.push(typeof res === 'object' ? JSON.stringify(res, null, 2) : String(res))
-      }
-
-      return {
-        stdout: logs.length > 0 ? logs.join('\n') + '\n' : '✓ Program finished with return code 0 (no output)\n',
-        stderr: null,
-        compile_output: null,
-        status: { id: 3, description: 'Accepted' },
-        time,
-        memory,
-        exit_code: 0,
-      }
-    } catch (err: any) {
-      return {
-        stdout: logs.length > 0 ? logs.join('\n') + '\n' : null,
-        stderr: `✕ Runtime Error: ${err?.message || err}\n${err?.stack ? err.stack.split('\n').slice(0, 3).join('\n') : ''}`,
-        compile_output: null,
-        status: { id: 11, description: 'Runtime Error (NZEC)' },
-        time,
-        memory,
-        exit_code: 1,
-      }
-    } finally {
-      console.log = originalLog
-      console.error = originalError
-      console.warn = originalWarn
-      console.info = originalInfo
+  try {
+    console.log = (...args: any[]) => {
+      logs.push(args.map(a => (typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a))).join(' '))
     }
-  }
-
-  // ── Python 3 (71) Smart Runner ─────────────────────────────────────────────
-  if (langId === 71) {
-    // Check for common syntax mistakes
-    const openParens = (code.match(/\(/g) || []).length
-    const closeParens = (code.match(/\)/g) || []).length
-    if (openParens !== closeParens) {
-      return {
-        stdout: null,
-        stderr: `  File "main.py", line 1\n    SyntaxError: unmatched parentheses (${openParens} '(' vs ${closeParens} ')')`,
-        compile_output: null,
-        status: { id: 6, description: 'Compilation Error' },
-        time,
-        memory,
-        exit_code: 1,
-      }
+    console.error = (...args: any[]) => {
+      logs.push('[error] ' + args.map(a => String(a)).join(' '))
+    }
+    console.warn = (...args: any[]) => {
+      logs.push('[warn] ' + args.map(a => String(a)).join(' '))
+    }
+    console.info = (...args: any[]) => {
+      logs.push(args.map(a => String(a)).join(' '))
     }
 
-    const lines = code.split('\n')
-    const outputs: string[] = []
-
-    // Collect variables & run simple prints
-    const vars: Record<string, any> = {}
-
-    for (const rawLine of lines) {
-      const line = rawLine.trim()
-      if (!line || line.startsWith('#')) continue
-
-      // Variable assignment e.g. x = 10, name = "Alice"
-      const assignMatch = line.match(/^([a-zA-Z_]\w*)\s*=\s*(.+)$/)
-      if (assignMatch && !line.startsWith('def ') && !line.startsWith('if ')) {
-        const varName = assignMatch[1]
-        const valStr = assignMatch[2]
-        try {
-          // If numeric or string or simple array
-          if (/^[-+]?\d+(\.\d+)?$/.test(valStr)) {
-            vars[varName] = Number(valStr)
-          } else if (/^["'].*["']$/.test(valStr)) {
-            vars[varName] = valStr.slice(1, -1)
-          } else if (/^\[.*\]$/.test(valStr)) {
-            vars[varName] = valStr
-          }
-        } catch {
-          // Ignore
-        }
-      }
-
-      // print(...)
-      const printMatch = line.match(/^print\((.*)\)$/)
-      if (printMatch) {
-        let content = printMatch[1].trim()
-
-        // f-string: print(f"...")
-        if (content.startsWith('f"') || content.startsWith("f'")) {
-          const inner = content.slice(2, -1)
-          const interpolated = inner.replace(/\{([^}]+)\}/g, (_, expr) => {
-            const trimmed = expr.trim()
-            if (vars[trimmed] !== undefined) return String(vars[trimmed])
-            try {
-              // Try evaluating simple math
-              if (/^[\d+\-*/% ()]+$/.test(trimmed)) {
-                return String(Function(`return (${trimmed})`)())
-              }
-            } catch {
-              // Ignore
-            }
-            return trimmed
-          })
-          outputs.push(interpolated)
-        }
-        // Normal string: print("...") or print('...')
-        else if ((content.startsWith('"') && content.endsWith('"')) || (content.startsWith("'") && content.endsWith("'"))) {
-          outputs.push(content.slice(1, -1))
-        }
-        // Variable: print(x)
-        else if (vars[content] !== undefined) {
-          outputs.push(String(vars[content]))
-        }
-        // Expression or comma-separated
-        else {
-          try {
-            // Check if arithmetic
-            if (/^[\d+\-*/% ()]+$/.test(content)) {
-              outputs.push(String(Function(`return (${content})`)()))
-            } else {
-              outputs.push(content)
-            }
-          } catch {
-            outputs.push(content)
-          }
-        }
-      }
+    let executable = code
+    if (langId === 74) {
+      executable = code
+        .replace(/:\s*(string|number|boolean|any|void|unknown|never|Record<.*?>|Array<.*?>|\w+\[\])/g, '')
+        .replace(/interface\s+\w+\s*\{[\s\S]*?\}/g, '')
+        .replace(/type\s+\w+\s*=[\s\S]*?;/g, '')
+        .replace(/as\s+\w+/g, '')
     }
 
-    if (outputs.length === 0) {
-      if (code.includes('fibonacci')) {
-        outputs.push('Fibonacci (12 terms): [0, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89]')
-        outputs.push('Sum: 232')
-        outputs.push('Primes < 50: [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47]')
-      } else if (code.includes('sort')) {
-        outputs.push('Sorted: [1, 2, 3, 4, 5, 7, 8, 10, 11, 12]')
-      } else {
-        outputs.push('Program executed successfully with exit code 0.')
-      }
+    const fn = new Function('stdin', executable)
+    const res = fn(stdin || '')
+
+    if (logs.length === 0 && res !== undefined) {
+      logs.push(typeof res === 'object' ? JSON.stringify(res, null, 2) : String(res))
     }
 
+    const time = ((performance.now() - startTime) / 1000).toFixed(3)
     return {
-      stdout: outputs.join('\n') + '\n',
+      stdout: logs.length > 0 ? logs.join('\n') + '\n' : '✓ Program finished with return code 0 (no output)\n',
       stderr: null,
       compile_output: null,
       status: { id: 3, description: 'Accepted' },
       time,
-      memory,
+      memory: 2048,
       exit_code: 0,
     }
-  }
-
-  // ── C++ (54) & C (50) ──────────────────────────────────────────────────────
-  if (langId === 54 || langId === 50) {
-    if (code.includes(';;;')) {
-      return {
-        stdout: null,
-        stderr: null,
-        compile_output: 'error: expected expression\n  1 | int main() { ;;; }\n    |               ^\ncompilation failed.',
-        status: { id: 6, description: 'Compilation Error' },
-        time: null,
-        memory: null,
-        exit_code: 1,
-      }
-    }
-
-    const outputs: string[] = []
-    // Extract cout/printf statements
-    for (const line of code.split('\n')) {
-      const coutMatch = line.match(/cout\s*<<\s*["'](.*?)["']/)
-      if (coutMatch) outputs.push(coutMatch[1])
-      const printfMatch = line.match(/printf\s*\(\s*["'](.*?)["']/)
-      if (printfMatch) outputs.push(printfMatch[1].replace(/\\n/g, ''))
-    }
-
-    if (outputs.length === 0) {
-      if (code.includes('mergeSort') || code.includes('quickSort')) {
-        outputs.push('Before: 64 34 25 12 22 11 90')
-        outputs.push('After:  11 12 22 25 34 64 90')
-      } else if (code.includes('binarySearch')) {
-        outputs.push('Element found at index 4')
-      } else {
-        outputs.push('Program executed successfully.')
-      }
-    }
-
+  } catch (err: any) {
+    const time = ((performance.now() - startTime) / 1000).toFixed(3)
     return {
-      stdout: outputs.join('\n') + '\n',
-      stderr: null,
+      stdout: logs.length > 0 ? logs.join('\n') + '\n' : null,
+      stderr: `✕ Runtime Error: ${err?.message || err}`,
       compile_output: null,
-      status: { id: 3, description: 'Accepted' },
+      status: { id: 11, description: 'Runtime Error (NZEC)' },
       time,
-      memory,
-      exit_code: 0,
+      memory: 2048,
+      exit_code: 1,
     }
-  }
-
-  // ── General Fallback for Other Languages ───────────────────────────────────
-  const lines = code.split('\n')
-  const outputs: string[] = []
-
-  for (const line of lines) {
-    const m = line.match(/(?:println|print|echo|System\.out\.println|fmt\.Println)\s*\(?\s*["'](.*?)["']\)?/)
-    if (m) outputs.push(m[1])
-  }
-
-  if (outputs.length === 0) {
-    outputs.push('Program executed successfully with exit code 0.')
-  }
-
-  if (stdin?.trim()) {
-    outputs.unshift(`[stdin]: ${stdin.trim()}`)
-  }
-
-  return {
-    stdout: outputs.join('\n') + '\n',
-    stderr: null,
-    compile_output: null,
-    status: { id: 3, description: 'Accepted' },
-    time,
-    memory,
-    exit_code: 0,
+  } finally {
+    console.log = originalLog
+    console.error = originalError
+    console.warn = originalWarn
+    console.info = originalInfo
   }
 }
 
