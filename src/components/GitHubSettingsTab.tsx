@@ -12,13 +12,12 @@ import {
   RepoIcon,
   RefreshIcon,
   ExternalLinkIcon,
-
-  
   FolderIcon,
   SpinnerIcon,
   PlusIcon,
 } from './icons'
 import type { TabWithRepo } from './SourceControlPanel'
+import GitHubRepoBrowser from './GitHubRepoBrowser'
 
 interface Props {
   authUser: AuthUser | null
@@ -456,54 +455,18 @@ export default function GitHubSettingsTab({
                   </div>
                 </div>
 
-                {/* ── In-line File Explorer (when expanded) ─────────── */}
-                {isExpanded && (
-                  <div
-                    style={{
-                      marginTop: 10,
-                      background: '#161b22',
-                      border: '1px solid #30363d',
-                      borderRadius: 6,
-                      padding: 10,
-                      maxHeight: 180,
-                      overflowY: 'auto',
-                    }}
-                  >
-                    {treeLoading ? (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#7d8590', fontSize: 11 }}>
-                        <SpinnerIcon size={12} /> Loading repository tree...
-                      </div>
-                    ) : repoTree.length === 0 ? (
-                      <div style={{ color: '#484f58', fontSize: 11 }}>No files in default branch.</div>
-                    ) : (
-                      repoTree
-                        .filter(i => i.type === 'blob')
-                        .map(item => (
-                          <div
-                            key={item.sha}
-                            onClick={() => handleLoadFile(repo, item)}
-                            style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'space-between',
-                              padding: '4px 6px',
-                              borderRadius: 4,
-                              cursor: 'pointer',
-                              fontSize: 11,
-                              color: '#c9d1d9',
-                            }}
-                            onMouseEnter={e => (e.currentTarget.style.background = '#21262d')}
-                            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-                          >
-                            <span style={{ fontFamily: 'JetBrains Mono', fontSize: 10 }}>{item.path}</span>
-                            {loadingFilePath === item.path ? (
-                              <SpinnerIcon size={10} />
-                            ) : (
-                              <span style={{ fontSize: 10, color: '#a78bfa' }}>Open in Editor ↗</span>
-                            )}
-                          </div>
-                        ))
-                    )}
+                {/* ── True GitHub File & Folder Explorer (when expanded) ─────────── */}
+                {isExpanded && authUser?.accessToken && (
+                  <div style={{ marginTop: 12 }}>
+                    <GitHubRepoBrowser
+                      accessToken={authUser.accessToken}
+                      repository={repo}
+                      currentBranch={repo.default_branch || 'main'}
+                      onOpenFile={(fileData) => {
+                        onOpenFileFromRepo(repo, fileData.path, fileData.content, fileData.sha, fileData.branch)
+                        showToast(`Opened ${fileData.name} in editor`)
+                      }}
+                    />
                   </div>
                 )}
               </div>

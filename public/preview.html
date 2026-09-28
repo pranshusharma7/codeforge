@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CodeForge — Live Website Preview</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2338bdf8'><path d='M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5'/></svg>">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Inter', sans-serif;
+      background: #0b0f17;
+      color: #e2e8f0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Live Top Navigation Bar ────────────────────────────────────────── */
+    #live-nav {
+      height: 42px;
+      background: rgba(15, 23, 42, 0.95);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 14px;
+      flex-shrink: 0;
+      z-index: 100;
+      user-select: none;
+      transition: all 0.2s ease;
+    }
+    #live-nav.hidden-bar {
+      transform: translateY(-100%);
+      margin-top: -42px;
+    }
+
+    .nav-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .badge-live {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(16, 185, 129, 0.12);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      padding: 3px 8px;
+      border-radius: 9999px;
+      color: #10b981;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .pulse-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #10b981;
+      box-shadow: 0 0 8px #10b981;
+      animation: pulse 1.8s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.85); }
+    }
+
+    .file-name {
+      font-size: 12px;
+      font-weight: 600;
+      color: #f1f5f9;
+      font-family: 'JetBrains Mono', monospace;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .sync-note {
+      font-size: 11px;
+      color: #94a3b8;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .nav-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .view-group {
+      display: flex;
+      align-items: center;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 6px;
+      padding: 2px;
+      gap: 2px;
+    }
+    .view-btn {
+      background: transparent;
+      border: none;
+      color: #94a3b8;
+      padding: 3px 8px;
+      font-size: 11px;
+      border-radius: 4px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      transition: all 0.12s;
+    }
+    .view-btn:hover { color: #f1f5f9; }
+    .view-btn.active {
+      background: rgba(56, 189, 248, 0.18);
+      color: #38bdf8;
+      font-weight: 600;
+    }
+
+    .btn-action {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: #cbd5e1;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 11px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      transition: all 0.12s;
+    }
+    .btn-action:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: #fff;
+    }
+
+    /* Floating toggle when toolbar is hidden */
+    #show-nav-btn {
+      position: fixed;
+      top: 10px;
+      right: 14px;
+      z-index: 200;
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: #94a3b8;
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-size: 11px;
+      cursor: pointer;
+      backdrop-filter: blur(8px);
+      display: none;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    }
+    #show-nav-btn:hover { color: #fff; background: rgba(15, 23, 42, 0.95); }
+
+    /* ── Main Canvas ────────────────────────────────────────────────────── */
+    #canvas-container {
+      flex: 1;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: stretch;
+      background: #0f172a;
+      overflow: hidden;
+      position: relative;
+    }
+
+    #preview-wrapper {
+      width: 100%;
+      height: 100%;
+      background: #ffffff;
+      transition: width 0.25s ease, box-shadow 0.25s ease;
+      position: relative;
+    }
+    #preview-wrapper.frame-mode {
+      box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.7);
+      border-left: 1px solid rgba(255, 255, 255, 0.1);
+      border-right: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    #preview-frame {
+      width: 100%;
+      height: 100%;
+      border: none;
+      background: #ffffff;
+    }
+
+    /* Flash update glow indicator */
+    #update-indicator {
+      position: fixed;
+      bottom: 16px;
+      right: 16px;
+      background: rgba(16, 185, 129, 0.9);
+      color: #ffffff;
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 600;
+      box-shadow: 0 4px 16px rgba(16, 185, 129, 0.4);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      pointer-events: none;
+      opacity: 0;
+      transform: translateY(10px);
+      transition: all 0.2s ease;
+      z-index: 300;
+    }
+    #update-indicator.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Navigation Bar -->
+  <div id="live-nav">
+    <div class="nav-left">
+      <div class="badge-live">
+        <span class="pulse-dot"></span>
+        Live Sync
+      </div>
+      <div class="file-name">
+        <span>🌐</span>
+        <span id="active-file-label">index.html</span>
+      </div>
+      <span style="color: rgba(255,255,255,0.2)">|</span>
+      <div class="sync-note">
+        <span>⚡ Auto-updates as you type in CodeForge</span>
+      </div>
+    </div>
+
+    <div class="nav-right">
+      <!-- Responsive View Switcher -->
+      <div class="view-group">
+        <button class="view-btn active" data-mode="full" onclick="setViewMode('full')">🖥 Full</button>
+        <button class="view-btn" data-mode="tablet" onclick="setViewMode('tablet')">📱 768px</button>
+        <button class="view-btn" data-mode="mobile" onclick="setViewMode('mobile')">📲 375px</button>
+      </div>
+
+      <button class="btn-action" onclick="reloadPreview()" title="Force Refresh">
+        🔄 Refresh
+      </button>
+
+      <button class="btn-action" onclick="toggleNav(false)" title="Hide Bar for Fullscreen View">
+        ✕ Hide Bar
+      </button>
+    </div>
+  </div>
+
+  <button id="show-nav-btn" onclick="toggleNav(true)" title="Show Toolbar">
+    ⚙️ Controls
+  </button>
+
+  <!-- Live Canvas -->
+  <div id="canvas-container">
+    <div id="preview-wrapper">
+      <iframe id="preview-frame" sandbox="allow-scripts allow-modals allow-forms allow-same-origin allow-popups" title="Website Live Output"></iframe>
+    </div>
+  </div>
+
+  <!-- Realtime Update Indicator -->
+  <div id="update-indicator">
+    <span>✨</span> Updated in real-time
+  </div>
+
+  <script>
+    const frame = document.getElementById('preview-frame');
+    const wrapper = document.getElementById('preview-wrapper');
+    const fileLabel = document.getElementById('active-file-label');
+    const indicator = document.getElementById('update-indicator');
+    const liveNav = document.getElementById('live-nav');
+    const showNavBtn = document.getElementById('show-nav-btn');
+
+    let currentHtml = '';
+    let indicatorTimer = null;
+
+    function showUpdateFlash() {
+      indicator.classList.add('show');
+      if (indicatorTimer) clearTimeout(indicatorTimer);
+      indicatorTimer = setTimeout(() => {
+        indicator.classList.remove('show');
+      }, 1200);
+    }
+
+    function renderHtml(html, fileName) {
+      if (!html) return;
+      currentHtml = html;
+      if (fileName) {
+        fileLabel.textContent = fileName;
+        document.title = fileName + ' — CodeForge Live Preview';
+      }
+
+      // Write directly to frame srcdoc for smooth and instant update
+      frame.srcdoc = html;
+      showUpdateFlash();
+    }
+
+    // ── Setup Realtime BroadcastChannel & Storage Sync ───────────────────
+    const channel = new BroadcastChannel('codeforge_live_preview');
+
+    channel.onmessage = (event) => {
+      const data = event.data;
+      if (!data) return;
+
+      if (data.type === 'LIVE_UPDATE' || data.type === 'CODE_UPDATE') {
+        renderHtml(data.html, data.fileName);
+      }
+    };
+
+    // Request initial HTML from open CodeForge tabs
+    channel.postMessage({ type: 'REQUEST_INITIAL_HTML' });
+
+    // Fallback: Check localStorage on boot
+    try {
+      const saved = localStorage.getItem('codeforge_live_preview_html');
+      const savedName = localStorage.getItem('codeforge_live_preview_filename') || 'index.html';
+      if (saved) {
+        renderHtml(saved, savedName);
+      }
+    } catch (e) {}
+
+    // Polling fallback to guarantee continuous sync even if window events drop
+    setInterval(() => {
+      try {
+        const stored = localStorage.getItem('codeforge_live_preview_html');
+        const storedName = localStorage.getItem('codeforge_live_preview_filename') || 'index.html';
+        if (stored && stored !== currentHtml) {
+          renderHtml(stored, storedName);
+        }
+      } catch (e) {}
+    }, 500);
+
+    // ── Viewport Control ─────────────────────────────────────────────────
+    function setViewMode(mode) {
+      document.querySelectorAll('.view-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.getAttribute('data-mode') === mode);
+      });
+
+      if (mode === 'tablet') {
+        wrapper.style.width = '768px';
+        wrapper.classList.add('frame-mode');
+      } else if (mode === 'mobile') {
+        wrapper.style.width = '375px';
+        wrapper.classList.add('frame-mode');
+      } else {
+        wrapper.style.width = '100%';
+        wrapper.classList.remove('frame-mode');
+      }
+    }
+
+    function reloadPreview() {
+      if (currentHtml) {
+        frame.srcdoc = currentHtml;
+        showUpdateFlash();
+      } else {
+        channel.postMessage({ type: 'REQUEST_INITIAL_HTML' });
+      }
+    }
+
+    function toggleNav(show) {
+      if (show) {
+        liveNav.classList.remove('hidden-bar');
+        showNavBtn.style.display = 'none';
+      } else {
+        liveNav.classList.add('hidden-bar');
+        showNavBtn.style.display = 'block';
+      }
+    }
+  </script>
+</body>
+</html>

@@ -1,7 +1,8 @@
 import React from 'react'
 
 interface FileIconProps {
-  fileName: string
+  fileName?: string
+  name?: string
   size?: number
   className?: string
   style?: React.CSSProperties
@@ -11,8 +12,9 @@ interface FileIconProps {
  * High-fidelity VS Code / Seti style Language File Icons
  * Renders authentic, pixel-perfect icons for 25+ language extensions.
  */
-export default function FileIcon({ fileName, size = 16, className, style }: FileIconProps) {
-  const lower = fileName.toLowerCase().trim()
+export default function FileIcon({ fileName, name, size = 16, className, style }: FileIconProps) {
+  const targetName = fileName || name || ''
+  const lower = targetName.toLowerCase().trim()
   const ext = lower.includes('.') ? lower.substring(lower.lastIndexOf('.') + 1) : lower
 
   // Exact file name matching

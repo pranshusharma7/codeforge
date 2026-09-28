@@ -23,123 +23,169 @@ export const STATUS = {
   INTERNAL_ERROR: 13,
 }
 
-// Judge0 public CE instance
-const JUDGE0_URL = 'https://ce.judge0.com'
+// Wandbox Free Online Compiler Mapping (No API key needed, zero-quota restrictions, CORS-enabled)
+const WANDBOX_COMPILERS: Record<string, { compiler: string; options?: string }> = {
+  python:     { compiler: 'cpython-3.12.7' },
+  py:         { compiler: 'cpython-3.12.7' },
+  cpp:        { compiler: 'gcc-13.2.0', options: 'warning,gnu++17' },
+  'c++':      { compiler: 'gcc-13.2.0', options: 'warning,gnu++17' },
+  c:          { compiler: 'gcc-13.2.0-c' },
+  java:       { compiler: 'openjdk-jdk-21+35' },
+  rust:       { compiler: 'rust-1.82.0' },
+  rs:         { compiler: 'rust-1.82.0' },
+  go:         { compiler: 'go-1.23.2' },
+  csharp:     { compiler: 'mono-6.12.0.199' },
+  cs:         { compiler: 'mono-6.12.0.199' },
+  php:        { compiler: 'php-8.3.12' },
+  ruby:       { compiler: 'ruby-3.3.11' },
+  rb:         { compiler: 'ruby-3.3.11' },
+  bash:       { compiler: 'bash' },
+  sh:         { compiler: 'bash' },
+  shell:      { compiler: 'bash' },
+  perl:       { compiler: 'perl-5.40.0' },
+  pl:         { compiler: 'perl-5.40.0' },
+  lua:        { compiler: 'lua-5.4.7' },
+  haskell:    { compiler: 'ghc-9.10.1' },
+  hs:         { compiler: 'ghc-9.10.1' },
+  elixir:     { compiler: 'elixir-1.17.3' },
+  ex:         { compiler: 'elixir-1.17.3' },
+  erlang:     { compiler: 'erlang-27.1' },
+  erl:        { compiler: 'erlang-27.1' },
+}
 
-function sleep(ms: number) {
-  return new Promise(r => setTimeout(r, ms))
+const JUDGE0_ID_TO_LANG: Record<number, string> = {
+  71: 'python',
+  54: 'cpp',
+  76: 'cpp',
+  105: 'cpp',
+  50: 'c',
+  48: 'c',
+  49: 'c',
+  62: 'java',
+  63: 'javascript',
+  74: 'typescript',
+  60: 'go',
+  73: 'rust',
+  51: 'csharp',
+  68: 'php',
+  72: 'ruby',
+  46: 'bash',
+  85: 'perl',
+  64: 'lua',
+  61: 'haskell',
+  57: 'elixir',
+  58: 'erlang',
 }
 
 /**
- * Unicode-safe base64 encoder
+ * Universal Code Execution Engine
+ * Automatically routes to Wandbox (free Linux cloud compilers) or fast client-side browser runner
  */
-function encodeB64(str: string): string {
-  try {
-    return btoa(encodeURIComponent(str).replace(/%([0-9A-F]{2})/g, (_, p1) => String.fromCharCode(parseInt(p1, 16))))
-  } catch {
-    try {
-      return btoa(unescape(encodeURIComponent(str)))
-    } catch {
-      return btoa(str)
-    }
-  }
-}
-
-/**
- * Unicode-safe base64 decoder
- */
-function decodeB64(b64: string | null | undefined): string | null {
-  if (!b64) return null
-  try {
-    const binary = atob(b64)
-    const bytes = new Uint8Array(binary.length)
-    for (let i = 0; i < binary.length; i++) {
-      bytes[i] = binary.charCodeAt(i)
-    }
-    return new TextDecoder('utf-8').decode(bytes)
-  } catch {
-    try {
-      return decodeURIComponent(escape(atob(b64)))
-    } catch {
-      return atob(b64)
-    }
-  }
-}
-
 export async function executeCode(params: {
   sourceCode: string
-  languageId: number
+  languageId?: number
+  lang?: string
   stdin?: string
 }): Promise<ExecutionResult> {
   const startTime = performance.now()
+  const langKey = (params.lang || (params.languageId ? JUDGE0_ID_TO_LANG[params.languageId] : ''))?.toLowerCase().trim() || ''
 
-  // 1. Submit code asynchronously to Judge0 with base64 encoding (avoids queue bottlenecks and character corruption)
-  try {
-    const subRes = await fetch(`${JUDGE0_URL}/submissions?base64_encoded=true&wait=false`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        source_code: encodeB64(params.sourceCode),
-        language_id: params.languageId,
-        stdin: encodeB64(params.stdin ?? ''),
-        cpu_time_limit: 10,
-        memory_limit: 256000,
-      }),
-    })
+  // 1. Client-side execution for JavaScript & TypeScript (Instant zero-network execution)
+  if (langKey === 'javascript' || langKey === 'js' || params.languageId === 63 || langKey === 'typescript' || langKey === 'ts' || params.languageId === 74) {
+    return runBrowserJS(params.sourceCode, langKey === 'typescript' || params.languageId === 74, params.stdin, startTime)
+  }
 
-    if (subRes.ok) {
-      const subData = await subRes.json()
-      if (subData?.token) {
-        const token = subData.token
-        // Poll for completion (max 25 attempts, ~15 seconds total)
-        for (let i = 0; i < 25; i++) {
-          await sleep(i === 0 ? 500 : Math.min(800, 400 + i * 50))
-          try {
-            const pollRes = await fetch(
-              `${JUDGE0_URL}/submissions/${token}?base64_encoded=true&fields=stdout,stderr,compile_output,status,time,memory,exit_code,message`,
-            )
-            if (pollRes.ok) {
-              const resData = await pollRes.json()
-              const statusId = resData?.status?.id ?? 0
-
-              // status.id: 1 = In Queue, 2 = Processing, > 2 = Finished
-              if (statusId > 2) {
-                const stdout = decodeB64(resData.stdout)
-                const stderr = decodeB64(resData.stderr)
-                const compile_output = decodeB64(resData.compile_output) || (resData.message ? decodeB64(resData.message) : null)
-
-                return {
-                  stdout,
-                  stderr,
-                  compile_output,
-                  status: resData.status || { id: 3, description: 'Accepted' },
-                  time: resData.time || ((performance.now() - startTime) / 1000).toFixed(3),
-                  memory: resData.memory ? Math.round(resData.memory) : null,
-                  exit_code: resData.exit_code ?? 0,
-                  message: resData.message ? decodeB64(resData.message) : null,
-                }
-              }
-            }
-          } catch (pollErr) {
-            console.warn('Judge0 poll attempt failed, retrying...', pollErr)
-          }
-        }
+  // 2. Client-side execution for JSON validation
+  if (langKey === 'json') {
+    try {
+      const parsed = JSON.parse(params.sourceCode)
+      const formatted = JSON.stringify(parsed, null, 2)
+      return {
+        stdout: `✓ Valid JSON Syntax!\n\n${formatted}\n`,
+        stderr: null,
+        compile_output: null,
+        status: { id: 3, description: 'Accepted' },
+        time: '0.001',
+        memory: 1024,
+        exit_code: 0,
+      }
+    } catch (err: any) {
+      return {
+        stdout: null,
+        stderr: `✕ JSON Syntax Error:\n${err.message}`,
+        compile_output: null,
+        status: { id: 6, description: 'Compilation Error' },
+        time: '0.001',
+        memory: 1024,
+        exit_code: 1,
       }
     }
-  } catch (netErr) {
-    console.warn('Judge0 submission error:', netErr)
   }
 
-  // 2. Client-side execution for JavaScript & TypeScript (instant zero-network execution)
-  if (params.languageId === 63 || params.languageId === 74) {
-    return runBrowserJS(params.sourceCode, params.languageId, params.stdin, startTime)
+  // 3. Wandbox Remote Compilation (Python, C++, C, Java, Go, Rust, C#, PHP, Ruby, Bash, etc.)
+  const wandboxConfig = WANDBOX_COMPILERS[langKey] || (params.languageId ? WANDBOX_COMPILERS[JUDGE0_ID_TO_LANG[params.languageId] || ''] : undefined)
+  if (wandboxConfig) {
+    try {
+      let codeToSubmit = params.sourceCode
+
+      // Java fix: Wandbox compiles Java as prog.java, so "public class Main" causes class mismatch error.
+      // Changing "public class X" to "class X" allows seamless compilation and execution!
+      if (langKey === 'java' || params.languageId === 62) {
+        codeToSubmit = codeToSubmit.replace(/\bpublic\s+class\s+(\w+)/g, 'class $1')
+      }
+
+      const res = await fetch('https://wandbox.org/api/compile.json', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          compiler: wandboxConfig.compiler,
+          code: codeToSubmit,
+          stdin: params.stdin || '',
+          options: wandboxConfig.options,
+        }),
+      })
+
+      if (res.ok) {
+        const data = await res.json()
+        const elapsed = ((performance.now() - startTime) / 1000).toFixed(3)
+        const exitCode = data.status !== undefined && data.status !== '' ? parseInt(data.status, 10) : 0
+        const isSuccess = exitCode === 0 && !data.signal
+
+        const stdout = data.program_output || null
+        const stderr = data.program_error || null
+        const compile_output = data.compiler_error || data.compiler_output || null
+
+        let statusId = isSuccess ? 3 : 11
+        let statusDesc = isSuccess ? 'Accepted' : 'Runtime Error'
+
+        if (compile_output && !stdout && exitCode !== 0) {
+          statusId = 6
+          statusDesc = 'Compilation Error'
+        } else if (!isSuccess && stderr) {
+          statusId = 11
+          statusDesc = 'Runtime Error'
+        }
+
+        return {
+          stdout,
+          stderr,
+          compile_output,
+          status: { id: statusId, description: statusDesc },
+          time: elapsed,
+          memory: 4096,
+          exit_code: exitCode,
+        }
+      }
+    } catch (wandboxErr) {
+      console.warn('Wandbox compilation request failed, checking fallbacks...', wandboxErr)
+    }
   }
 
-  // 3. Fallback when network is offline or Judge0 service is busy
+  // 4. Fallback execution simulation if network is temporarily disconnected
   const elapsed = ((performance.now() - startTime) / 1000).toFixed(3)
   return {
     stdout: null,
-    stderr: `⚠️ Execution service is currently busy or unreachable.\nPlease verify your internet connection and try running again in a few moments.`,
+    stderr: `⚠️ Unable to reach compiler server. Please check your internet connection and try running again.`,
     compile_output: null,
     status: { id: 13, description: 'Service Unavailable' },
     time: elapsed,
@@ -151,7 +197,7 @@ export async function executeCode(params: {
 /**
  * Isolated browser runner for JS & TS
  */
-function runBrowserJS(code: string, langId: number, stdin?: string, startTime: number = performance.now()): ExecutionResult {
+function runBrowserJS(code: string, isTypeScript: boolean, stdin?: string, startTime: number = performance.now()): ExecutionResult {
   const logs: string[] = []
   const originalLog = console.log
   const originalError = console.error
@@ -160,7 +206,7 @@ function runBrowserJS(code: string, langId: number, stdin?: string, startTime: n
 
   try {
     console.log = (...args: any[]) => {
-      logs.push(args.map(a => (typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a))).join(' '))
+      logs.push(args.map(a => (typeof a === 'object' && a !== null ? JSON.stringify(a, null, 2) : String(a))).join(' '))
     }
     console.error = (...args: any[]) => {
       logs.push('[error] ' + args.map(a => String(a)).join(' '))
@@ -173,7 +219,7 @@ function runBrowserJS(code: string, langId: number, stdin?: string, startTime: n
     }
 
     let executable = code
-    if (langId === 74) {
+    if (isTypeScript) {
       executable = code
         .replace(/:\s*(string|number|boolean|any|void|unknown|never|Record<.*?>|Array<.*?>|\w+\[\])/g, '')
         .replace(/interface\s+\w+\s*\{[\s\S]*?\}/g, '')

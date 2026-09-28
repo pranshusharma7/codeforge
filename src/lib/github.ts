@@ -444,3 +444,67 @@ export async function getRepoCommits(
     return []
   }
 }
+
+export interface BatchCommitItem {
+  id?: string
+  path: string
+  content: string
+  existingSha?: string
+}
+
+export interface BatchCommitResult {
+  total: number
+  succeeded: number
+  failed: number
+  committedFiles: { path: string; fileSha: string; tabId?: string }[]
+  errors: { path: string; error: string }[]
+  lastCommitSha?: string
+  lastCommitUrl?: string
+}
+
+export async function commitMultipleRepoFiles(
+  token: string,
+  owner: string,
+  repo: string,
+  files: BatchCommitItem[],
+  message: string,
+  branch: string,
+  onProgress?: (current: number, total: number, path: string) => void
+): Promise<BatchCommitResult> {
+  const result: BatchCommitResult = {
+    total: files.length,
+    succeeded: 0,
+    failed: 0,
+    committedFiles: [],
+    errors: [],
+  }
+
+  for (let i = 0; i < files.length; i++) {
+    const f = files[i]
+    if (onProgress) {
+      onProgress(i + 1, files.length, f.path)
+    }
+
+    try {
+      const commitRes = await commitOrUpdateRepoFile(
+        token,
+        owner,
+        repo,
+        f.path,
+        f.content,
+        message ? `${message} (${f.path})` : `Update ${f.path}`,
+        branch,
+        f.existingSha
+      )
+      result.succeeded++
+      result.committedFiles.push({ path: f.path, fileSha: commitRes.fileSha, tabId: f.id })
+      result.lastCommitSha = commitRes.commitSha
+      result.lastCommitUrl = commitRes.commitUrl
+    } catch (err: any) {
+      result.failed++
+      result.errors.push({ path: f.path, error: err.message || 'Commit failed' })
+    }
+  }
+
+  return result
+}

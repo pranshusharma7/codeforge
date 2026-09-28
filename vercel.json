@@ -9,6 +9,10 @@
       "destination": "https://github.com/:path*"
     },
     {
+      "source": "/preview.html",
+      "destination": "/preview.html"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }

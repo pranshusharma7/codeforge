@@ -7,6 +7,8 @@ import {
   getRepoTree,
   getRepoFileContent,
   commitOrUpdateRepoFile,
+  commitMultipleRepoFiles,
+  type BatchCommitItem,
   getRepoCommits,
   getRepoBranches,
 } from '../lib/github'
@@ -19,6 +21,7 @@ import {
   SpinnerIcon,
   CheckIcon,
 } from './icons'
+import GitHubRepoBrowser from './GitHubRepoBrowser'
 
 export interface TabWithRepo {
   id: string
@@ -31,6 +34,9 @@ export interface TabWithRepo {
   repoPath?: string
   repoSha?: string
   repoBranch?: string
+  fileHandle?: FileSystemFileHandle
+  isLocalDisk?: boolean
+  localPath?: string
 }
 
 interface Props {
@@ -47,6 +53,10 @@ interface Props {
     sha: string,
     branch: string
   ) => void
+  onImportMultipleFiles?: (
+    repo: GitHubRepository,
+    files: { path: string; name: string; content: string; sha: string; branch: string }[]
+  ) => void
   onCommitSuccess: (tabId: string, newSha: string, commitUrl: string, commitSha: string) => void
   onConnectGitHub: () => void
   onRefreshRepos: () => void
@@ -61,6 +71,7 @@ export default function SourceControlPanel({
   activeTab,
   allTabs,
   onOpenFileFromRepo,
+  onImportMultipleFiles,
   onCommitSuccess,
   onConnectGitHub,
   onRefreshRepos,
@@ -78,8 +89,20 @@ export default function SourceControlPanel({
     file: string
   } | null>(null)
 
+  // Batch commit state
+  const [commitScope, setCommitScope] = useState<'single' | 'all'>('single')
+  const [selectedTabIds, setSelectedTabIds] = useState<Set<string>>(new Set(allTabs.map(t => t.id)))
+  const [batchCommitting, setBatchCommitting] = useState(false)
+  const [batchProgress, setBatchProgress] = useState<{ current: number; total: number; file: string } | null>(null)
+
+  // Sync selectedTabIds when new tabs are opened
+  useEffect(() => {
+    setSelectedTabIds(new Set(allTabs.map(t => t.id)))
+  }, [allTabs.length])
+
   // File tree browsing state
   const [showFileTree, setShowFileTree] = useState(false)
+  const [showFullModalBrowser, setShowFullModalBrowser] = useState(false)
   const [treeLoading, setTreeLoading] = useState(false)
   const [treeItems, setTreeItems] = useState<RepoTreeItem[]>([])
   const [treeFilter, setTreeFilter] = useState('')
@@ -241,6 +264,75 @@ export default function SourceControlPanel({
     }
   }
 
+  const handleBatchCommit = async () => {
+    if (!authUser?.accessToken || !activeRepo) {
+      showToast('Please connect GitHub and select a repository')
+      return
+    }
+
+    const filesToCommit = allTabs.filter(t => selectedTabIds.has(t.id))
+    if (filesToCommit.length === 0) {
+      showToast('Please select at least one file to commit')
+      return
+    }
+
+    const branch = targetBranch.trim() || activeRepo.default_branch || 'main'
+    const owner = activeRepo.owner?.login || authUser.login || authUser.name
+    const msg = commitMessage.trim() || `Update ${filesToCommit.length} files in workspace`
+
+    setBatchCommitting(true)
+    setBatchProgress({ current: 0, total: filesToCommit.length, file: filesToCommit[0].name })
+
+    try {
+      const batchItems: BatchCommitItem[] = filesToCommit.map(t => ({
+        id: t.id,
+        path: t.repoPath || t.name,
+        content: t.code,
+        existingSha: t.repoSha,
+      }))
+
+      const result = await commitMultipleRepoFiles(
+        authUser.accessToken,
+        owner,
+        activeRepo.name,
+        batchItems,
+        msg,
+        branch,
+        (current, total, path) => {
+          setBatchProgress({ current, total, file: path })
+        }
+      )
+
+      for (const cf of result.committedFiles) {
+        if (cf.tabId) {
+          onCommitSuccess(cf.tabId, cf.fileSha, result.lastCommitUrl || '', result.lastCommitSha || '')
+        }
+      }
+
+      if (result.lastCommitSha && result.lastCommitUrl) {
+        setLastCommitResult({
+          sha: result.lastCommitSha.slice(0, 7),
+          url: result.lastCommitUrl,
+          file: `${result.succeeded} workspace file(s)`,
+        })
+      }
+
+      loadCommits()
+      setCommitMessage('')
+
+      if (result.failed === 0) {
+        showToast(`🎉 All ${result.succeeded} files committed & pushed to GitHub (${branch})!`)
+      } else {
+        showToast(`Committed ${result.succeeded}/${result.total} files. ${result.failed} failed.`)
+      }
+    } catch (err: any) {
+      showToast(`Batch commit failed: ${err.message}`)
+    } finally {
+      setBatchCommitting(false)
+      setBatchProgress(null)
+    }
+  }
+
   if (!authUser) {
     return (
       <div style={{ padding: '16px 12px', flex: 1, overflowY: 'auto' }}>
@@ -378,251 +470,405 @@ export default function SourceControlPanel({
               </select>
             </div>
 
-            <button
-              onClick={() => {
-                if (showFileTree) {
-                  setShowFileTree(false)
-                } else {
-                  loadTree()
-                }
-              }}
-              style={{
-                background: showFileTree ? '#21262d' : 'transparent',
-                border: '1px solid #30363d',
-                borderRadius: 4,
-                color: '#c9d1d9',
-                fontSize: 10,
-                padding: '3px 7px',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 4,
-              }}
-            >
-              {treeLoading ? <SpinnerIcon size={10} /> : <FolderIcon size={11} />}
-              {showFileTree ? 'Hide Files' : 'Browse Files'}
-            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <button
+                onClick={() => setShowFileTree(prev => !prev)}
+                style={{
+                  background: showFileTree ? '#21262d' : 'transparent',
+                  border: '1px solid #30363d',
+                  borderRadius: 4,
+                  color: showFileTree ? '#58a6ff' : '#c9d1d9',
+                  fontSize: 10,
+                  padding: '3px 7px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 4,
+                  fontWeight: showFileTree ? 600 : 400,
+                }}
+              >
+                <FolderIcon size={11} />
+                {showFileTree ? 'Hide Files' : 'Browse Files'}
+              </button>
+
+              <button
+                onClick={() => setShowFullModalBrowser(true)}
+                title="Open repository in full GitHub Explorer modal"
+                style={{
+                  background: 'transparent',
+                  border: '1px solid #30363d',
+                  borderRadius: 4,
+                  color: '#7d8590',
+                  fontSize: 10,
+                  padding: '3px 6px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 3,
+                }}
+              >
+                <span>↗ Full View</span>
+              </button>
+            </div>
           </div>
 
-          {/* ── File Tree Viewer (if toggled) ────────────────────────── */}
-          {showFileTree && (
-            <div
-              style={{
-                background: '#0d1117',
-                border: '1px solid #30363d',
-                borderRadius: 6,
-                padding: '8px',
-                marginBottom: 12,
-                maxHeight: 200,
-                overflowY: 'auto',
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                <span style={{ fontSize: 10, fontWeight: 700, color: '#7d8590' }}>
-                  FILES IN REPO ({treeItems.filter(i => i.type === 'blob').length})
-                </span>
-                <input
-                  value={treeFilter}
-                  onChange={e => setTreeFilter(e.target.value)}
-                  placeholder="Filter files..."
-                  style={{
-                    background: '#161b22',
-                    border: '1px solid #21262d',
-                    borderRadius: 4,
-                    color: '#c9d1d9',
-                    fontSize: 10,
-                    padding: '2px 6px',
-                    width: 90,
-                    outline: 'none',
-                  }}
-                />
-              </div>
-
-              {treeLoading ? (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#7d8590', fontSize: 11, padding: 8 }}>
-                  <SpinnerIcon size={13} /> Loading repository tree...
-                </div>
-              ) : treeItems.length === 0 ? (
-                <div style={{ color: '#484f58', fontSize: 11, padding: '6px 4px' }}>No files found in this branch.</div>
-              ) : (
-                treeItems
-                  .filter(item => item.type === 'blob')
-                  .filter(item => (!treeFilter ? true : item.path.toLowerCase().includes(treeFilter.toLowerCase())))
-                  .slice(0, 50)
-                  .map(item => (
-                    <div
-                      key={item.sha}
-                      onClick={() => handleOpenFile(item)}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        padding: '4px 6px',
-                        borderRadius: 4,
-                        cursor: 'pointer',
-                        fontSize: 11,
-                        color: activeTab.repoPath === item.path ? '#a78bfa' : '#c9d1d9',
-                        background: activeTab.repoPath === item.path ? '#7c3aed15' : 'transparent',
-                      }}
-                      onMouseEnter={e => {
-                        if (activeTab.repoPath !== item.path) e.currentTarget.style.background = '#161b22'
-                      }}
-                      onMouseLeave={e => {
-                        if (activeTab.repoPath !== item.path) e.currentTarget.style.background = 'transparent'
-                      }}
-                    >
-                      <span
-                        style={{
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap',
-                          fontFamily: 'JetBrains Mono',
-                          fontSize: 10,
-                        }}
-                      >
-                        {item.path}
-                      </span>
-                      {loadingFilePath === item.path ? (
-                        <SpinnerIcon size={10} />
-                      ) : (
-                        <span style={{ fontSize: 9, color: '#7d8590' }}>Open</span>
-                      )}
-                    </div>
-                  ))
-              )}
+          {/* ── True GitHub File & Folder Explorer (if toggled) ─────── */}
+          {showFileTree && activeRepo && authUser && (
+            <div style={{ marginBottom: 14 }}>
+              <GitHubRepoBrowser
+                accessToken={authUser.accessToken}
+                repository={activeRepo}
+                currentBranch={targetBranch || activeRepo.default_branch || 'main'}
+                onOpenFile={fileData => {
+                  onOpenFileFromRepo(activeRepo, fileData.path, fileData.content, fileData.sha, fileData.branch)
+                }}
+                onImportMultipleFiles={
+                  onImportMultipleFiles
+                    ? files => {
+                        onImportMultipleFiles(activeRepo, files)
+                      }
+                    : undefined
+                }
+              />
             </div>
           )}
 
-          {/* ── Working Tree Changes (VS Code style) ────────────────────── */}
-          <div style={{ borderTop: '1px solid #21262d', paddingTop: 10, marginBottom: 12 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-              <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', color: '#7d8590' }}>
-                CHANGES TO COMMIT
-              </span>
-              <span style={{ fontSize: 10, color: isModified ? '#d29922' : '#3fb950', fontWeight: 600 }}>
-                {isModified ? '1 modified' : 'Up to date'}
-              </span>
-            </div>
-
-            {/* Active file card */}
-            <div
-              style={{
-                background: '#0d1117',
-                border: '1px solid #21262d',
-                borderRadius: 6,
-                padding: '8px 10px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-              }}
-            >
-              <div
+          {/* ── Commit Scope Switcher (Single File vs All Changed Files) ── */}
+          <div style={{ borderTop: '1px solid var(--border)', paddingTop: 10, marginBottom: 12 }}>
+            <div style={{ display: 'flex', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 6, padding: 2, marginBottom: 10 }}>
+              <button
+                onClick={() => setCommitScope('single')}
                 style={{
-                  width: 18,
-                  height: 18,
-                  borderRadius: 4,
-                  background: isModified ? '#d2992220' : '#3fb95020',
-                  color: isModified ? '#d29922' : '#3fb950',
-                  display: 'grid',
-                  placeItems: 'center',
+                  flex: 1,
+                  padding: '5px 8px',
                   fontSize: 10,
-                  fontWeight: 700,
-                  flexShrink: 0,
+                  fontWeight: commitScope === 'single' ? 700 : 500,
+                  background: commitScope === 'single' ? 'var(--bg-hover)' : 'transparent',
+                  color: commitScope === 'single' ? 'var(--text-base)' : 'var(--text-muted)',
+                  border: 'none',
+                  borderRadius: 4,
+                  cursor: 'pointer',
                 }}
               >
-                {isModified ? 'M' : isCurrentFileLinked ? '✓' : 'U'}
-              </div>
+                📄 Active File ({activeTab.name})
+              </button>
 
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div
+              <button
+                onClick={() => setCommitScope('all')}
+                style={{
+                  flex: 1,
+                  padding: '5px 8px',
+                  fontSize: 10,
+                  fontWeight: commitScope === 'all' ? 700 : 500,
+                  background: commitScope === 'all' ? 'var(--bg-hover)' : 'transparent',
+                  color: commitScope === 'all' ? 'var(--accent)' : 'var(--text-muted)',
+                  border: 'none',
+                  borderRadius: 4,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 5,
+                }}
+              >
+                <span>📦 Commit All Files</span>
+                <span
                   style={{
-                    fontSize: 11,
-                    fontWeight: 600,
-                    color: '#e6edf3',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
+                    background: 'var(--accent)',
+                    color: '#ffffff',
+                    fontSize: 9,
+                    padding: '1px 5px',
+                    borderRadius: 8,
+                    fontWeight: 700,
                   }}
                 >
-                  {targetPath || activeTab.name}
+                  {allTabs.length}
+                </span>
+              </button>
+            </div>
+
+            {/* ── Mode 1: Single Active File ── */}
+            {commitScope === 'single' ? (
+              <>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                  <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', color: 'var(--text-muted)' }}>
+                    ACTIVE FILE TO COMMIT
+                  </span>
+                  <span style={{ fontSize: 10, color: isModified ? '#d29922' : '#3fb950', fontWeight: 600 }}>
+                    {isModified ? '1 modified' : 'Up to date'}
+                  </span>
                 </div>
-                <div style={{ fontSize: 9, color: '#7d8590' }}>
-                  {isCurrentFileLinked ? `Linked to ${activeRepo.name}` : `Will be committed to ${activeRepo.name}`}
+
+                <div
+                  style={{
+                    background: 'var(--bg-card)',
+                    border: '1px solid var(--border)',
+                    borderRadius: 6,
+                    padding: '8px 10px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    marginBottom: 12,
+                  }}
+                >
+                  <div
+                    style={{
+                      width: 18,
+                      height: 18,
+                      borderRadius: 4,
+                      background: isModified ? '#d2992220' : '#3fb95020',
+                      color: isModified ? '#d29922' : '#3fb950',
+                      display: 'grid',
+                      placeItems: 'center',
+                      fontSize: 10,
+                      fontWeight: 700,
+                      flexShrink: 0,
+                    }}
+                  >
+                    {isModified ? 'M' : isCurrentFileLinked ? '✓' : 'U'}
+                  </div>
+
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div
+                      style={{
+                        fontSize: 11,
+                        fontWeight: 600,
+                        color: 'var(--text-base)',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {targetPath || activeTab.name}
+                    </div>
+                    <div style={{ fontSize: 9, color: 'var(--text-muted)' }}>
+                      {isCurrentFileLinked ? `Linked to ${activeRepo.name}` : `Will be committed to ${activeRepo.name}`}
+                    </div>
+                  </div>
                 </div>
+
+                <label style={{ fontSize: 10, color: 'var(--text-muted)', display: 'block', marginBottom: 3 }}>
+                  Target File Path in Repo:
+                </label>
+                <input
+                  value={targetPath}
+                  onChange={e => setTargetPath(e.target.value)}
+                  placeholder="e.g. src/index.js or solution.py"
+                  className="ide-input"
+                  style={{ width: '100%', fontSize: 11, fontFamily: 'JetBrains Mono', marginBottom: 8, padding: '6px 8px' }}
+                />
+
+                <label style={{ fontSize: 10, color: 'var(--text-muted)', display: 'block', marginBottom: 3 }}>
+                  Commit Message:
+                </label>
+                <textarea
+                  value={commitMessage}
+                  onChange={e => setCommitMessage(e.target.value)}
+                  placeholder={`Message (e.g. update ${targetPath || activeTab.name})`}
+                  onKeyDown={e => {
+                    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                      e.preventDefault()
+                      handleCommit()
+                    }
+                  }}
+                  style={{
+                    width: '100%',
+                    height: 58,
+                    background: 'var(--bg-input)',
+                    border: '1px solid var(--border)',
+                    borderRadius: 6,
+                    color: 'var(--text-base)',
+                    fontSize: 11,
+                    padding: '6px 8px',
+                    outline: 'none',
+                    resize: 'none',
+                    marginBottom: 8,
+                  }}
+                />
+
+                <button
+                  onClick={handleCommit}
+                  disabled={committing || !targetPath.trim()}
+                  className="btn btn-primary"
+                  style={{
+                    width: '100%',
+                    justifyContent: 'center',
+                    padding: '8px 12px',
+                    fontSize: 11,
+                    fontWeight: 600,
+                    gap: 6,
+                  }}
+                >
+                  {committing ? (
+                    <>
+                      <SpinnerIcon size={12} /> Pushing to GitHub...
+                    </>
+                  ) : (
+                    <>
+                      <CheckIcon size={12} /> Commit & Push to {targetBranch || 'main'}
+                    </>
+                  )}
+                </button>
+              </>
+            ) : (
+              /* ── Mode 2: Batch Commit All Workspace Files ── */
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                  <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', color: 'var(--text-muted)' }}>
+                    FILES TO COMMIT ({selectedTabIds.size}/{allTabs.length} SELECTED)
+                  </span>
+
+                  <button
+                    onClick={() => {
+                      if (selectedTabIds.size === allTabs.length) {
+                        setSelectedTabIds(new Set())
+                      } else {
+                        setSelectedTabIds(new Set(allTabs.map(t => t.id)))
+                      }
+                    }}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: 'var(--accent)',
+                      fontSize: 10,
+                      cursor: 'pointer',
+                      padding: 0,
+                    }}
+                  >
+                    {selectedTabIds.size === allTabs.length ? 'Deselect All' : 'Select All'}
+                  </button>
+                </div>
+
+                {/* All Workspace Files List with checkboxes */}
+                <div
+                  style={{
+                    maxHeight: 180,
+                    overflowY: 'auto',
+                    border: '1px solid var(--border)',
+                    borderRadius: 6,
+                    background: 'var(--bg-card)',
+                    marginBottom: 10,
+                  }}
+                >
+                  {allTabs.map(tab => {
+                    const isSelected = selectedTabIds.has(tab.id)
+                    const tabModified = tab.modified || !tab.repoSha
+                    return (
+                      <div
+                        key={tab.id}
+                        onClick={() => {
+                          const next = new Set(selectedTabIds)
+                          if (next.has(tab.id)) next.delete(tab.id)
+                          else next.add(tab.id)
+                          setSelectedTabIds(next)
+                        }}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 8,
+                          padding: '6px 10px',
+                          borderBottom: '1px solid var(--border-subtle)',
+                          cursor: 'pointer',
+                          background: isSelected ? 'var(--bg-hover)' : 'transparent',
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => {}} // handled by row click
+                          style={{ cursor: 'pointer' }}
+                        />
+
+                        <div
+                          style={{
+                            width: 16,
+                            height: 16,
+                            borderRadius: 3,
+                            background: tabModified ? '#d2992220' : '#3fb95020',
+                            color: tabModified ? '#d29922' : '#3fb950',
+                            display: 'grid',
+                            placeItems: 'center',
+                            fontSize: 9,
+                            fontWeight: 700,
+                            flexShrink: 0,
+                          }}
+                        >
+                          {tabModified ? 'M' : '✓'}
+                        </div>
+
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 11, color: 'var(--text-base)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {tab.repoPath || tab.name}
+                          </div>
+                          <div style={{ fontSize: 9, color: 'var(--text-muted)' }}>
+                            {tab.code.split('\n').length} lines • {tab.lang}
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+
+                <label style={{ fontSize: 10, color: 'var(--text-muted)', display: 'block', marginBottom: 3 }}>
+                  Batch Commit Message:
+                </label>
+                <textarea
+                  value={commitMessage}
+                  onChange={e => setCommitMessage(e.target.value)}
+                  placeholder={`e.g. feat: update ${selectedTabIds.size} workspace files`}
+                  style={{
+                    width: '100%',
+                    height: 52,
+                    background: 'var(--bg-input)',
+                    border: '1px solid var(--border)',
+                    borderRadius: 6,
+                    color: 'var(--text-base)',
+                    fontSize: 11,
+                    padding: '6px 8px',
+                    outline: 'none',
+                    resize: 'none',
+                    marginBottom: 8,
+                  }}
+                />
+
+                {batchProgress && (
+                  <div style={{ marginBottom: 8, padding: '6px 8px', background: 'var(--accent-subtle)', borderRadius: 5, fontSize: 10, color: 'var(--accent)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
+                      <SpinnerIcon size={10} />
+                      <span>Committing {batchProgress.current} / {batchProgress.total}: <strong>{batchProgress.file}</strong></span>
+                    </div>
+                  </div>
+                )}
+
+                <button
+                  onClick={handleBatchCommit}
+                  disabled={batchCommitting || selectedTabIds.size === 0}
+                  className="btn btn-primary"
+                  style={{
+                    width: '100%',
+                    justifyContent: 'center',
+                    padding: '9px 12px',
+                    fontSize: 11,
+                    fontWeight: 700,
+                    gap: 6,
+                    background: '#2563eb',
+                  }}
+                >
+                  {batchCommitting ? (
+                    <>
+                      <SpinnerIcon size={12} /> Committing {batchProgress?.current || 0}/{selectedTabIds.size} Files...
+                    </>
+                  ) : (
+                    <>
+                      <span>🚀</span> Commit All ({selectedTabIds.size} Files) to {targetBranch || 'main'}
+                    </>
+                  )}
+                </button>
               </div>
-            </div>
-          </div>
+            )}
 
-          {/* ── Commit Message and Push Box (VS Code style) ─────────────── */}
-          <div style={{ marginBottom: 14 }}>
-            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', color: '#7d8590', marginBottom: 6 }}>
-              COMMIT & PUSH
-            </div>
-
-            <label style={{ fontSize: 10, color: '#7d8590', display: 'block', marginBottom: 3 }}>
-              Target File Path in Repo:
-            </label>
-            <input
-              value={targetPath}
-              onChange={e => setTargetPath(e.target.value)}
-              placeholder="e.g. src/index.js or solution.py"
-              className="ide-input"
-              style={{ width: '100%', fontSize: 11, fontFamily: 'JetBrains Mono', marginBottom: 8, padding: '6px 8px' }}
-            />
-
-            <label style={{ fontSize: 10, color: '#7d8590', display: 'block', marginBottom: 3 }}>
-              Commit Message:
-            </label>
-            <textarea
-              value={commitMessage}
-              onChange={e => setCommitMessage(e.target.value)}
-              placeholder={`Message (e.g. update ${targetPath || activeTab.name})`}
-              onKeyDown={e => {
-                if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-                  e.preventDefault()
-                  handleCommit()
-                }
-              }}
-              style={{
-                width: '100%',
-                height: 58,
-                background: '#0d1117',
-                border: '1px solid #30363d',
-                borderRadius: 6,
-                color: '#e6edf3',
-                fontSize: 11,
-                padding: '6px 8px',
-                outline: 'none',
-                resize: 'none',
-                marginBottom: 8,
-              }}
-            />
-
-            <button
-              onClick={handleCommit}
-              disabled={committing || !targetPath.trim()}
-              className="btn btn-primary"
-              style={{
-                width: '100%',
-                justifyContent: 'center',
-                padding: '8px 12px',
-                fontSize: 11,
-                fontWeight: 600,
-                gap: 6,
-              }}
-            >
-              {committing ? (
-                <>
-                  <SpinnerIcon size={12} /> Pushing to GitHub...
-                </>
-              ) : (
-                <>
-                  <CheckIcon size={12} /> Commit & Push to {targetBranch || 'main'}
-                </>
-              )}
-            </button>
-            <div style={{ fontSize: 9, color: '#484f58', textAlign: 'center', marginTop: 4 }}>
-              Shortcut: <kbd style={{ background: '#21262d', padding: '1px 4px', borderRadius: 3 }}>⌘↵</kbd> or <kbd style={{ background: '#21262d', padding: '1px 4px', borderRadius: 3 }}>Ctrl+Enter</kbd>
+            <div style={{ fontSize: 9, color: 'var(--text-dim)', textAlign: 'center', marginTop: 5 }}>
+              Pushes directly to branch <strong>{targetBranch || 'main'}</strong> of {activeRepo.name}
             </div>
           </div>
 
@@ -743,6 +989,55 @@ export default function SourceControlPanel({
             )}
           </div>
         </>
+      )}
+
+      {/* ── Fullscreen GitHub Repository Browser Modal ──────────────── */}
+      {showFullModalBrowser && activeRepo && authUser && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0, 0, 0, 0.78)',
+            backdropFilter: 'blur(6px)',
+            display: 'grid',
+            placeItems: 'center',
+            zIndex: 999999,
+            padding: 20,
+          }}
+          onClick={() => setShowFullModalBrowser(false)}
+        >
+          <div
+            style={{
+              width: '100%',
+              maxWidth: 960,
+              height: '84vh',
+              boxShadow: '0 24px 60px rgba(0, 0, 0, 0.85)',
+              borderRadius: 8,
+              overflow: 'hidden',
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            <GitHubRepoBrowser
+              accessToken={authUser.accessToken}
+              repository={activeRepo}
+              currentBranch={targetBranch || activeRepo.default_branch || 'main'}
+              isModal={true}
+              onClose={() => setShowFullModalBrowser(false)}
+              onOpenFile={fileData => {
+                onOpenFileFromRepo(activeRepo, fileData.path, fileData.content, fileData.sha, fileData.branch)
+                setShowFullModalBrowser(false)
+              }}
+              onImportMultipleFiles={
+                onImportMultipleFiles
+                  ? files => {
+                      onImportMultipleFiles(activeRepo, files)
+                      setShowFullModalBrowser(false)
+                    }
+                  : undefined
+              }
+            />
+          </div>
+        </div>
       )}
     </div>
   )

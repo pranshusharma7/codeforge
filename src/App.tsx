@@ -12,7 +12,7 @@ import UpgradeProModal from './components/UpgradeProModal'
 import FileIcon from './components/FileIcon'
 import AIAppPanel from './components/AIAppPanel'
 import VSCodeTerminal from './components/VSCodeTerminal'
-import LiveServerModal from './components/LiveServerModal'
+import { assembleWebProject } from './lib/webBundle'
 import {
   isBYOKActive,
   getActiveProviderSummary,
@@ -39,11 +39,18 @@ import { generateExecutionTrace, evaluateWatchExpression, type DebugStep, type W
 import type { ExecutionResult } from './lib/judge0'
 import { getEditorFontById, DEFAULT_FONT_ID } from './lib/fonts'
 import logoImg from './assets/logo.png'
+import LeetCodeRunner from './components/LeetCodeRunner'
+import {
+  isFileSystemAccessSupported,
+  openFilesFromDisk,
+  saveToLocalDisk,
+  saveAsLocalDisk,
+} from './lib/fileSystemAccess'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 type Tab = TabWithRepo
 type Panel = 'explorer' | 'history' | 'source-control' | 'profile' | 'debug'
-type ConsoleTab = 'terminal' | 'testcase' | 'output' | 'aisugg' | 'debug'
+type ConsoleTab = 'terminal' | 'testcase' | 'output' | 'aisugg' | 'debug' | 'dsa'
 
 // ── Monaco themes registered from src/lib/themes.ts ──────────────────────
 
@@ -84,10 +91,12 @@ const ACTIONS: { label: string; action: AIAction; icon: string; color: string }[
 
 const COMMANDS = [
   { id: 'run', label: 'Run Code', detail: 'Execute the active file', key: 'Ctrl Enter', icon: '▶' },
+  { id: 'save', label: 'Save File (Ctrl+S)', detail: 'Directly save changes to computer disk file', key: 'Ctrl S', icon: '💾' },
+  { id: 'save-as', label: 'Save As... (Choose Location)', detail: 'Save code to a chosen file on local disk', key: 'Ctrl Shift S', icon: '📁' },
   { id: 'new', label: 'New File', detail: 'Create a new editor tab', key: 'Ctrl N', icon: '+' },
   { id: 'new-folder', label: 'New Folder', detail: 'Create a new folder in workspace', key: '', icon: '🗂️' },
-  { id: 'open-file', label: 'Open File', detail: 'Open code file from computer', key: 'Ctrl O', icon: '📄' },
-  { id: 'open-folder', label: 'Open Project / Folder', detail: 'Open local directory project', key: '', icon: '📁' },
+  { id: 'open-file', label: 'Open File from Computer', detail: 'Open code file with direct disk saving', key: 'Ctrl O', icon: '📄' },
+  { id: 'open-folder', label: 'Open Project / Folder', detail: 'Open local directory with direct disk saving', key: '', icon: '📁' },
   { id: 'format', label: 'Format Document', detail: 'Format the active file', key: 'Alt Shift F', icon: '✦' },
   { id: 'find', label: 'Find in Editor', detail: 'Search within the active file', key: 'Ctrl F', icon: '/' },
   { id: 'explorer', label: 'Show Explorer', detail: 'Open the file explorer', key: '', icon: '▤' },
@@ -212,7 +221,6 @@ export default function App() {
   const [consH, setConsH]           = useState(220)
   const [consTab, setConsTab]       = useState<ConsoleTab>('output')
   const [bottomPanelOpen, setBottomPanelOpen] = useState(false)
-  const [showLiveServer, setShowLiveServer] = useState(false)
   const [newFileOpen, setNewFileOpen] = useState(false)
   const [newFileName, setNewFileName] = useState('main.py')
   const [newFolderOpen, setNewFolderOpen] = useState(false)
@@ -261,6 +269,9 @@ export default function App() {
   })
   const [editorFont, setEditorFont]       = useState<string>(() => {
     try { return localStorage.getItem('cf_editor_font') || DEFAULT_FONT_ID } catch { return DEFAULT_FONT_ID }
+  })
+  const [editorFontColor, setEditorFontColor] = useState<string>(() => {
+    try { return localStorage.getItem('cf_editor_font_color') || 'default' } catch { return 'default' }
   })
   const [fontLigatures, setFontLigatures] = useState<boolean>(() => {
     try {
@@ -313,12 +324,22 @@ export default function App() {
   const activeCodeRef = useRef<string>(tabs[0]?.code ?? '')
   const handleRunRef  = useRef<() => void>(() => {})
   const saveRef       = useRef<() => void>(() => {})
+  const handleOpenDiskFileRef = useRef<() => void>(() => {})
+  const handleSaveAsDiskRef   = useRef<() => void>(() => {})
   const fileInputRef  = useRef<HTMLInputElement>(null)
   const folderInputRef = useRef<HTMLInputElement>(null)
   const aiBottomRef   = useRef<HTMLDivElement>(null)
   const sideResRef    = useRef<{x:number;w:number}|null>(null)
   const aiResRef      = useRef<{x:number;w:number}|null>(null)
   const consResRef    = useRef<{y:number;h:number}|null>(null)
+  const webResRef     = useRef<{x:number;w:number}|null>(null)
+
+  // Web Live Preview state (for running HTML/CSS/JS websites side-by-side with editor)
+  const [webPreviewOpen, setWebPreviewOpen] = useState<boolean>(false)
+  const [webPreviewW, setWebPreviewW]       = useState<number>(() => {
+    if (typeof window !== 'undefined') return Math.max(380, Math.floor(window.innerWidth * 0.5))
+    return 520
+  })
 
   // derived
   const activeTabObj = tabs.find(t => t.id === activeTab) ?? tabs[0]
@@ -358,13 +379,62 @@ export default function App() {
     return () => document.removeEventListener('mousedown', handleOutsideClick)
   }, [openMenuOpen])
 
+  const liveChannelRef = useRef<BroadcastChannel | null>(null)
+
+  // ── Setup Realtime BroadcastChannel for Live Preview Page ──────────────────
+  useEffect(() => {
+    try {
+      const channel = new BroadcastChannel('codeforge_live_preview')
+      liveChannelRef.current = channel
+      channel.onmessage = (e) => {
+        if (e.data?.type === 'REQUEST_INITIAL_HTML') {
+          const { html, fileName } = assembleWebProject(curTab, tabs)
+          channel.postMessage({ type: 'LIVE_UPDATE', html, fileName })
+        }
+      }
+      return () => {
+        channel.close()
+      }
+    } catch (e) {
+      console.warn('BroadcastChannel error:', e)
+    }
+  }, [curTab, tabs])
+
+  // ── Realtime Live Sync: as code changes in any tab, stream updates to the new page! ──
+  useEffect(() => {
+    const isWebWorkspace = tabs.some(t =>
+      t.lang === 'html' || t.lang === 'css' || t.lang === 'javascript' ||
+      t.name.toLowerCase().endsWith('.html') || t.name.toLowerCase().endsWith('.htm') ||
+      t.name.toLowerCase().endsWith('.css') || t.name.toLowerCase().endsWith('.js')
+    )
+    if (!isWebWorkspace) return
+
+    const timer = setTimeout(() => {
+      try {
+        const { html, fileName } = assembleWebProject(curTab, tabs)
+        localStorage.setItem('codeforge_live_preview_html', html)
+        localStorage.setItem('codeforge_live_preview_filename', fileName)
+        liveChannelRef.current?.postMessage({ type: 'LIVE_UPDATE', html, fileName })
+
+        // Notify local Live Server if listening
+        fetch('/__update_live_html__', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ html }),
+        }).catch(() => {})
+      } catch (e) {}
+    }, 150)
+
+    return () => clearTimeout(timer)
+  }, [tabs, activeTab, curTab.code])
+
   const activeAISummary = useMemo(() => {
     return getActiveProviderSummary()
   }, [aiConfigVersion])
 
   // ── Init ────────────────────────────────────────────────────────────────
   useEffect(() => {
-    applyThemeToDocument(editorTheme)
+    applyThemeToDocument(editorTheme, editorFontColor)
     setSavedCodes(getSavedCodeHistory())
     const savedUser = getAuthUser()
     setAuthUserState(savedUser)
@@ -397,13 +467,22 @@ export default function App() {
     }
   }, [])
 
+  // ── Dynamic Theme & Custom Font Color Theme Name ────────────────────────
+  const activeMonacoTheme = useMemo(() => {
+    if (!editorFontColor || editorFontColor === 'default') {
+      return editorTheme
+    }
+    const cleanColor = editorFontColor.replace(/[^a-zA-Z0-9]/g, '')
+    return `${editorTheme}-fc-${cleanColor}`
+  }, [editorTheme, editorFontColor])
+
   // ── Theme ───────────────────────────────────────────────────────────────
   useEffect(() => {
-    applyThemeToDocument(editorTheme)
+    applyThemeToDocument(editorTheme, editorFontColor)
     if (!monaco) return
-    registerMonacoThemes(monaco)
-    monaco.editor.setTheme(editorTheme)
-  }, [monaco, editorTheme])
+    registerMonacoThemes(monaco, editorFontColor)
+    monaco.editor.setTheme(activeMonacoTheme)
+  }, [monaco, editorTheme, editorFontColor, activeMonacoTheme])
 
   // ── Breakpoints & Active Debug Line in Monaco ─────────────────────────────
   const toggleBreakpoint = useCallback((line: number) => {
@@ -657,7 +736,8 @@ export default function App() {
       const mod = e.ctrlKey || e.metaKey
       if (mod && e.key === 'Enter') { e.preventDefault(); handleRunRef.current() }
       const key = e.key.toLowerCase()
-      if (mod && key === 's')     { e.preventDefault(); saveRef.current() }
+      if (mod && e.shiftKey && key === 's') { e.preventDefault(); handleSaveAsDiskRef.current() }
+      else if (mod && key === 's')          { e.preventDefault(); saveRef.current() }
       if (mod && (e.shiftKey && key === 'p' || !e.shiftKey && key === 'k')) { e.preventDefault(); setShowCommands(true); setCommandQuery('') }
       if (mod && e.shiftKey && key === 'a') { e.preventDefault(); setAiOpen(p => !p) }
       if (mod && !e.shiftKey && key === 'n') {
@@ -670,7 +750,7 @@ export default function App() {
       }
       if (mod && !e.shiftKey && key === 'o') {
         e.preventDefault()
-        fileInputRef.current?.click()
+        handleOpenDiskFileRef.current()
       }
       if (e.key === 'Escape') {
         setShowSettings(false); setShowKeys(false); setShowSnipModal(false); setShowShare(false); setShowCommands(false)
@@ -718,89 +798,6 @@ export default function App() {
     return () => window.removeEventListener('mousedown', handleClickOutside)
   }, [downloadMenuOpen])
 
-  // ── Tabs ─────────────────────────────────────────────────────────────────
-  // ── Live Server (VS Code style on port 5500) ─────────────────────────────
-  const getLiveServerHtml = useCallback(() => {
-    const curCode = getActiveCode()
-    if (curTab.name.endsWith('.html') || curTab.lang === 'html') {
-      return curCode.trim() ? curCode : '<!DOCTYPE html><html><body><h1>index.html</h1><p>Start editing in CodeForge!</p></body></html>'
-    }
-    const htmlTab = tabs.find(t => t.name.endsWith('.html') || t.lang === 'html')
-    if (htmlTab && htmlTab.code.trim()) {
-      return htmlTab.code
-    }
-    return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${curTab.name || 'Live Server'}</title>
-  <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 40px 20px; background: #0f172a; color: #f8fafc; line-height: 1.6; }
-    .card { max-width: 650px; margin: 0 auto; background: #1e293b; padding: 28px; border-radius: 12px; border: 1px solid #334155; }
-    h1 { color: #38bdf8; margin-top: 0; font-size: 22px; display: flex; align-items: center; gap: 8px; }
-    pre { background: #0b0f19; padding: 14px; border-radius: 8px; overflow-x: auto; color: #34d399; font-family: monospace; font-size: 13px; }
-    .hint { color: #94a3b8; font-size: 13px; margin-top: 16px; border-top: 1px solid #334155; padding-top: 12px; }
-  </style>
-</head>
-<body>
-  <div class="card">
-    <h1><span>🚀</span> Live Server : 5500</h1>
-    <p>Serving workspace file: <strong>${curTab.name}</strong></p>
-    <pre><code>${curCode ? curCode.replace(/</g, '&lt;').replace(/>/g, '&gt;') : '// (No code yet)'}</code></pre>
-    <div class="hint">Tip: Create an <strong>index.html</strong> file in CodeForge for full interactive webpage live preview!</div>
-  </div>
-</body>
-</html>`
-  }, [curTab, getActiveCode, tabs])
-
-  // Sync edits to live server backend in real-time
-  useEffect(() => {
-    if (showLiveServer) {
-      const html = getLiveServerHtml()
-      fetch('/__update_live_html__', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ html }),
-      }).catch(() => {})
-      fetch('http://127.0.0.1:5500/__update_live_html__', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ html }),
-      }).catch(() => {})
-    }
-  }, [tabs, activeTab, showLiveServer, getLiveServerHtml])
-
-  const handleLiveServerClick = async () => {
-    const html = getLiveServerHtml()
-    // Post current HTML before opening
-    try {
-      await fetch('/__update_live_html__', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ html }),
-      }).catch(() => {})
-      await fetch('http://127.0.0.1:5500/__update_live_html__', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ html }),
-      }).catch(() => {})
-    } catch {}
-
-    const targetUrl = 'http://127.0.0.1:5500/'
-    if (!showLiveServer) {
-      setShowLiveServer(true)
-      const win = window.open(targetUrl, '_blank')
-      if (win) {
-        showToast('🚀 Live Server opened on http://127.0.0.1:5500/')
-      } else {
-        showToast('🚀 Live Server running at http://127.0.0.1:5500/')
-      }
-    } else {
-      window.open(targetUrl, '_blank')
-      showToast('🚀 Live Server opened on http://127.0.0.1:5500/')
-    }
-  }
 
   // Instant synchronous keystroke handler: keeps activeCodeRef and tabs state in sync with Monaco
   const updateCode = useCallback((code: string) => {
@@ -1034,6 +1031,50 @@ export default function App() {
     e.target.value = ''
   }
 
+  const handleOpenFileWithPicker = async () => {
+    if (isFileSystemAccessSupported()) {
+      try {
+        const diskFiles = await openFilesFromDisk()
+        if (diskFiles.length === 0) return
+        const newTabs: Tab[] = []
+        diskFiles.forEach(df => {
+          const detected = detectLanguage(df.name)
+          newTabs.push({
+            id: crypto.randomUUID(),
+            name: df.name,
+            lang: detected.id,
+            code: df.content,
+            modified: false,
+            fileHandle: df.handle,
+            isLocalDisk: true,
+            localPath: df.path,
+          })
+        })
+        setTabs(prev => {
+          // If workspace only had a single empty unmodified default file, replace it
+          if (
+            prev.length === 1 &&
+            !prev[0].modified &&
+            (!prev[0].code || prev[0].code.startsWith('# CodeForge') || prev[0].code.startsWith('print("Hello'))
+          ) {
+            return newTabs
+          }
+          const existingNames = new Set(prev.map(t => t.name))
+          const filtered = newTabs.filter(t => !existingNames.has(t.name))
+          return [...prev, ...filtered]
+        })
+        setActiveTab(newTabs[0].id)
+        showToast(`Opened ${newTabs[0].name} from computer (Direct Disk Save active 💾)`)
+        return
+      } catch (err: any) {
+        if (err.name === 'AbortError') return
+        console.warn('showOpenFilePicker error, falling back:', err)
+      }
+    }
+    fileInputRef.current?.click()
+  }
+  handleOpenDiskFileRef.current = handleOpenFileWithPicker
+
   const handleOpenProjectWithPicker = async () => {
     if (typeof window !== 'undefined' && 'showDirectoryPicker' in window) {
       try {
@@ -1076,6 +1117,10 @@ export default function App() {
                       name: entryPath,
                       lang: detected.id,
                       code: content,
+                      modified: false,
+                      fileHandle: entry,
+                      isLocalDisk: true,
+                      localPath: entryPath,
                     })
                   }
                 } catch (err) {
@@ -1094,6 +1139,7 @@ export default function App() {
             name: 'main.py',
             lang: 'python',
             code: `# Project: ${rootName}\nprint("Hello from ${rootName}!")\n`,
+            modified: false,
           }
           setFolders(Array.from(folderSet))
           setTabs([defaultFile])
@@ -1104,7 +1150,7 @@ export default function App() {
           setTabs(loadedTabs)
           const primary = loadedTabs.find(t => /^(main|index|app)\./i.test(t.name.split('/').pop() || '')) || loadedTabs[0]
           setActiveTab(primary.id)
-          showToast(`Opened project "${rootName}" (${loadedTabs.length} files) 🚀`)
+          showToast(`Opened project "${rootName}" (${loadedTabs.length} files with Direct Disk Save 💾) 🚀`)
         }
         setPanel('explorer')
         setSideOpen(true)
@@ -1153,10 +1199,37 @@ export default function App() {
       }
     }
 
+    // ── Check if running a website file (HTML/HTM connected to CSS & JS) ────
+    const fileName = activeTabToUse.name.toLowerCase()
+    const isWebFile =
+      activeTabToUse.lang === 'html' ||
+      fileName.endsWith('.html') ||
+      fileName.endsWith('.htm')
+
+    if (isWebFile) {
+      const { html, fileName: bundledName } = assembleWebProject(activeTabToUse, tabs)
+      localStorage.setItem('codeforge_live_preview_html', html)
+      localStorage.setItem('codeforge_live_preview_filename', bundledName)
+      liveChannelRef.current?.postMessage({ type: 'LIVE_UPDATE', html, fileName: bundledName })
+
+      fetch('/__update_live_html__', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ html }),
+      }).catch(() => {})
+
+      // Directly open website in a new dedicated page with real-time live sync
+      const win = window.open('/preview.html', 'codeforge_live_web')
+      if (win) win.focus()
+
+      showToast(`🚀 ${bundledName} opened in new page! Live sync active.`)
+      return
+    }
+
+    // For all other languages (Python, Java, JS, C++, Rust, Go, etc.), output appears in the bottom terminal
     setRunning(true); setResult(null); setConsTab('output'); setBottomPanelOpen(true)
     try {
       let langToRun = getLangById(activeTabToUse.lang)
-      // If user typed code in a plaintext or untitled.txt file, run as Python
       let targetJudge0Id = langToRun.judge0Id
       if (targetJudge0Id === 0) {
         if (langToRun.id === 'json') {
@@ -1189,7 +1262,12 @@ export default function App() {
         }
       }
 
-      const res = await executeCode({ sourceCode: codeToRun, languageId: targetJudge0Id, stdin })
+      const res = await executeCode({
+        sourceCode: codeToRun,
+        languageId: targetJudge0Id,
+        lang: langToRun.id,
+        stdin,
+      })
       setResult(res)
     } finally { setRunning(false) }
   }, [running, hasOpenTab, curTab, getActiveCode, stdin])
@@ -1289,6 +1367,45 @@ export default function App() {
     setActiveRepo(repo)
   }
 
+  const handleImportMultipleFilesFromRepo = (
+    repo: GitHubRepository,
+    files: { path: string; name: string; content: string; sha: string; branch: string }[]
+  ) => {
+    if (files.length === 0) return
+    const newTabs: Tab[] = []
+    const folderSet = new Set<string>()
+
+    files.forEach(f => {
+      const parts = f.path.split('/')
+      if (parts.length > 1) {
+        let cur = ''
+        for (let i = 0; i < parts.length - 1; i++) {
+          cur = cur ? `${cur}/${parts[i]}` : parts[i]
+          folderSet.add(cur)
+        }
+      }
+      const detected = detectLanguage(f.name)
+      newTabs.push({
+        id: crypto.randomUUID(),
+        name: f.path,
+        lang: detected.id,
+        code: f.content,
+        modified: false,
+        repoOwner: repo.owner?.login || authUser?.login || authUser?.name,
+        repoName: repo.name,
+        repoPath: f.path,
+        repoSha: f.sha,
+        repoBranch: f.branch,
+      })
+    })
+
+    setFolders(prev => Array.from(new Set([...prev, ...folderSet])))
+    setTabs(prev => [...prev, ...newTabs])
+    setActiveTab(newTabs[0].id)
+    setActiveRepo(repo)
+    showToast(`Imported ${newTabs.length} files from ${repo.name} 🚀`)
+  }
+
   const handleCommitSuccess = (tabId: string, newSha: string, commitUrl: string, commitSha: string) => {
     setTabs(prev =>
       prev.map(tab => (tab.id === tabId ? { ...tab, modified: false, repoSha: newSha } : tab))
@@ -1332,10 +1449,27 @@ export default function App() {
 
   const handleThemeChange = (themeId: string) => {
     setEditorTheme(themeId)
-    applyThemeToDocument(themeId)
+    applyThemeToDocument(themeId, editorFontColor)
     try { localStorage.setItem('cf_editor_theme', themeId) } catch {}
     if (monaco) {
-      monaco.editor.setTheme(themeId)
+      registerMonacoThemes(monaco, editorFontColor)
+      const targetTheme = editorFontColor && editorFontColor !== 'default'
+        ? `${themeId}-fc-${editorFontColor.replace(/[^a-zA-Z0-9]/g, '')}`
+        : themeId
+      monaco.editor.setTheme(targetTheme)
+    }
+  }
+
+  const handleFontColorChange = (color: string) => {
+    setEditorFontColor(color)
+    applyThemeToDocument(editorTheme, color)
+    try { localStorage.setItem('cf_editor_font_color', color) } catch {}
+    if (monaco) {
+      registerMonacoThemes(monaco, color)
+      const targetTheme = color && color !== 'default'
+        ? `${editorTheme}-fc-${color.replace(/[^a-zA-Z0-9]/g, '')}`
+        : editorTheme
+      monaco.editor.setTheme(targetTheme)
     }
   }
 
@@ -1367,12 +1501,55 @@ export default function App() {
     showToast('Signed out from GitHub')
   }
 
-  const saveCurrentFile = () => {
+  const saveCurrentFile = async () => {
     if (!hasOpenTab) {
       showToast('⚠️ No active file to save')
       return
     }
     const currentCode = getActiveCode()
+
+    // 1. If tab has native File System Access handle (direct write to user's disk file)
+    if (curTab.fileHandle) {
+      try {
+        await saveToLocalDisk(curTab.fileHandle, currentCode)
+        const snapshot = saveCodeSnapshot(curTab.name, curTab.lang, currentCode)
+        setSavedCodes(previous => [snapshot, ...previous].slice(0, 50))
+        setTabs(previous => previous.map(tab => tab.id === activeTab ? { ...tab, code: currentCode, modified: false } : tab))
+        showToast(`Saved to "${curTab.name}" on your computer disk! 💾`)
+        return
+      } catch (err: any) {
+        console.warn('Direct disk save failed:', err)
+        showToast(`⚠️ Could not write to disk: ${err.message || 'Permission denied'}`)
+      }
+    }
+
+    // 2. If it's a new / unlinked file and File System Access API is supported, prompt Save As
+    if (isFileSystemAccessSupported()) {
+      try {
+        const handle = await saveAsLocalDisk(curTab.name, currentCode)
+        const newName = handle.name
+        const detected = detectLanguage(newName)
+        const snapshot = saveCodeSnapshot(newName, detected.id, currentCode)
+        setSavedCodes(previous => [snapshot, ...previous].slice(0, 50))
+        setTabs(previous => previous.map(tab => tab.id === activeTab ? {
+          ...tab,
+          name: newName,
+          lang: detected.id,
+          code: currentCode,
+          modified: false,
+          fileHandle: handle,
+          isLocalDisk: true,
+          localPath: newName,
+        } : tab))
+        showToast(`Saved to "${newName}" on your computer disk! 💾`)
+        return
+      } catch (err: any) {
+        if (err.name === 'AbortError') return
+        console.warn('saveAsLocalDisk error:', err)
+      }
+    }
+
+    // 3. Fallback
     const snapshot = saveCodeSnapshot(curTab.name, curTab.lang, currentCode)
     setSavedCodes(previous => [snapshot, ...previous].slice(0, 50))
     setTabs(previous => previous.map(tab => tab.id === activeTab ? { ...tab, code: currentCode, modified: false } : tab))
@@ -1380,14 +1557,48 @@ export default function App() {
   }
   saveRef.current = saveCurrentFile
 
+  const handleSaveAsDisk = async () => {
+    if (!hasOpenTab) return
+    const currentCode = getActiveCode()
+    if (!isFileSystemAccessSupported()) {
+      downloadCode(curTab.name, currentCode)
+      showToast(`Downloaded ${curTab.name}`)
+      return
+    }
+    try {
+      const handle = await saveAsLocalDisk(curTab.name, currentCode)
+      const newName = handle.name
+      const detected = detectLanguage(newName)
+      const snapshot = saveCodeSnapshot(newName, detected.id, currentCode)
+      setSavedCodes(previous => [snapshot, ...previous].slice(0, 50))
+      setTabs(previous => previous.map(tab => tab.id === activeTab ? {
+        ...tab,
+        name: newName,
+        lang: detected.id,
+        code: currentCode,
+        modified: false,
+        fileHandle: handle,
+        isLocalDisk: true,
+        localPath: newName,
+      } : tab))
+      showToast(`Linked and saved as "${newName}" on your computer disk! 💾`)
+    } catch (err: any) {
+      if (err.name === 'AbortError') return
+      showToast(`⚠️ Could not save file: ${err.message}`)
+    }
+  }
+  handleSaveAsDiskRef.current = handleSaveAsDisk
+
   const runCommand = (command: string) => {
     setShowCommands(false)
     switch (command) {
       case 'run': handleRun(); break
+      case 'save': saveCurrentFile(); break
+      case 'save-as': handleSaveAsDisk(); break
       case 'new': setPanel('explorer'); setSideOpen(true); setWorkspaceExpanded(true); setInlineItem({ type: 'file', parentFolder: '' }); setInlineName(''); break
       case 'new-folder': setPanel('explorer'); setSideOpen(true); setWorkspaceExpanded(true); setInlineItem({ type: 'folder', parentFolder: '' }); setInlineName(''); break
-      case 'open-file': fileInputRef.current?.click(); break
-      case 'open-folder': folderInputRef.current?.click(); break
+      case 'open-file': handleOpenFileWithPicker(); break
+      case 'open-folder': handleOpenProjectWithPicker(); break
       case 'format': editorRef.current?.getAction('editor.action.formatDocument')?.run(); break
       case 'find': editorRef.current?.getAction('actions.find')?.run(); break
       case 'explorer': setPanel('explorer'); setSideOpen(true); break
@@ -1771,6 +1982,21 @@ export default function App() {
     const up = () => { consResRef.current = null; window.removeEventListener('mousemove', mv); window.removeEventListener('mouseup', up) }
     window.addEventListener('mousemove', mv); window.addEventListener('mouseup', up)
   }
+  const mkWebResize = (e: React.MouseEvent) => {
+    webResRef.current = { x: e.clientX, w: webPreviewW }
+    const mv = (ev: MouseEvent) => {
+      if (webResRef.current) {
+        setWebPreviewW(Math.max(260, Math.min(window.innerWidth * 0.8, webResRef.current.w + webResRef.current.x - ev.clientX)))
+      }
+    }
+    const up = () => {
+      webResRef.current = null
+      window.removeEventListener('mousemove', mv)
+      window.removeEventListener('mouseup', up)
+    }
+    window.addEventListener('mousemove', mv)
+    window.addEventListener('mouseup', up)
+  }
 
   const hasErr = result && (result.stderr || result.compile_output)
   const visibleCommands = COMMANDS.filter(command => `${command.label} ${command.detail}`.toLowerCase().includes(commandQuery.toLowerCase()))
@@ -2030,7 +2256,7 @@ export default function App() {
             <button
               onClick={() => {
                 setBlankContextMenu(null)
-                fileInputRef.current?.click()
+                handleOpenFileWithPicker()
               }}
               className="menu-item-row"
             >
@@ -2042,7 +2268,7 @@ export default function App() {
             <button
               onClick={() => {
                 setBlankContextMenu(null)
-                folderInputRef.current?.click()
+                handleOpenProjectWithPicker()
               }}
               className="menu-item-row"
             >
@@ -2268,7 +2494,7 @@ export default function App() {
                 <button
                   onClick={() => {
                     setOpenMenuOpen(false)
-                    fileInputRef.current?.click()
+                    handleOpenFileWithPicker()
                   }}
                   style={{
                     width: '100%',
@@ -2288,7 +2514,7 @@ export default function App() {
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <FileOpenIcon size={14} style={{ color: 'var(--accent)' }} />
-                    <span>Open File...</span>
+                    <span>Open File from Computer...</span>
                   </div>
                   <kbd style={{ fontSize: 10, color: 'var(--text-dim)', background: 'var(--bg-app)', border: '1px solid var(--border)', borderRadius: 3, padding: '1px 5px' }}>
                     Ctrl+O
@@ -2320,6 +2546,38 @@ export default function App() {
                     <FolderOpenIcon size={14} style={{ color: '#eab308' }} />
                     <span>Open Project / Folder...</span>
                   </div>
+                </button>
+
+                <div style={{ height: 1, background: 'var(--border)', margin: '4px 0' }} />
+
+                <button
+                  onClick={() => {
+                    setOpenMenuOpen(false)
+                    handleSaveAsDisk()
+                  }}
+                  style={{
+                    width: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '8px 12px',
+                    background: 'none',
+                    border: 'none',
+                    color: 'var(--text-base)',
+                    fontSize: 12,
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                  }}
+                  onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-hover)')}
+                  onMouseLeave={e => (e.currentTarget.style.background = 'none')}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <SaveIcon size={14} style={{ color: '#38bdf8' }} />
+                    <span>Save As... (Choose Location)</span>
+                  </div>
+                  <kbd style={{ fontSize: 10, color: 'var(--text-dim)', background: 'var(--bg-app)', border: '1px solid var(--border)', borderRadius: 3, padding: '1px 5px' }}>
+                    Ctrl+Shift+S
+                  </kbd>
                 </button>
               </div>
             )}
@@ -2948,6 +3206,7 @@ export default function App() {
                   activeTab={curTab}
                   allTabs={tabs}
                   onOpenFileFromRepo={handleOpenFileFromRepo}
+                  onImportMultipleFiles={handleImportMultipleFilesFromRepo}
                   onCommitSuccess={handleCommitSuccess}
                   onConnectGitHub={() => setShowAuth(true)}
                   onRefreshRepos={refreshRepositories}
@@ -3040,8 +3299,8 @@ export default function App() {
                           {authUser.avatarUrl ? <img src={authUser.avatarUrl} alt="" /> : authUser.initials}
                         </span>
                         <div>
-                          <div style={{ color: '#e6edf3', fontWeight: 700, fontSize: 14 }}>{authUser.name}</div>
-                          <div style={{ color: '#3fb950', fontSize: 11, marginTop: 2, display: 'flex', alignItems: 'center', gap: 5 }}>
+                          <div style={{ color: 'var(--text-base)', fontWeight: 700, fontSize: 14 }}>{authUser.name}</div>
+                          <div style={{ color: 'var(--green)', fontSize: 11, marginTop: 2, display: 'flex', alignItems: 'center', gap: 5 }}>
                             <span className="secure-dot" /> @{authUser.login || authUser.name}
                           </div>
                         </div>
@@ -3069,7 +3328,7 @@ export default function App() {
 
                       {repositories.length > 0 && (
                         <div style={{ marginBottom: 16 }}>
-                          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', color: '#7d8590', marginBottom: 8 }}>
+                          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', color: 'var(--text-dim)', marginBottom: 8 }}>
                             YOUR REPOSITORIES
                           </div>
                           {repositories.slice(0, 6).map(repo => (
@@ -3080,9 +3339,9 @@ export default function App() {
                               style={{ padding: '6px 8px', marginBottom: 3, cursor: 'pointer' }}
                               title="Click to select this repo for commit"
                             >
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11, color: '#c9d1d9' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11, color: 'var(--text-base)' }}>
                                 <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{repo.name}</span>
-                                <span style={{ fontSize: 9, color: repo.private ? '#d29922' : '#7d8590' }}>
+                                <span style={{ fontSize: 9, color: repo.private ? '#d29922' : 'var(--text-dim)' }}>
                                   {repo.private ? 'Private' : 'Public'}
                                 </span>
                               </div>
@@ -3094,15 +3353,15 @@ export default function App() {
                       <button
                         onClick={signOut}
                         className="btn btn-ghost"
-                        style={{ width: '100%', justifyContent: 'center', fontSize: 11, color: '#f85149' }}
+                        style={{ width: '100%', justifyContent: 'center', fontSize: 11, color: 'var(--red)' }}
                       >
                         Disconnect GitHub
                       </button>
                     </>
                   ) : (
                     <>
-                      <div style={{ color: '#c9d1d9', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Your CodeForge Profile</div>
-                      <div style={{ color: '#7d8590', fontSize: 11, lineHeight: 1.6, marginBottom: 16 }}>Connect GitHub to sync repositories, browse repository code, and commit changes directly.</div>
+                      <div style={{ color: 'var(--text-base)', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Your CodeForge Profile</div>
+                      <div style={{ color: 'var(--text-muted)', fontSize: 11, lineHeight: 1.6, marginBottom: 16 }}>Connect GitHub to sync repositories, browse repository code, and commit changes directly.</div>
                       <button onClick={() => setShowAuth(true)} className="btn btn-primary" style={{ width: '100%', justifyContent: 'center', fontSize: 11 }}>Connect GitHub</button>
                     </>
                   )}
@@ -3124,6 +3383,20 @@ export default function App() {
                   <FileIcon fileName={t.name} size={14} />
                   {t.repoName && <span style={{ color: 'var(--accent)', fontSize: 10, marginRight: 2 }}>{t.repoName}:</span>}
                   <span>{t.name.split('/').pop()}</span>
+                  {t.isLocalDisk && (
+                    <span
+                      title="Direct Local Disk Sync (Ctrl+S saves directly to your computer file)"
+                      style={{
+                        fontSize: 10,
+                        color: '#38bdf8',
+                        marginLeft: 4,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                      }}
+                    >
+                      💾
+                    </span>
+                  )}
                   {t.modified && <span style={{ color: 'var(--yellow)', fontSize: 14, marginLeft: 2 }}>•</span>}
                   <button onClick={e => closeTab(t.id, e)} title="Close tab" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', padding: '1px 2px', lineHeight: 1, opacity: .4 }}
                     onMouseEnter={e => (e.currentTarget.style.opacity = '1')} onMouseLeave={e => (e.currentTarget.style.opacity = '.4')}>
@@ -3177,6 +3450,25 @@ export default function App() {
                   <FileIcon fileName={curTab.name} size={14} />
                   {curTab.name}
                 </span>
+                {curTab.isLocalDisk && (
+                  <span
+                    style={{
+                      fontSize: 10,
+                      background: 'rgba(56, 189, 248, 0.12)',
+                      color: '#38bdf8',
+                      border: '1px solid rgba(56, 189, 248, 0.3)',
+                      borderRadius: 4,
+                      padding: '1px 6px',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 4,
+                      fontWeight: 500,
+                    }}
+                    title="Direct Disk Save active: Ctrl+S writes directly to your computer file"
+                  >
+                    💾 Local Disk File
+                  </span>
+                )}
                 <span style={{
                   background: `${curLang.color}15`,
                   color: curLang.color,
@@ -3261,7 +3553,7 @@ export default function App() {
                     <FilePlusIcon size={15} /> New Empty File
                   </button>
                   <button
-                    onClick={() => fileInputRef.current?.click()}
+                    onClick={() => handleOpenFileWithPicker()}
                     className="btn btn-ghost"
                     style={{
                       display: 'flex',
@@ -3349,7 +3641,7 @@ export default function App() {
                 <MonacoEditor
                   height="100%"
                   language={curLang.monacoId}
-                  theme={editorTheme}
+                  theme={activeMonacoTheme}
                   value={curTab.code}
                   onChange={v => updateCode(v ?? '')}
                   onMount={handleEditorMount}
@@ -3375,6 +3667,7 @@ export default function App() {
                 <div style={{ display: 'flex', alignItems: 'center', background: 'var(--bg-header)', borderBottom: '1px solid var(--border)', height: 33, flexShrink: 0, paddingLeft: 6, paddingRight: 6 }}>
                   {([
                     { id: 'output'   as ConsoleTab, label: 'Output' },
+                    { id: 'dsa'      as ConsoleTab, label: '⚡ LeetCode Testcases' },
                     { id: 'terminal' as ConsoleTab, label: '💻 Terminal' },
                     { id: 'testcase' as ConsoleTab, label: 'Standard Input (stdin)' },
                     { id: 'debug'    as ConsoleTab, label: '🐛 Debug Console' },
@@ -3382,6 +3675,7 @@ export default function App() {
                   ]).map(t => (
                     <button key={t.id} className={`terminal-tab ${consTab === t.id ? 'active' : ''}`} onClick={() => setConsTab(t.id)}>
                       {t.id === 'output' && status && <div style={{ width: 6, height: 6, borderRadius: '50%', background: status.color }} />}
+                      {t.id === 'dsa' && <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981' }} />}
                       {t.id === 'debug' && isDebugging && <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#eab308' }} />}
                       {t.label}
                     </button>
@@ -3455,6 +3749,7 @@ export default function App() {
                     return executeCode({
                       sourceCode,
                       languageId: matchedLang.judge0Id,
+                      lang: matchedLang.id,
                       stdin,
                     })
                   }}
@@ -3483,53 +3778,83 @@ export default function App() {
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '10px 14px', gap: 6 }}>
                 <label style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600 }}>Standard Input (stdin)</label>
                 <textarea value={stdin} onChange={e => setStdin(e.target.value)} placeholder="Enter input for your program…"
-                  style={{ flex: 1, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text-base)', fontFamily: 'JetBrains Mono', fontSize: 12, lineHeight: 1.7, padding: '8px 10px', outline: 'none', resize: 'none', transition: 'border-color .15s' }}
+                  style={{ flex: 1, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--output-font-color)', fontFamily: 'JetBrains Mono', fontSize: 12, lineHeight: 1.7, padding: '8px 10px', outline: 'none', resize: 'none', transition: 'border-color .15s' }}
                   onFocus={e => (e.target.style.borderColor = 'var(--accent)')} onBlur={e => (e.target.style.borderColor = 'var(--border)')} />
               </div>
             )}
 
             {/* Output */}
             {consTab === 'output' && (
-              <div style={{ flex: 1, overflowY: 'auto', padding: '10px 14px', fontFamily: 'JetBrains Mono', fontSize: 12, lineHeight: 1.8 }}>
-                {!result && !running && <div style={{ color: '#484f58', display: 'flex', alignItems: 'center', gap: 8 }}><svg width="10" height="10" viewBox="0 0 10 10" fill="#484f58"><polygon points="0,0 10,5 0,10"/></svg>Press <span style={{ color: '#7d8590', margin: '0 4px' }}>Run</span> (⌃↵) to execute.</div>}
-                {running && <div style={{ color: '#7d8590' }}><span style={{ color: '#7c3aed' }}>▶ </span>Executing {curLang.label}…</div>}
+              <div style={{ flex: 1, overflowY: 'auto', padding: '10px 14px', fontFamily: 'JetBrains Mono', fontSize: 12, lineHeight: 1.8, color: 'var(--output-font-color)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, paddingBottom: 6, borderBottom: '1px solid var(--border)' }}>
+                  <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.05em', color: 'var(--text-muted)' }}>STANDARD EXECUTION OUTPUT</span>
+                  <button
+                    onClick={() => setConsTab('dsa')}
+                    style={{
+                      background: 'rgba(16, 185, 129, 0.12)',
+                      border: '1px solid #10b981',
+                      color: '#10b981',
+                      fontSize: 10,
+                      fontWeight: 700,
+                      padding: '2px 8px',
+                      borderRadius: 4,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 4,
+                    }}
+                  >
+                    ⚡ Open LeetCode DSA Testcases
+                  </button>
+                </div>
+                {!result && !running && <div style={{ color: 'var(--output-font-color)', opacity: 0.75, display: 'flex', alignItems: 'center', gap: 8 }}><svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor"><polygon points="0,0 10,5 0,10"/></svg>Press <span style={{ color: 'var(--output-font-color)', fontWeight: 700, margin: '0 4px' }}>Run</span> (⌃↵) to execute.</div>}
+                {running && <div style={{ color: 'var(--output-font-color)' }}><span style={{ color: 'var(--accent)' }}>▶ </span>Executing {curLang.label}…</div>}
                 {result && (
                   <>
                     {result.compile_output && (
                       <div style={{ marginBottom: 8 }}>
                         <div style={{ color: '#d29922', fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', marginBottom: 3 }}>COMPILE OUTPUT</div>
-                        <pre style={{ color: '#f85149', whiteSpace: 'pre-wrap', margin: 0 }}>{result.compile_output}</pre>
+                        <pre style={{ color: 'var(--red)', whiteSpace: 'pre-wrap', margin: 0 }}>{result.compile_output}</pre>
                       </div>
                     )}
                     {result.stderr && (
                       <div style={{ marginBottom: 8 }}>
-                        <div style={{ color: '#f85149', fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', marginBottom: 3 }}>STDERR</div>
-                        <pre style={{ color: '#ffa198', whiteSpace: 'pre-wrap', margin: 0 }}>{result.stderr}</pre>
+                        <div style={{ color: 'var(--red)', fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', marginBottom: 3 }}>STDERR</div>
+                        <pre style={{ color: 'var(--red)', whiteSpace: 'pre-wrap', margin: 0 }}>{result.stderr}</pre>
                       </div>
                     )}
                     {result.stdout && (
                       <div>
-                        <div style={{ color: '#3fb950', fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', marginBottom: 3 }}>STDOUT</div>
-                        <pre style={{ color: '#e6edf3', whiteSpace: 'pre-wrap', margin: 0 }}>{result.stdout}</pre>
+                        <div style={{ color: 'var(--green)', fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', marginBottom: 3 }}>STDOUT</div>
+                        <pre style={{ color: 'var(--output-font-color)', whiteSpace: 'pre-wrap', margin: 0, fontWeight: 500 }}>{result.stdout}</pre>
                       </div>
                     )}
-                    {!result.stdout && !result.stderr && !result.compile_output && <div style={{ color: '#3fb950' }}>✓ Program exited with code 0 (no output)</div>}
+                    {!result.stdout && !result.stderr && !result.compile_output && <div style={{ color: 'var(--green)' }}>✓ Program exited with code 0 (no output)</div>}
                   </>
                 )}
               </div>
+            )}
+
+            {/* LeetCode DSA Testcases Runner */}
+            {consTab === 'dsa' && (
+              <LeetCodeRunner
+                sourceCode={getActiveCode()}
+                langId={curLang.id}
+                showToast={showToast}
+              />
             )}
 
             {/* AI Suggestions */}
             {consTab === 'aisugg' && (
               <div style={{ flex: 1, overflowY: 'auto', padding: '10px 14px' }}>
                 {!result
-                  ? <div style={{ color: '#484f58', fontSize: 12 }}>Run your code first to get AI suggestions.</div>
+                  ? <div style={{ color: 'var(--text-dim)', fontSize: 12 }}>Run your code first to get AI suggestions.</div>
                   : <>
                     <div style={{ fontSize: 12, marginBottom: 8 }}>
                       <span style={{ color: status?.color, fontWeight: 600 }}>{status?.label}</span>
-                      <span style={{ color: '#7d8590' }}> — AI analysis:</span>
+                      <span style={{ color: 'var(--text-muted)' }}> — AI analysis:</span>
                     </div>
-                    <div style={{ fontSize: 12, color: '#c9d1d9', lineHeight: 1.7 }}>
+                    <div style={{ fontSize: 12, color: 'var(--text-base)', lineHeight: 1.7 }}>
                       {hasErr
                         ? <><div style={{ color: '#f85149', fontWeight: 600, marginBottom: 4 }}>Error detected</div>Root cause: {(result.stderr ?? result.compile_output ?? '').slice(0, 120)}</>
                         : <div style={{ color: '#3fb950' }}>✓ Execution successful! Use the AI panel for deeper analysis.</div>
@@ -3632,6 +3957,40 @@ export default function App() {
           )}
         </div>
         <div style={{ flex: 1 }} />
+        {hasOpenTab && (
+          curTab.isLocalDisk ? (
+            <div
+              className="status-item"
+              onClick={() => saveCurrentFile()}
+              title="Linked to local disk file. Click or press Ctrl+S to save directly to your computer."
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 4,
+                color: '#38bdf8',
+                fontWeight: 500,
+                cursor: 'pointer',
+              }}
+            >
+              <span>💾 Disk Synced</span>
+            </div>
+          ) : (
+            <div
+              className="status-item"
+              onClick={handleSaveAsDisk}
+              title="Click to link and save this file directly to your local computer disk"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 4,
+                opacity: 0.75,
+                cursor: 'pointer',
+              }}
+            >
+              <span>💾 Link to Local File</span>
+            </div>
+          )
+        )}
         <div id="editor-cursor-pos-status" className="status-item" style={{ fontFamily: 'JetBrains Mono, monospace', opacity: 0.8 }}>
           Ln 1, Col 1
         </div>
@@ -3640,27 +3999,6 @@ export default function App() {
           <PaletteIcon size={11} /> {getThemeById(editorTheme).name.split(' (')[0]}
         </div>
         <div className="status-item" onClick={() => setWordWrap(p => p === 'on' ? 'off' : 'on')} style={{ opacity: 0.75 }}>Wrap: {wordWrap}</div>
-        {/* Live Server Option */}
-        <div
-          className="status-item"
-          onClick={handleLiveServerClick}
-          title={showLiveServer ? "Live Server running on http://127.0.0.1:5500/ (Click to open in browser)" : "Go Live - Open in Browser (port 5500)"}
-          style={{
-            borderLeft: '1px solid rgba(255,255,255,0.15)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 5,
-            cursor: 'pointer',
-            color: showLiveServer ? '#34d399' : 'inherit',
-            fontWeight: showLiveServer ? 600 : 400,
-          }}
-        >
-          <span style={{ fontSize: 11 }}>📡</span>
-          <span>{showLiveServer ? 'Port : 5500' : 'Go Live'}</span>
-          {showLiveServer && (
-            <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#34d399', boxShadow: '0 0 6px #34d399' }} />
-          )}
-        </div>
         <div className="status-item" onClick={() => setShowKeys(true)} style={{ borderLeft: '1px solid rgba(255,255,255,0.15)', opacity: 0.75 }}>⌨ Shortcuts</div>
       </div>
 
@@ -3721,14 +4059,14 @@ export default function App() {
       {newFileOpen && (
         <div className="modal-backdrop" onClick={() => setNewFileOpen(false)}>
           <div className="modal-box" style={{ width: 390, padding: 22 }} onClick={e => e.stopPropagation()}>
-            <div style={{ fontWeight: 700, fontSize: 16, color: '#e6edf3', marginBottom: 5 }}>Create New File</div>
-            <div style={{ color: '#7d8590', fontSize: 11, marginBottom: 16 }}>
+            <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--text-base)', marginBottom: 5 }}>Create New File</div>
+            <div style={{ color: 'var(--text-muted)', fontSize: 11, marginBottom: 16 }}>
               {newFileParentFolder ? `Creating inside folder "${newFileParentFolder}/"` : 'Language will be detected from the filename.'}
             </div>
             <input autoFocus value={newFileName} onChange={e => setNewFileName(e.target.value)} onKeyDown={e => e.key === 'Enter' && createFile()} className="ide-input" placeholder="main.py" style={{ fontFamily: 'JetBrains Mono', fontSize: 13, marginBottom: 12 }} />
-            <div style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '9px 10px', background: '#161b22', border: '1px solid #21262d', borderRadius: 7, marginBottom: 18 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '9px 10px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 7, marginBottom: 18 }}>
               <div style={{ width: 22, height: 22, display: 'grid', placeItems: 'center', borderRadius: 5, background: `${detectLanguage(newFileName).color}20`, color: detectLanguage(newFileName).color, fontSize: 8, fontWeight: 700 }}>{detectLanguage(newFileName).ext.toUpperCase()}</div>
-              <div><div style={{ color: '#e6edf3', fontSize: 12, fontWeight: 600 }}>{detectLanguage(newFileName).label}</div><div style={{ color: '#7d8590', fontSize: 10 }}>Detected automatically</div></div>
+              <div><div style={{ color: 'var(--text-base)', fontSize: 12, fontWeight: 600 }}>{detectLanguage(newFileName).label}</div><div style={{ color: 'var(--text-dim)', fontSize: 10 }}>Detected automatically</div></div>
             </div>
             <div style={{ display: 'flex', gap: 9, justifyContent: 'flex-end' }}>
               <button onClick={() => { setNewFileOpen(false); setNewFileParentFolder('') }} className="btn btn-ghost">Cancel</button>
@@ -3742,8 +4080,8 @@ export default function App() {
       {newFolderOpen && (
         <div className="modal-backdrop" onClick={() => setNewFolderOpen(false)}>
           <div className="modal-box" style={{ width: 390, padding: 22 }} onClick={e => e.stopPropagation()}>
-            <div style={{ fontWeight: 700, fontSize: 16, color: '#e6edf3', marginBottom: 5 }}>Create New Folder</div>
-            <div style={{ color: '#7d8590', fontSize: 11, marginBottom: 16 }}>
+            <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--text-base)', marginBottom: 5 }}>Create New Folder</div>
+            <div style={{ color: 'var(--text-muted)', fontSize: 11, marginBottom: 16 }}>
               {newFileParentFolder ? `Creating inside "${newFileParentFolder}/"` : 'Enter a folder name for your workspace.'}
             </div>
             <input autoFocus value={newFolderName} onChange={e => setNewFolderName(e.target.value)} onKeyDown={e => e.key === 'Enter' && createFolder()} className="ide-input" placeholder="components" style={{ fontFamily: 'JetBrains Mono', fontSize: 13, marginBottom: 16 }} />
@@ -3755,16 +4093,14 @@ export default function App() {
         </div>
       )}
 
-
-
       {/* Share */}
       {showShare && (
         <div className="modal-backdrop" onClick={() => setShowShare(false)}>
           <div className="modal-box" style={{ width: 440, padding: 24 }} onClick={e => e.stopPropagation()}>
-            <div style={{ fontWeight: 700, fontSize: 16, color: '#e6edf3', marginBottom: 6 }}>Share Code</div>
-            <div style={{ fontSize: 12, color: '#7d8590', marginBottom: 16 }}>Anyone with this link can view your {curLang.label} code.</div>
+            <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--text-base)', marginBottom: 6 }}>Share Code</div>
+            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 16 }}>Anyone with this link can view your {curLang.label} code.</div>
             <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-              <div style={{ flex: 1, background: '#0d1117', border: '1px solid #21262d', borderRadius: 6, padding: '8px 10px', fontFamily: 'JetBrains Mono', fontSize: 11, color: '#7c3aed', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{shareLink}</div>
+              <div style={{ flex: 1, background: 'var(--bg-app)', border: '1px solid var(--border)', borderRadius: 6, padding: '8px 10px', fontFamily: 'JetBrains Mono', fontSize: 11, color: 'var(--accent)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{shareLink}</div>
               <button onClick={doCopy} className="btn btn-primary" style={{ padding: '8px 14px' }}>{copied ? '✓' : 'Copy'}</button>
             </div>
             <button onClick={() => setShowShare(false)} className="btn btn-ghost" style={{ width: '100%', justifyContent: 'center' }}>Close</button>
@@ -3779,6 +4115,8 @@ export default function App() {
         initialTab={settingsTab}
         currentThemeId={editorTheme}
         onThemeChange={handleThemeChange}
+        currentFontColor={editorFontColor}
+        onFontColorChange={handleFontColorChange}
         currentFontId={editorFont}
         onFontChange={handleFontChange}
         fontLigatures={fontLigatures}
@@ -3805,22 +4143,14 @@ export default function App() {
         showToast={showToast}
       />
 
-      {/* Live Server HTML Preview */}
-      <LiveServerModal
-        isOpen={showLiveServer}
-        onClose={() => setShowLiveServer(false)}
-        htmlContent={getActiveCode()}
-        activeFileName={curTab.name}
-        showToast={showToast}
-      />
 
       {/* Shortcuts */}
       {showKeys && (
         <div className="modal-backdrop" onClick={() => setShowKeys(false)}>
           <div className="modal-box" style={{ width: 460, padding: 0, maxHeight: '80vh', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 24px', borderBottom: '1px solid #21262d', flexShrink: 0 }}>
-              <span style={{ fontWeight: 700, fontSize: 16, color: '#e6edf3' }}>Keyboard Shortcuts</span>
-              <button onClick={() => setShowKeys(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#7d8590' }}><I d="M3 3l10 10M13 3L3 13" s={14} /></button>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 24px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
+              <span style={{ fontWeight: 700, fontSize: 16, color: 'var(--text-base)' }}>Keyboard Shortcuts</span>
+              <button onClick={() => setShowKeys(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}><I d="M3 3l10 10M13 3L3 13" s={14} /></button>
             </div>
             <div style={{ overflowY: 'auto', padding: '8px 24px 24px' }}>
               {[
@@ -3830,10 +4160,10 @@ export default function App() {
                 { group: 'AI Panel',  items: [['Toggle AI', '⌃ ⇧ A'], ['Explain', 'Click button'], ['Fix Bug', 'Click button']] },
               ].map(s => (
                 <div key={s.group}>
-                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#7d8590', padding: '12px 0 4px' }}>{s.group}</div>
+                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-dim)', padding: '12px 0 4px' }}>{s.group}</div>
                   {s.items.map(([action, kbd]) => (
-                    <div key={action} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', borderBottom: '1px solid #1c2128' }}>
-                      <span style={{ fontSize: 13, color: '#c9d1d9' }}>{action}</span>
+                    <div key={action} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', borderBottom: '1px solid var(--border)' }}>
+                      <span style={{ fontSize: 13, color: 'var(--text-base)' }}>{action}</span>
                       <span className="kbd">{kbd}</span>
                     </div>
                   ))}

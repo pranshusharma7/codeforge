@@ -1454,8 +1454,8 @@ export default function VSCodeTerminal({
         display: 'flex',
         flexDirection: 'column',
         height: '100%',
-        background: '#101216',
-        color: '#e6edf3',
+        background: 'var(--bg-panel)',
+        color: 'var(--text-base)',
         fontFamily: "'JetBrains Mono', 'Fira Code', Menlo, monospace",
         fontSize: 12,
         overflow: 'hidden',
@@ -1468,8 +1468,8 @@ export default function VSCodeTerminal({
           alignItems: 'center',
           justifyContent: 'space-between',
           padding: '3px 8px',
-          background: 'rgba(255,255,255,0.03)',
-          borderBottom: '1px solid rgba(255,255,255,0.08)',
+          background: 'var(--bg-header)',
+          borderBottom: '1px solid var(--border)',
           fontSize: 11,
           flexShrink: 0,
         }}
@@ -1582,20 +1582,20 @@ export default function VSCodeTerminal({
               onClick={() => handleCommand(q.cmd)}
               disabled={isRunningCommand}
               style={{
-                background: 'rgba(255,255,255,0.04)',
-                border: '1px solid rgba(255,255,255,0.08)',
+                background: 'var(--bg-card)',
+                border: '1px solid var(--border)',
                 borderRadius: 4,
                 padding: '2px 6px',
-                color: '#c9d1d9',
+                color: 'var(--text-muted)',
                 fontSize: 10,
                 cursor: isRunningCommand ? 'not-allowed' : 'pointer',
                 fontFamily: 'inherit',
               }}
               onMouseEnter={e => {
-                if (!isRunningCommand) e.currentTarget.style.color = '#38bdf8'
+                if (!isRunningCommand) e.currentTarget.style.color = 'var(--accent)'
               }}
               onMouseLeave={e => {
-                e.currentTarget.style.color = '#c9d1d9'
+                e.currentTarget.style.color = 'var(--text-muted)'
               }}
             >
               {q.label}
@@ -1610,7 +1610,7 @@ export default function VSCodeTerminal({
             style={{
               background: 'none',
               border: 'none',
-              color: '#8b949e',
+              color: 'var(--text-dim)',
               cursor: 'pointer',
               padding: 3,
             }}
@@ -1634,7 +1634,7 @@ export default function VSCodeTerminal({
         onClick={() => inputRef.current?.focus()}
       >
         {activeSession.lines.map(line => {
-          let color = '#e6edf3'
+          let color = 'var(--output-font-color)'
           if (line.type === 'input') color = '#38bdf8'
           else if (line.type === 'system') color = '#a78bfa'
           else if (line.type === 'success') color = '#34d399'
@@ -1677,7 +1677,7 @@ export default function VSCodeTerminal({
               <span style={{ color: 'var(--text-dim)' }}>:</span>
               <span style={{ color: '#38bdf8', fontWeight: 600 }}>{activeSession.currentDir}</span>
               <span style={{ color: '#c084fc', fontSize: 11 }}>({currentBranch})</span>
-              <span style={{ color: '#f0f6fc' }}>$</span>
+              <span style={{ color: 'var(--output-font-color)' }}>$</span>
             </>
           )}
 
@@ -1696,7 +1696,8 @@ export default function VSCodeTerminal({
               background: 'transparent',
               border: 'none',
               outline: 'none',
-              color: '#f0f6fc',
+              color: 'var(--output-font-color)',
+              caretColor: 'var(--output-font-color)',
               fontFamily: 'inherit',
               fontSize: 'inherit',
               padding: 0,

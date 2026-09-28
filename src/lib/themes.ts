@@ -643,7 +643,428 @@ export const VSCODE_THEMES: ThemeDefinition[] = [
       },
     },
   },
+
+  // ── 16. Cyberpunk 2077 (Neon Dark) ─────────────────────────────────────────
+  {
+    id: 'cyberpunk-2077',
+    name: 'Cyberpunk 2077 (Neon)',
+    category: 'dark',
+    author: 'Night City Developers',
+    description: 'High-contrast neon cyberpunk theme with electric yellow, hot pink, and cyan highlights',
+    previewColors: ['#0d0f18', '#fcee0a', '#00f0ff', '#ff007f'],
+    monacoTheme: {
+      base: 'vs-dark',
+      inherit: true,
+      rules: [
+        { token: '', foreground: '00f0ff' },
+        { token: 'comment', foreground: '5c6370', fontStyle: 'italic' },
+        { token: 'keyword', foreground: 'ff007f' },
+        { token: 'keyword.control', foreground: 'ff007f' },
+        { token: 'keyword.operator', foreground: 'fcee0a' },
+        { token: 'string', foreground: '37f499' },
+        { token: 'number', foreground: 'fcee0a' },
+        { token: 'type', foreground: 'ff9900' },
+        { token: 'type.identifier', foreground: 'ff9900' },
+        { token: 'function', foreground: '00f0ff' },
+        { token: 'delimiter', foreground: 'e0e0e0' },
+        { token: 'variable.predefined', foreground: 'ff007f' },
+      ],
+      colors: {
+        'editor.background': '#0d0f18',
+        'editor.foreground': '#00f0ff',
+        'editor.lineHighlightBackground': '#181b29',
+        'editor.selectionBackground': '#ff007f35',
+        'editorCursor.foreground': '#fcee0a',
+        'editorLineNumber.foreground': '#3b4261',
+        'editorLineNumber.activeForeground': '#fcee0a',
+        'editorIndentGuide.background1': '#1e2238',
+        'editorIndentGuide.activeBackground1': '#00f0ff40',
+        'editorBracketMatch.background': '#fcee0a25',
+        'editorBracketMatch.border': '#fcee0a',
+        'editorGutter.background': '#0d0f18',
+      },
+    },
+  },
+
+  // ── 17. Rosé Pine (Aesthetic Natural) ──────────────────────────────────────
+  {
+    id: 'rose-pine',
+    name: 'Rosé Pine',
+    category: 'dark',
+    author: 'mvllow',
+    description: 'Soho vibes for high-elegance minimalist coding with soft natural pastels',
+    previewColors: ['#191724', '#ebbcba', '#9ccfd8', '#c4a7e7'],
+    monacoTheme: {
+      base: 'vs-dark',
+      inherit: true,
+      rules: [
+        { token: '', foreground: 'e0def4' },
+        { token: 'comment', foreground: '6e6a86', fontStyle: 'italic' },
+        { token: 'keyword', foreground: '31748f' },
+        { token: 'keyword.control', foreground: '31748f' },
+        { token: 'keyword.operator', foreground: 'eb6f92' },
+        { token: 'string', foreground: 'ebbcba' },
+        { token: 'number', foreground: 'f6c177' },
+        { token: 'type', foreground: '9ccfd8' },
+        { token: 'type.identifier', foreground: '9ccfd8' },
+        { token: 'function', foreground: 'c4a7e7' },
+        { token: 'delimiter', foreground: 'e0def4' },
+        { token: 'variable.predefined', foreground: 'eb6f92' },
+      ],
+      colors: {
+        'editor.background': '#191724',
+        'editor.foreground': '#e0def4',
+        'editor.lineHighlightBackground': '#26233a70',
+        'editor.selectionBackground': '#403d5280',
+        'editorCursor.foreground': '#ebbcba',
+        'editorLineNumber.foreground': '#524f67',
+        'editorLineNumber.activeForeground': '#e0def4',
+        'editorIndentGuide.background1': '#26233a',
+        'editorIndentGuide.activeBackground1': '#524f67',
+        'editorBracketMatch.background': '#ebbcba25',
+        'editorBracketMatch.border': '#ebbcba',
+        'editorGutter.background': '#191724',
+      },
+    },
+  },
+
+  // ── 18. Tokyo Night Storm ─────────────────────────────────────────────────
+  {
+    id: 'tokyo-night-storm',
+    name: 'Tokyo Night Storm',
+    category: 'dark',
+    author: 'enkia',
+    description: 'A clean storm-blue theme that celebrates the lights of Downtown Tokyo at twilight',
+    previewColors: ['#24283b', '#7aa2f7', '#7dcfff', '#bb9af7'],
+    monacoTheme: {
+      base: 'vs-dark',
+      inherit: true,
+      rules: [
+        { token: '', foreground: 'c0caf5' },
+        { token: 'comment', foreground: '565f89', fontStyle: 'italic' },
+        { token: 'keyword', foreground: 'bb9af7' },
+        { token: 'keyword.control', foreground: 'bb9af7' },
+        { token: 'keyword.operator', foreground: '89ddff' },
+        { token: 'string', foreground: '9ece6a' },
+        { token: 'number', foreground: 'ff9e64' },
+        { token: 'type', foreground: '2ac3de' },
+        { token: 'type.identifier', foreground: '2ac3de' },
+        { token: 'function', foreground: '7aa2f7' },
+        { token: 'delimiter', foreground: 'c0caf5' },
+        { token: 'variable.predefined', foreground: '7dcfff' },
+      ],
+      colors: {
+        'editor.background': '#24283b',
+        'editor.foreground': '#c0caf5',
+        'editor.lineHighlightBackground': '#292e42',
+        'editor.selectionBackground': '#3e445e',
+        'editorCursor.foreground': '#c0caf5',
+        'editorLineNumber.foreground': '#565f89',
+        'editorLineNumber.activeForeground': '#7aa2f7',
+        'editorIndentGuide.background1': '#2f3549',
+        'editorIndentGuide.activeBackground1': '#565f89',
+        'editorBracketMatch.background': '#7aa2f725',
+        'editorBracketMatch.border': '#7aa2f7',
+        'editorGutter.background': '#24283b',
+      },
+    },
+  },
+
+  // ── 19. Aura Dark (Cosmic Violet) ──────────────────────────────────────────
+  {
+    id: 'aura-dark',
+    name: 'Aura Dark (Cosmic)',
+    category: 'dark',
+    author: 'Dalton Menezes',
+    description: 'Beautiful cosmic violet theme with vibrant green, purple, and orange accents',
+    previewColors: ['#15141b', '#a277ff', '#61ffca', '#ffca85'],
+    monacoTheme: {
+      base: 'vs-dark',
+      inherit: true,
+      rules: [
+        { token: '', foreground: 'edecee' },
+        { token: 'comment', foreground: '6d6d6d', fontStyle: 'italic' },
+        { token: 'keyword', foreground: 'a277ff' },
+        { token: 'keyword.control', foreground: 'a277ff' },
+        { token: 'keyword.operator', foreground: 'a277ff' },
+        { token: 'string', foreground: '61ffca' },
+        { token: 'number', foreground: 'ffca85' },
+        { token: 'type', foreground: '82e2ff' },
+        { token: 'type.identifier', foreground: '82e2ff' },
+        { token: 'function', foreground: 'ff6767' },
+        { token: 'delimiter', foreground: 'edecee' },
+        { token: 'variable.predefined', foreground: 'a277ff' },
+      ],
+      colors: {
+        'editor.background': '#15141b',
+        'editor.foreground': '#edecee',
+        'editor.lineHighlightBackground': '#21202e',
+        'editor.selectionBackground': '#323048',
+        'editorCursor.foreground': '#a277ff',
+        'editorLineNumber.foreground': '#4e4c67',
+        'editorLineNumber.activeForeground': '#a277ff',
+        'editorIndentGuide.background1': '#21202e',
+        'editorIndentGuide.activeBackground1': '#4e4c67',
+        'editorBracketMatch.background': '#a277ff25',
+        'editorBracketMatch.border': '#a277ff',
+        'editorGutter.background': '#15141b',
+      },
+    },
+  },
+
+  // ── 20. Shades of Purple ──────────────────────────────────────────────────
+  {
+    id: 'shades-of-purple',
+    name: 'Shades of Purple',
+    category: 'dark',
+    author: 'Ahmad Awais',
+    description: 'Electric purple canvas with supercharged gold and cyan highlights',
+    previewColors: ['#2d2b55', '#fad000', '#ff2c7d', '#b362ff'],
+    monacoTheme: {
+      base: 'vs-dark',
+      inherit: true,
+      rules: [
+        { token: '', foreground: 'ffffff' },
+        { token: 'comment', foreground: 'b362ff', fontStyle: 'italic' },
+        { token: 'keyword', foreground: 'ff9d00' },
+        { token: 'keyword.control', foreground: 'ff9d00' },
+        { token: 'keyword.operator', foreground: 'fad000' },
+        { token: 'string', foreground: 'a5ff90' },
+        { token: 'number', foreground: 'ff628c' },
+        { token: 'type', foreground: '9effff' },
+        { token: 'type.identifier', foreground: '9effff' },
+        { token: 'function', foreground: 'fad000' },
+        { token: 'delimiter', foreground: 'ffffff' },
+        { token: 'variable.predefined', foreground: 'fb94ff' },
+      ],
+      colors: {
+        'editor.background': '#2d2b55',
+        'editor.foreground': '#ffffff',
+        'editor.lineHighlightBackground': '#1f1f41',
+        'editor.selectionBackground': '#7e45b870',
+        'editorCursor.foreground': '#fad000',
+        'editorLineNumber.foreground': '#a599e9',
+        'editorLineNumber.activeForeground': '#fad000',
+        'editorIndentGuide.background1': '#3b386e',
+        'editorIndentGuide.activeBackground1': '#7e45b8',
+        'editorBracketMatch.background': '#fad00030',
+        'editorBracketMatch.border': '#fad000',
+        'editorGutter.background': '#28264d',
+      },
+    },
+  },
+
+  // ── 21. Gruvbox Dark (Retro Groove) ───────────────────────────────────────
+  {
+    id: 'gruvbox-dark',
+    name: 'Gruvbox Dark (Retro)',
+    category: 'dark',
+    author: 'morhetz',
+    description: 'Iconic retro groove warm color scheme with vintage earthy pastels',
+    previewColors: ['#1d2021', '#fe8019', '#ebdbb2', '#fabd2f'],
+    monacoTheme: {
+      base: 'vs-dark',
+      inherit: true,
+      rules: [
+        { token: '', foreground: 'ebdbb2' },
+        { token: 'comment', foreground: '928374', fontStyle: 'italic' },
+        { token: 'keyword', foreground: 'fb4934' },
+        { token: 'keyword.control', foreground: 'fb4934' },
+        { token: 'keyword.operator', foreground: 'fe8019' },
+        { token: 'string', foreground: 'b8bb26' },
+        { token: 'number', foreground: 'd3869b' },
+        { token: 'type', foreground: 'fabd2f' },
+        { token: 'type.identifier', foreground: 'fabd2f' },
+        { token: 'function', foreground: '8ec07c' },
+        { token: 'delimiter', foreground: 'ebdbb2' },
+        { token: 'variable.predefined', foreground: '83a598' },
+      ],
+      colors: {
+        'editor.background': '#1d2021',
+        'editor.foreground': '#ebdbb2',
+        'editor.lineHighlightBackground': '#282828',
+        'editor.selectionBackground': '#504945',
+        'editorCursor.foreground': '#ebdbb2',
+        'editorLineNumber.foreground': '#7c6f64',
+        'editorLineNumber.activeForeground': '#fabd2f',
+        'editorIndentGuide.background1': '#3c3836',
+        'editorIndentGuide.activeBackground1': '#665c54',
+        'editorBracketMatch.background': '#fe801925',
+        'editorBracketMatch.border': '#fe8019',
+        'editorGutter.background': '#1d2021',
+      },
+    },
+  },
+
+  // ── 22. Gruvbox Light (Parchment) ─────────────────────────────────────────
+  {
+    id: 'gruvbox-light',
+    name: 'Gruvbox Light (Parchment)',
+    category: 'light',
+    author: 'morhetz',
+    description: 'Warm parchment paper aesthetic with retro sepia inks and comfortable reading contrast',
+    previewColors: ['#fbf1c7', '#af3a03', '#282828', '#b57614'],
+    monacoTheme: {
+      base: 'vs',
+      inherit: true,
+      rules: [
+        { token: '', foreground: '282828' },
+        { token: 'comment', foreground: '928374', fontStyle: 'italic' },
+        { token: 'keyword', foreground: '9d0006' },
+        { token: 'keyword.control', foreground: '9d0006' },
+        { token: 'keyword.operator', foreground: 'af3a03' },
+        { token: 'string', foreground: '79740e' },
+        { token: 'number', foreground: '8f3f71' },
+        { token: 'type', foreground: 'b57614' },
+        { token: 'type.identifier', foreground: 'b57614' },
+        { token: 'function', foreground: '427b58' },
+        { token: 'delimiter', foreground: '282828' },
+        { token: 'variable.predefined', foreground: '076678' },
+      ],
+      colors: {
+        'editor.background': '#fbf1c7',
+        'editor.foreground': '#282828',
+        'editor.lineHighlightBackground': '#f2e5bc',
+        'editor.selectionBackground': '#ebdbb2',
+        'editorCursor.foreground': '#282828',
+        'editorLineNumber.foreground': '#928374',
+        'editorLineNumber.activeForeground': '#af3a03',
+        'editorIndentGuide.background1': '#ebdbb2',
+        'editorIndentGuide.activeBackground1': '#d5c4a1',
+        'editorBracketMatch.background': '#af3a0320',
+        'editorBracketMatch.border': '#af3a03',
+        'editorGutter.background': '#fbf1c7',
+      },
+    },
+  },
+
+  // ── 23. Catppuccin Latte (Light Pastel) ───────────────────────────────────
+  {
+    id: 'catppuccin-latte',
+    name: 'Catppuccin Latte',
+    category: 'light',
+    author: 'Catppuccin Org',
+    description: 'A soothing pastel cream light theme that is gentle on your eyes',
+    previewColors: ['#eff1f5', '#1e66f5', '#4c4f69', '#8839ef'],
+    monacoTheme: {
+      base: 'vs',
+      inherit: true,
+      rules: [
+        { token: '', foreground: '4c4f69' },
+        { token: 'comment', foreground: '9ca0b0', fontStyle: 'italic' },
+        { token: 'keyword', foreground: '8839ef' },
+        { token: 'keyword.control', foreground: '8839ef' },
+        { token: 'keyword.operator', foreground: '04a5e5' },
+        { token: 'string', foreground: '40a02b' },
+        { token: 'number', foreground: 'fe640b' },
+        { token: 'type', foreground: 'df8e1d' },
+        { token: 'type.identifier', foreground: 'df8e1d' },
+        { token: 'function', foreground: '1e66f5' },
+        { token: 'delimiter', foreground: '4c4f69' },
+        { token: 'variable.predefined', foreground: 'e64553' },
+      ],
+      colors: {
+        'editor.background': '#eff1f5',
+        'editor.foreground': '#4c4f69',
+        'editor.lineHighlightBackground': '#e6e9ef',
+        'editor.selectionBackground': '#bcc0cc',
+        'editorCursor.foreground': '#dc8a78',
+        'editorLineNumber.foreground': '#9ca0b0',
+        'editorLineNumber.activeForeground': '#1e66f5',
+        'editorIndentGuide.background1': '#e6e9ef',
+        'editorIndentGuide.activeBackground1': '#bcc0cc',
+        'editorBracketMatch.background': '#1e66f520',
+        'editorBracketMatch.border': '#1e66f5',
+        'editorGutter.background': '#eff1f5',
+      },
+    },
+  },
+
+  // ── 24. Solarized Osaka ───────────────────────────────────────────────────
+  {
+    id: 'solarized-osaka',
+    name: 'Solarized Osaka',
+    category: 'dark',
+    author: 'craftzdog',
+    description: 'Neo-Tokyo evolution of Solarized with deep navy shadows and glowing teal accents',
+    previewColors: ['#101920', '#00e8c6', '#839496', '#ff6b35'],
+    monacoTheme: {
+      base: 'vs-dark',
+      inherit: true,
+      rules: [
+        { token: '', foreground: '93a1a1' },
+        { token: 'comment', foreground: '586e75', fontStyle: 'italic' },
+        { token: 'keyword', foreground: '268bd2' },
+        { token: 'keyword.control', foreground: '268bd2' },
+        { token: 'keyword.operator', foreground: '00e8c6' },
+        { token: 'string', foreground: '2aa198' },
+        { token: 'number', foreground: 'd33682' },
+        { token: 'type', foreground: 'b58900' },
+        { token: 'type.identifier', foreground: 'b58900' },
+        { token: 'function', foreground: '00e8c6' },
+        { token: 'delimiter', foreground: '93a1a1' },
+        { token: 'variable.predefined', foreground: 'ff6b35' },
+      ],
+      colors: {
+        'editor.background': '#101920',
+        'editor.foreground': '#93a1a1',
+        'editor.lineHighlightBackground': '#18242e',
+        'editor.selectionBackground': '#073642',
+        'editorCursor.foreground': '#00e8c6',
+        'editorLineNumber.foreground': '#586e75',
+        'editorLineNumber.activeForeground': '#00e8c6',
+        'editorIndentGuide.background1': '#192a35',
+        'editorIndentGuide.activeBackground1': '#586e75',
+        'editorBracketMatch.background': '#00e8c625',
+        'editorBracketMatch.border': '#00e8c6',
+        'editorGutter.background': '#101920',
+      },
+    },
+  },
+
+  // ── 25. Poimandres (Minimalist Slate) ──────────────────────────────────────
+  {
+    id: 'poimandres',
+    name: 'Poimandres',
+    category: 'dark',
+    author: 'drcmda',
+    description: 'A storm-inspired minimalist dark theme with mint, sky blue, and soft lavender',
+    previewColors: ['#1b1e2e', '#5de4c7', '#e4f0fb', '#d0679d'],
+    monacoTheme: {
+      base: 'vs-dark',
+      inherit: true,
+      rules: [
+        { token: '', foreground: 'e4f0fb' },
+        { token: 'comment', foreground: '767c9d', fontStyle: 'italic' },
+        { token: 'keyword', foreground: '5de4c7' },
+        { token: 'keyword.control', foreground: '5de4c7' },
+        { token: 'keyword.operator', foreground: '91b4d5' },
+        { token: 'string', foreground: '5fb9bc' },
+        { token: 'number', foreground: 'd0679d' },
+        { token: 'type', foreground: '89ddff' },
+        { token: 'type.identifier', foreground: '89ddff' },
+        { token: 'function', foreground: '89ddff' },
+        { token: 'delimiter', foreground: 'e4f0fb' },
+        { token: 'variable.predefined', foreground: 'add7ff' },
+      ],
+      colors: {
+        'editor.background': '#1b1e2e',
+        'editor.foreground': '#e4f0fb',
+        'editor.lineHighlightBackground': '#25293e',
+        'editor.selectionBackground': '#303340',
+        'editorCursor.foreground': '#5de4c7',
+        'editorLineNumber.foreground': '#506477',
+        'editorLineNumber.activeForeground': '#5de4c7',
+        'editorIndentGuide.background1': '#25293e',
+        'editorIndentGuide.activeBackground1': '#506477',
+        'editorBracketMatch.background': '#5de4c725',
+        'editorBracketMatch.border': '#5de4c7',
+        'editorGutter.background': '#1b1e2e',
+      },
+    },
+  },
 ]
+
 
 export interface UIThemeColors {
   bgApp: string
@@ -999,19 +1420,301 @@ export const THEME_UI_PALETTES: Record<string, UIThemeColors> = {
     green: '#008000',
     yellow: '#795e26',
   },
+  'cyberpunk-2077': {
+    bgApp: '#0d0f18',
+    bgHeader: '#141724',
+    bgSidebar: '#101320',
+    bgActivity: '#090a12',
+    bgPanel: '#0d0f18',
+    bgCard: '#181b2a',
+    bgInput: '#1f2338',
+    bgHover: 'rgba(252, 238, 10, 0.1)',
+    border: '#2b314e',
+    borderSubtle: '#1b1f33',
+    textBase: '#f4f6fc',
+    textMuted: '#8a94b8',
+    textDim: '#535c7a',
+    accent: '#fcee0a',
+    accentHover: '#e0d408',
+    accentSubtle: 'rgba(252, 238, 10, 0.18)',
+    accentBorder: 'rgba(252, 238, 10, 0.5)',
+    red: '#ff007f',
+    green: '#37f499',
+    yellow: '#fcee0a',
+  },
+  'rose-pine': {
+    bgApp: '#191724',
+    bgHeader: '#1f1d2e',
+    bgSidebar: '#1f1d2e',
+    bgActivity: '#14131d',
+    bgPanel: '#191724',
+    bgCard: '#26233a',
+    bgInput: '#2a283e',
+    bgHover: 'rgba(235, 188, 186, 0.1)',
+    border: '#36344d',
+    borderSubtle: '#2a283e',
+    textBase: '#e0def4',
+    textMuted: '#908caa',
+    textDim: '#6e6a86',
+    accent: '#ebbcba',
+    accentHover: '#e0aba9',
+    accentSubtle: 'rgba(235, 188, 186, 0.15)',
+    accentBorder: 'rgba(235, 188, 186, 0.4)',
+    red: '#eb6f92',
+    green: '#9ccfd8',
+    yellow: '#f6c177',
+  },
+  'tokyo-night-storm': {
+    bgApp: '#24283b',
+    bgHeader: '#1f2335',
+    bgSidebar: '#1f2335',
+    bgActivity: '#1a1b26',
+    bgPanel: '#24283b',
+    bgCard: '#292e42',
+    bgInput: '#2f3549',
+    bgHover: 'rgba(122, 162, 247, 0.1)',
+    border: '#3b4261',
+    borderSubtle: '#292e42',
+    textBase: '#c0caf5',
+    textMuted: '#7982a9',
+    textDim: '#565f89',
+    accent: '#7aa2f7',
+    accentHover: '#6991e6',
+    accentSubtle: 'rgba(122, 162, 247, 0.18)',
+    accentBorder: 'rgba(122, 162, 247, 0.45)',
+    red: '#f7768e',
+    green: '#9ece6a',
+    yellow: '#e0af68',
+  },
+  'aura-dark': {
+    bgApp: '#15141b',
+    bgHeader: '#1b1a23',
+    bgSidebar: '#1b1a23',
+    bgActivity: '#111016',
+    bgPanel: '#15141b',
+    bgCard: '#21202e',
+    bgInput: '#2b293d',
+    bgHover: 'rgba(162, 119, 255, 0.1)',
+    border: '#36334a',
+    borderSubtle: '#282538',
+    textBase: '#edecee',
+    textMuted: '#9a97a8',
+    textDim: '#6d6a7d',
+    accent: '#a277ff',
+    accentHover: '#9061fa',
+    accentSubtle: 'rgba(162, 119, 255, 0.18)',
+    accentBorder: 'rgba(162, 119, 255, 0.45)',
+    red: '#ff6767',
+    green: '#61ffca',
+    yellow: '#ffca85',
+  },
+  'shades-of-purple': {
+    bgApp: '#2d2b55',
+    bgHeader: '#222144',
+    bgSidebar: '#222144',
+    bgActivity: '#1a1935',
+    bgPanel: '#2d2b55',
+    bgCard: '#3b386e',
+    bgInput: '#44417f',
+    bgHover: 'rgba(250, 208, 0, 0.1)',
+    border: '#4d498f',
+    borderSubtle: '#383569',
+    textBase: '#ffffff',
+    textMuted: '#b9b4e3',
+    textDim: '#8b84bd',
+    accent: '#fad000',
+    accentHover: '#e6be00',
+    accentSubtle: 'rgba(250, 208, 0, 0.2)',
+    accentBorder: 'rgba(250, 208, 0, 0.5)',
+    red: '#ff628c',
+    green: '#a5ff90',
+    yellow: '#fad000',
+  },
+  'gruvbox-dark': {
+    bgApp: '#1d2021',
+    bgHeader: '#282828',
+    bgSidebar: '#282828',
+    bgActivity: '#17191a',
+    bgPanel: '#1d2021',
+    bgCard: '#32302f',
+    bgInput: '#3c3836',
+    bgHover: 'rgba(254, 128, 25, 0.1)',
+    border: '#504945',
+    borderSubtle: '#3c3836',
+    textBase: '#ebdbb2',
+    textMuted: '#a89984',
+    textDim: '#7c6f64',
+    accent: '#fe8019',
+    accentHover: '#e06f14',
+    accentSubtle: 'rgba(254, 128, 25, 0.18)',
+    accentBorder: 'rgba(254, 128, 25, 0.45)',
+    red: '#fb4934',
+    green: '#b8bb26',
+    yellow: '#fabd2f',
+  },
+  'gruvbox-light': {
+    bgApp: '#fbf1c7',
+    bgHeader: '#f2e5bc',
+    bgSidebar: '#f2e5bc',
+    bgActivity: '#ebdbb2',
+    bgPanel: '#fbf1c7',
+    bgCard: '#f2e5bc',
+    bgInput: '#ffffff',
+    bgHover: 'rgba(175, 58, 3, 0.08)',
+    border: '#d5c4a1',
+    borderSubtle: '#ebdbb2',
+    textBase: '#282828',
+    textMuted: '#504945',
+    textDim: '#7c6f64',
+    accent: '#af3a03',
+    accentHover: '#8f2f02',
+    accentSubtle: 'rgba(175, 58, 3, 0.12)',
+    accentBorder: 'rgba(175, 58, 3, 0.35)',
+    red: '#9d0006',
+    green: '#79740e',
+    yellow: '#b57614',
+  },
+  'catppuccin-latte': {
+    bgApp: '#eff1f5',
+    bgHeader: '#e6e9ef',
+    bgSidebar: '#e6e9ef',
+    bgActivity: '#dce0e8',
+    bgPanel: '#eff1f5',
+    bgCard: '#e6e9ef',
+    bgInput: '#ffffff',
+    bgHover: 'rgba(30, 102, 245, 0.08)',
+    border: '#ccd0da',
+    borderSubtle: '#bcc0cc',
+    textBase: '#4c4f69',
+    textMuted: '#6c6f85',
+    textDim: '#8c8fa1',
+    accent: '#1e66f5',
+    accentHover: '#1555db',
+    accentSubtle: 'rgba(30, 102, 245, 0.12)',
+    accentBorder: 'rgba(30, 102, 245, 0.35)',
+    red: '#d20f39',
+    green: '#40a02b',
+    yellow: '#df8e1d',
+  },
+  'solarized-osaka': {
+    bgApp: '#101920',
+    bgHeader: '#14202a',
+    bgSidebar: '#14202a',
+    bgActivity: '#0c1318',
+    bgPanel: '#101920',
+    bgCard: '#1a2936',
+    bgInput: '#203342',
+    bgHover: 'rgba(0, 232, 198, 0.1)',
+    border: '#284154',
+    borderSubtle: '#1b2c39',
+    textBase: '#93a1a1',
+    textMuted: '#657b83',
+    textDim: '#586e75',
+    accent: '#00e8c6',
+    accentHover: '#00cbb0',
+    accentSubtle: 'rgba(0, 232, 198, 0.18)',
+    accentBorder: 'rgba(0, 232, 198, 0.45)',
+    red: '#dc322f',
+    green: '#2aa198',
+    yellow: '#b58900',
+  },
+  'poimandres': {
+    bgApp: '#1b1e2e',
+    bgHeader: '#171926',
+    bgSidebar: '#171926',
+    bgActivity: '#12141f',
+    bgPanel: '#1b1e2e',
+    bgCard: '#25293e',
+    bgInput: '#2d324b',
+    bgHover: 'rgba(93, 228, 199, 0.1)',
+    border: '#3b4060',
+    borderSubtle: '#292d43',
+    textBase: '#e4f0fb',
+    textMuted: '#939dbb',
+    textDim: '#6b7494',
+    accent: '#5de4c7',
+    accentHover: '#4cd2b6',
+    accentSubtle: 'rgba(93, 228, 199, 0.18)',
+    accentBorder: 'rgba(93, 228, 199, 0.45)',
+    red: '#d0679d',
+    green: '#5fb9bc',
+    yellow: '#fffac2',
+  },
 }
 
 export const DEFAULT_THEME_ID = 'vscode-dark'
+
+export interface FontColorOption {
+  id: string
+  name: string
+  color: string
+  category: 'Classic' | 'Neon' | 'Warm' | 'Pastel'
+  glow?: string
+  description?: string
+}
+
+export const EDITOR_FONT_COLORS: FontColorOption[] = [
+  { id: 'default', name: 'Original Theme Default', color: 'default', category: 'Classic', description: 'Original VS Code theme syntax colors' },
+  { id: 'cyber-cyan', name: '⚡ Cyberpunk Neon Cyan', color: '#00f0ff', category: 'Neon', glow: 'rgba(0, 240, 255, 0.6)', description: 'High-voltage electric futuristic cyan' },
+  { id: 'matrix-green', name: '🟢 Matrix Hacker Emerald', color: '#00ff66', category: 'Neon', glow: 'rgba(0, 255, 102, 0.6)', description: 'Phosphor green terminal aesthetic' },
+  { id: 'royal-gold', name: '👑 24K Royal Gold', color: '#ffd700', category: 'Warm', glow: 'rgba(255, 215, 0, 0.6)', description: 'Rich glowing warm gold' },
+  { id: 'synth-magenta', name: '💖 Synthwave Hot Magenta', color: '#ff007f', category: 'Neon', glow: 'rgba(255, 0, 127, 0.6)', description: 'Retrowave 80s neon magenta' },
+  { id: 'glacier-blue', name: '❄️ Glacier Diamond Frost', color: '#38bdf8', category: 'Pastel', glow: 'rgba(56, 189, 248, 0.5)', description: 'Crisp Arctic sky blue' },
+  { id: 'celestial-iris', name: '🪻 Celestial Pastel Iris', color: '#c4a7e7', category: 'Pastel', glow: 'rgba(196, 167, 231, 0.5)', description: 'Dreamy aesthetic lilac iris' },
+  { id: 'zen-mint', name: '🍃 Zen Forest Turquoise', color: '#4eecd5', category: 'Pastel', glow: 'rgba(78, 236, 213, 0.5)', description: 'Soothing eye-friendly mint' },
+  { id: 'sunset-flame', name: '🔥 Tokyo Sunset Flame', color: '#ff6b35', category: 'Warm', glow: 'rgba(255, 107, 53, 0.5)', description: 'Vibrant fiery tangerine glow' },
+  { id: 'electric-violet', name: '🔮 Electric Amethyst', color: '#d946ef', category: 'Neon', glow: 'rgba(217, 70, 239, 0.6)', description: 'Deep cosmic luminous purple' },
+  { id: 'acid-lime', name: '🧪 Acid Radioactive Lime', color: '#a3e635', category: 'Neon', glow: 'rgba(163, 230, 53, 0.5)', description: 'Ultra-bright energetic lime' },
+  { id: 'pure-white', name: '⚪ High-Contrast Snow White', color: '#ffffff', category: 'Classic', glow: 'rgba(255, 255, 255, 0.4)', description: 'Maximum contrast crisp white' },
+  { id: 'pitch-black', name: '⚫ Pitch Onyx Black', color: '#000000', category: 'Classic', description: 'Deep obsidian black for light themes' },
+  { id: 'retro-cream', name: '☕ Gruvbox Vintage Cream', color: '#ebdbb2', category: 'Warm', description: 'Warm nostalgic retro parchment' },
+]
 
 export function getThemeById(themeId: string): ThemeDefinition {
   return VSCODE_THEMES.find(t => t.id === themeId) || VSCODE_THEMES[0]
 }
 
-export function registerMonacoThemes(monacoInstance: any) {
+export function registerMonacoThemes(monacoInstance: any, customFontColor?: string) {
   if (!monacoInstance?.editor?.defineTheme) return
   for (const theme of VSCODE_THEMES) {
     try {
+      // 1. Register baseline theme
       monacoInstance.editor.defineTheme(theme.id, theme.monacoTheme as any)
+
+      // 2. If customFontColor is selected, register dynamic theme ID that forces Monaco re-render
+      if (customFontColor && customFontColor !== 'default') {
+        const cleanColor = customFontColor.replace(/[^a-zA-Z0-9]/g, '')
+        const customThemeId = `${theme.id}-fc-${cleanColor}`
+
+        const clonedTheme = JSON.parse(JSON.stringify(theme.monacoTheme))
+        const cleanHex = customFontColor.startsWith('#') ? customFontColor.slice(1) : customFontColor
+
+        clonedTheme.colors['editor.foreground'] = customFontColor
+        clonedTheme.colors['editorCursor.foreground'] = customFontColor
+        clonedTheme.colors['editorLineNumber.activeForeground'] = customFontColor
+
+        // Update default token rule
+        const defaultRule = clonedTheme.rules.find((r: any) => r.token === '')
+        if (defaultRule) {
+          defaultRule.foreground = cleanHex
+        } else {
+          clonedTheme.rules.unshift({ token: '', foreground: cleanHex })
+        }
+
+        // Apply custom color to primary code tokens
+        const tokensToColor = ['identifier', 'variable', 'variable.predefined', 'delimiter', 'type', 'type.identifier', 'operator']
+        for (const t of tokensToColor) {
+          const existing = clonedTheme.rules.find((r: any) => r.token === t)
+          if (existing) {
+            existing.foreground = cleanHex
+          } else {
+            clonedTheme.rules.unshift({ token: t, foreground: cleanHex })
+          }
+        }
+
+        // Register the dynamic font color theme
+        monacoInstance.editor.defineTheme(customThemeId, clonedTheme as any)
+      }
     } catch (e) {
       console.warn(`Failed to register theme ${theme.id}:`, e)
     }
@@ -1022,13 +1725,23 @@ export function getThemeUIColors(themeId: string): UIThemeColors {
   return THEME_UI_PALETTES[themeId] || THEME_UI_PALETTES['github-dark']
 }
 
-export function applyThemeToDocument(themeId: string) {
+export function applyThemeToDocument(themeId: string, customFontColor?: string) {
   const theme = getThemeById(themeId)
   const colors = getThemeUIColors(themeId)
   const root = document.documentElement
 
   root.setAttribute('data-theme', themeId)
   root.setAttribute('data-theme-category', theme.category)
+
+  // ── Critical Requirement: Output font color is ALWAYS black in light themes and ALWAYS white in dark themes ──
+  const outputFontColor = theme.category === 'light' ? '#000000' : '#ffffff'
+  root.style.setProperty('--output-font-color', outputFontColor)
+
+  if (customFontColor && customFontColor !== 'default') {
+    root.style.setProperty('--editor-custom-font-color', customFontColor)
+  } else {
+    root.style.removeProperty('--editor-custom-font-color')
+  }
 
   root.style.setProperty('--bg-app', colors.bgApp)
   root.style.setProperty('--bg-header', colors.bgHeader)
@@ -1051,3 +1764,4 @@ export function applyThemeToDocument(themeId: string) {
   root.style.setProperty('--green', colors.green)
   root.style.setProperty('--yellow', colors.yellow)
 }
+

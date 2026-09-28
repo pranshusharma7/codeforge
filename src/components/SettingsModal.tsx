@@ -13,6 +13,8 @@ interface Props {
   initialTab?: 'editor' | 'themes' | 'repos' | 'profile'
   currentThemeId: string
   onThemeChange: (themeId: string) => void
+  currentFontColor?: string
+  onFontColorChange?: (color: string) => void
   currentFontId: string
   onFontChange: (fontId: string) => void
   fontLigatures?: boolean
@@ -48,6 +50,8 @@ export default function SettingsModal({
   initialTab = 'editor',
   currentThemeId,
   onThemeChange,
+  currentFontColor,
+  onFontColorChange,
   currentFontId,
   onFontChange,
   fontLigatures = true,
@@ -117,14 +121,14 @@ export default function SettingsModal({
             alignItems: 'center',
             justifyContent: 'space-between',
             padding: '14px 20px',
-            borderBottom: '1px solid #21262d',
+            borderBottom: '1px solid var(--border)',
             flexShrink: 0,
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ fontSize: 16, fontWeight: 700, color: '#e6edf3' }}>Settings</span>
-            <span style={{ color: '#7d8590', fontSize: 13 }}>•</span>
-            <span style={{ color: '#a78bfa', fontSize: 13, fontWeight: 600 }}>
+            <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-base)' }}>Settings</span>
+            <span style={{ color: 'var(--text-dim)', fontSize: 13 }}>•</span>
+            <span style={{ color: 'var(--accent)', fontSize: 13, fontWeight: 600 }}>
               {activeTabName === 'editor'
                 ? 'Editor Preferences'
                 : activeTabName === 'themes'
@@ -136,7 +140,7 @@ export default function SettingsModal({
           </div>
           <button
             onClick={onClose}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#7d8590', fontSize: 16 }}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: 16 }}
           >
             ✕
           </button>
@@ -148,8 +152,8 @@ export default function SettingsModal({
           <div
             style={{
               width: 190,
-              background: '#0d1117',
-              borderRight: '1px solid #21262d',
+              background: 'var(--bg-sidebar)',
+              borderRight: '1px solid var(--border)',
               padding: '12px 8px',
               display: 'flex',
               flexDirection: 'column',
@@ -551,6 +555,8 @@ export default function SettingsModal({
               <ThemeGalleryTab
                 currentThemeId={currentThemeId}
                 onSelectTheme={onThemeChange}
+                currentFontColor={currentFontColor}
+                onSelectFontColor={onFontColorChange}
                 showToast={showToast}
               />
             )}
@@ -578,15 +584,15 @@ export default function SettingsModal({
             {/* ── Tab 4: Profile & Authentication ── */}
             {activeTabName === 'profile' && (
               <div>
-                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', color: '#7d8590', textTransform: 'uppercase', marginBottom: 14 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', color: 'var(--text-dim)', textTransform: 'uppercase', marginBottom: 14 }}>
                   ACCOUNT DETAILS
                 </div>
 
                 {authUser ? (
                   <div
                     style={{
-                      background: '#0d1117',
-                      border: '1px solid #21262d',
+                      background: 'var(--bg-card)',
+                      border: '1px solid var(--border)',
                       borderRadius: 8,
                       padding: 16,
                       marginBottom: 16,
@@ -597,22 +603,22 @@ export default function SettingsModal({
                         {authUser.avatarUrl ? <img src={authUser.avatarUrl} alt="" /> : authUser.initials}
                       </span>
                       <div>
-                        <div style={{ fontSize: 15, fontWeight: 700, color: '#e6edf3' }}>{authUser.name}</div>
-                        <div style={{ fontSize: 12, color: '#7d8590' }}>@{authUser.login || authUser.name}</div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#3fb950', marginTop: 3 }}>
+                        <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-base)' }}>{authUser.name}</div>
+                        <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>@{authUser.login || authUser.name}</div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--green)', marginTop: 3 }}>
                           <span className="secure-dot" /> Connected to GitHub
                         </div>
                       </div>
                     </div>
 
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10, marginTop: 12 }}>
-                      <div style={{ background: '#161b22', padding: 10, borderRadius: 6 }}>
-                        <div style={{ fontSize: 10, color: '#7d8590' }}>REPOSITORIES SYNCED</div>
-                        <div style={{ fontSize: 18, fontWeight: 700, color: '#e6edf3', marginTop: 2 }}>{repositories.length}</div>
+                      <div style={{ background: 'var(--bg-app)', border: '1px solid var(--border)', padding: 10, borderRadius: 6 }}>
+                        <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>REPOSITORIES SYNCED</div>
+                        <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-base)', marginTop: 2 }}>{repositories.length}</div>
                       </div>
-                      <div style={{ background: '#161b22', padding: 10, borderRadius: 6 }}>
-                        <div style={{ fontSize: 10, color: '#7d8590' }}>PROVIDER</div>
-                        <div style={{ fontSize: 14, fontWeight: 600, color: '#a78bfa', marginTop: 2 }}>GitHub API</div>
+                      <div style={{ background: 'var(--bg-app)', border: '1px solid var(--border)', padding: 10, borderRadius: 6 }}>
+                        <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>PROVIDER</div>
+                        <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--accent)', marginTop: 2 }}>GitHub API</div>
                       </div>
                     </div>
 
@@ -626,7 +632,7 @@ export default function SettingsModal({
                           showToast('Signed out from GitHub')
                         }}
                         className="btn btn-ghost"
-                        style={{ color: '#f85149', borderColor: '#f8514940', fontSize: 12 }}
+                        style={{ color: 'var(--red)', borderColor: 'rgba(239, 68, 68, 0.4)', fontSize: 12 }}
                       >
                         Disconnect
                       </button>
@@ -635,17 +641,17 @@ export default function SettingsModal({
                 ) : (
                   <div
                     style={{
-                      background: '#0d1117',
-                      border: '1px solid #21262d',
+                      background: 'var(--bg-card)',
+                      border: '1px solid var(--border)',
                       borderRadius: 8,
                       padding: 20,
                       textAlign: 'center',
                     }}
                   >
-                    <div style={{ fontSize: 14, fontWeight: 600, color: '#e6edf3', marginBottom: 6 }}>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-base)', marginBottom: 6 }}>
                       No GitHub Account Connected
                     </div>
-                    <p style={{ color: '#7d8590', fontSize: 12, marginBottom: 14, maxWidth: 360, margin: '0 auto 16px' }}>
+                    <p style={{ color: 'var(--text-muted)', fontSize: 12, marginBottom: 14, maxWidth: 360, margin: '0 auto 16px' }}>
                       Connect your GitHub account to access all your repositories, save snippets, and commit code directly.
                     </p>
                     <button onClick={onConnectGitHub} className="btn btn-primary" style={{ padding: '7px 20px', fontSize: 12 }}>
@@ -662,10 +668,10 @@ export default function SettingsModal({
         <div
           style={{
             padding: '10px 20px',
-            borderTop: '1px solid #21262d',
+            borderTop: '1px solid var(--border)',
             display: 'flex',
             justifyContent: 'flex-end',
-            background: '#161b22',
+            background: 'var(--bg-header)',
             flexShrink: 0,
           }}
         >
