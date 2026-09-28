@@ -35,3 +35,5 @@ Thumbs.db
 .gemini/
 .plugins/
 .opencode-skills/
+.vercel
+.env*
