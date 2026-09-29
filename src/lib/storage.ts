@@ -30,7 +30,7 @@ export interface AuthUser {
   name: string
   email: string
   initials: string
-  provider?: 'github'
+  provider?: 'github' | 'guest' | 'local'
   login?: string
   avatarUrl?: string
   accessToken?: string

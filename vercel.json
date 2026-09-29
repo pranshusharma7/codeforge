@@ -5,15 +5,15 @@
   "outputDirectory": "dist",
   "rewrites": [
     {
-      "source": "/api/github-oauth/:path*",
-      "destination": "https://github.com/:path*"
-    },
-    {
       "source": "/preview.html",
       "destination": "/preview.html"
     },
     {
-      "source": "/(.*)",
+      "source": "/api/github-oauth/:path*",
+      "destination": "/api/github-oauth"
+    },
+    {
+      "source": "/((?!api/).*)",
       "destination": "/index.html"
     }
   ],

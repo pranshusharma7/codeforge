@@ -68,19 +68,20 @@ export default function AIAppPanel({
 }: Props) {
   // Gemini API Key loaded securely from environment or user settings
   const geminiApiKey = (import.meta.env.VITE_AI_KEY as string) || localStorage.getItem('cf_gemini_api_key') || ''
+  const effectiveUserId = authUser?.id || 'cf_guest_developer'
+  const effectiveDisplayName = authUser?.login || authUser?.name || 'developer'
 
   // Messages state
   const [messages, setMessages] = useState<AIMessage[]>(() => {
-    if (!authUser) return []
     try {
-      const saved = localStorage.getItem(`cf_ai_chat_${authUser.id}`)
+      const saved = localStorage.getItem(`cf_ai_chat_${effectiveUserId}`)
       if (saved) return JSON.parse(saved)
     } catch {}
     return [
       {
         id: 'welcome',
         role: 'assistant',
-        content: `👋 Welcome, **@${authUser.login || authUser.name}**! I'm **CodeForge AI** powered by Google Gemini.\n\nI can help you analyze, debug, explain, and optimize your **${curTab.name || 'code'}**.\n\n**Monthly Limit:** 20 queries/month for your GitHub account. Ask anything below!`,
+        content: `👋 Welcome, **@${effectiveDisplayName}**! I'm **CodeForge AI** powered by Google Gemini.\n\nI can help you analyze, debug, explain, and optimize your **${curTab.name || 'code'}**.\n\n**Free AI Quota:** 20 queries/month included. Ask anything below or choose a quick action!`,
         timestamp: Date.now(),
       },
     ]
@@ -93,35 +94,33 @@ export default function AIAppPanel({
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
-  // Reload chats when authUser changes
+  // Reload chats when authUser or effectiveUserId changes
   useEffect(() => {
-    if (authUser) {
-      try {
-        const saved = localStorage.getItem(`cf_ai_chat_${authUser.id}`)
-        if (saved) {
-          setMessages(JSON.parse(saved))
-          return
-        }
-      } catch {}
-      setMessages([
-        {
-          id: 'welcome',
-          role: 'assistant',
-          content: `👋 Welcome, **@${authUser.login || authUser.name}**! I'm **CodeForge AI** powered by Google Gemini.\n\nI can help you analyze, debug, explain, and optimize your **${curTab.name || 'code'}**.\n\n**Monthly Limit:** 20 queries/month for your GitHub account. Ask anything below!`,
-          timestamp: Date.now(),
-        },
-      ])
-    }
-  }, [authUser?.id])
+    try {
+      const saved = localStorage.getItem(`cf_ai_chat_${effectiveUserId}`)
+      if (saved) {
+        setMessages(JSON.parse(saved))
+        return
+      }
+    } catch {}
+    setMessages([
+      {
+        id: 'welcome',
+        role: 'assistant',
+        content: `👋 Welcome, **@${effectiveDisplayName}**! I'm **CodeForge AI** powered by Google Gemini.\n\nI can help you analyze, debug, explain, and optimize your **${curTab.name || 'code'}**.\n\n**Free AI Quota:** 20 queries/month included. Ask anything below or choose a quick action!`,
+        timestamp: Date.now(),
+      },
+    ])
+  }, [effectiveUserId, effectiveDisplayName])
 
   // Persist messages to localStorage
   useEffect(() => {
-    if (authUser && messages.length > 0) {
+    if (messages.length > 0) {
       try {
-        localStorage.setItem(`cf_ai_chat_${authUser.id}`, JSON.stringify(messages))
+        localStorage.setItem(`cf_ai_chat_${effectiveUserId}`, JSON.stringify(messages))
       } catch {}
     }
-  }, [messages, authUser?.id])
+  }, [messages, effectiveUserId])
 
   // Scroll to bottom
   useEffect(() => {
@@ -199,12 +198,6 @@ export default function AIAppPanel({
 
   // Send message handler
   const handleSendMessage = async (textToSend?: string) => {
-    if (!authUser) {
-      onOpenGitHubAuth()
-      showToast('🔒 Please sign in with GitHub to use CodeForge AI')
-      return
-    }
-
     if (isQuotaExceeded) {
       onUpgradePro()
       showToast(`⚠️ Monthly free limit reached (${maxFreeAI}/${maxFreeAI}). Upgrade to Pro!`)
@@ -221,7 +214,7 @@ export default function AIAppPanel({
     if (!isPro) {
       const nextUsage = aiUsage + 1
       const monthKey = getCurrentMonthKey()
-      localStorage.setItem(`cf_ai_usage_${authUser.id}_${monthKey}`, String(nextUsage))
+      localStorage.setItem(`cf_ai_usage_${effectiveUserId}_${monthKey}`, String(nextUsage))
       setAiUsage(nextUsage)
     }
 
@@ -298,7 +291,6 @@ export default function AIAppPanel({
 
   // Clear chat
   const handleClearChat = () => {
-    if (!authUser) return
     const welcome: AIMessage = {
       id: crypto.randomUUID(),
       role: 'assistant',
@@ -306,7 +298,7 @@ export default function AIAppPanel({
       timestamp: Date.now(),
     }
     setMessages([welcome])
-    localStorage.removeItem(`cf_ai_chat_${authUser.id}`)
+    localStorage.removeItem(`cf_ai_chat_${effectiveUserId}`)
     showToast('Chat history cleared')
   }
 
@@ -499,167 +491,7 @@ export default function AIAppPanel({
     )
   }
 
-  // ── Case 1: User is NOT Signed in with GitHub ───────────────────────────────
-  if (!authUser) {
-    return (
-      <div
-        style={{
-          flex: 1,
-          display: 'flex',
-          flexDirection: 'column',
-          height: '100%',
-          overflow: 'hidden',
-          background: 'var(--bg-app)',
-        }}
-      >
-        {/* Header */}
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            padding: '10px 14px',
-            borderBottom: '1px solid var(--border)',
-            background: 'var(--bg-panel)',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <img src={logoImg} alt="CodeForge" style={{ width: 22, height: 22, objectFit: 'contain' }} />
-            <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-base)' }}>CodeForge AI</span>
-          </div>
-          <button
-            onClick={onClose}
-            title="Close"
-            style={{ background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', padding: 3 }}
-          >
-            <XIcon size={13} />
-          </button>
-        </div>
 
-        {/* GitHub Login Hero Card */}
-        <div
-          style={{
-            flex: 1,
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '24px 20px',
-            textAlign: 'center',
-            overflowY: 'auto',
-          }}
-        >
-          <div style={{ marginBottom: 16 }}>
-            <img
-              src={logoImg}
-              alt="CodeForge AI"
-              style={{
-                width: 54,
-                height: 54,
-                objectFit: 'contain',
-                filter: 'drop-shadow(0 6px 20px rgba(56, 189, 248, 0.35))',
-              }}
-            />
-          </div>
-
-          <div
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 5,
-              padding: '3px 10px',
-              borderRadius: 20,
-              background: 'rgba(56, 189, 248, 0.1)',
-              border: '1px solid rgba(56, 189, 248, 0.25)',
-              color: '#38bdf8',
-              fontSize: 10,
-              fontWeight: 700,
-              letterSpacing: '0.04em',
-              textTransform: 'uppercase',
-              marginBottom: 12,
-            }}
-          >
-            <span>🔒 Authentication Required</span>
-          </div>
-
-          <h3 style={{ margin: '0 0 8px', fontSize: 16, fontWeight: 700, color: 'var(--text-base)' }}>
-            Sign in with GitHub
-          </h3>
-          <p style={{ margin: '0 0 20px', fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.5, maxWidth: 280 }}>
-            Connect your GitHub account to access AI code assistance and track your monthly free quota.
-          </p>
-
-          {/* Feature highlights */}
-          <div
-            style={{
-              width: '100%',
-              maxWidth: 290,
-              background: 'rgba(255,255,255,0.02)',
-              border: '1px solid var(--border)',
-              borderRadius: 10,
-              padding: '12px 14px',
-              marginBottom: 20,
-              textAlign: 'left',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 8,
-              fontSize: 11,
-              color: 'var(--text-muted)',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ color: '#34d399' }}>✓</span>
-              <span><strong>20 Free AI queries</strong> every month per user</span>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ color: '#38bdf8' }}>✓</span>
-              <span>Powered by <strong>Google Gemini API</strong></span>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ color: '#a78bfa' }}>✓</span>
-              <span>Saves conversation history to your account</span>
-            </div>
-          </div>
-
-          {/* Sign In Button */}
-          <button
-            onClick={onOpenGitHubAuth}
-            style={{
-              width: '100%',
-              maxWidth: 290,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 10,
-              padding: '11px 16px',
-              borderRadius: 8,
-              fontSize: 13,
-              fontWeight: 700,
-              background: '#24292e',
-              border: '1px solid rgba(255,255,255,0.18)',
-              color: '#ffffff',
-              cursor: 'pointer',
-              transition: 'all 0.15s ease',
-              boxShadow: '0 4px 14px rgba(0,0,0,0.3)',
-            }}
-            onMouseEnter={e => {
-              e.currentTarget.style.background = '#2f363d'
-              e.currentTarget.style.transform = 'translateY(-1px)'
-            }}
-            onMouseLeave={e => {
-              e.currentTarget.style.background = '#24292e'
-              e.currentTarget.style.transform = 'translateY(0)'
-            }}
-          >
-            <GitHubOctocatIcon size={18} />
-            <span>Continue with GitHub</span>
-          </button>
-        </div>
-      </div>
-    )
-  }
-
-  // ── Case 2: User IS Signed in with GitHub ──────────────────────────────────
   return (
     <div
       style={{
@@ -716,8 +548,25 @@ export default function AIAppPanel({
                 {isPro ? 'PRO' : `${aiUsage}/${maxFreeAI} Used`}
               </span>
             </div>
-            <div style={{ fontSize: 10, color: 'var(--text-dim)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 4 }}>
-              <span>👤 @{authUser.login || authUser.name}</span>
+            <div style={{ fontSize: 10, color: 'var(--text-dim)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span>👤 @{effectiveDisplayName}</span>
+              {!authUser && (
+                <button
+                  onClick={onOpenGitHubAuth}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: '#58a6ff',
+                    cursor: 'pointer',
+                    fontSize: 10,
+                    textDecoration: 'underline',
+                    padding: 0,
+                  }}
+                  title="Connect GitHub for repository sync"
+                >
+                  Connect GitHub
+                </button>
+              )}
               <span>·</span>
               <span style={{ color: '#38bdf8', fontWeight: 600 }}>Gemini 3.8 Flash</span>
             </div>
@@ -879,7 +728,7 @@ export default function AIAppPanel({
                     </span>
                   </>
                 ) : (
-                  <span>@{authUser.login || authUser.name}</span>
+                  <span>@{effectiveDisplayName}</span>
                 )}
                 <span>·</span>
                 <span>{new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
