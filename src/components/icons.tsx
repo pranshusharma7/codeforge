@@ -44,6 +44,7 @@ export const RefreshIcon   = (p: IconProps) => <I {...p} d="M1 8a7 7 0 0 1 12-4.
 export const FolderIcon    = (p: IconProps) => <I {...p} d="M2 3h4l2 2h6v8H2V3z" />
 export const PaletteIcon   = (p: IconProps) => <I {...p} d="M8 1a7 7 0 1 0 7 7c0-1.5-1-2-2-2h-1.5a1.5 1.5 0 0 1-1.5-1.5V4a3 3 0 0 0-3-3zm-3.5 6a1 1 0 1 1 0-2 1 1 0 0 1 0 2zm3-2a1 1 0 1 1 0-2 1 1 0 0 1 0 2zm4 2a1 1 0 1 1 0-2 1 1 0 0 1 0 2zm-5 4a1 1 0 1 1 0-2 1 1 0 0 1 0 2z" />
 export const LeetCodeIcon  = (p: IconProps) => <svg width={p.size??16} height={p.size??16} viewBox="0 0 24 24" fill="currentColor" style={p.style} className={p.className}><path d="M13.483 0a1.374 1.374 0 0 0-.961.438L7.116 6.226l-3.854 4.126a5.266 5.266 0 0 0-1.209 2.104 5.35 5.35 0 0 0-.125.513 5.527 5.527 0 0 0 .062 2.362 5.874 5.874 0 0 0 .349 1.017 5.938 5.938 0 0 0 1.271 1.818l4.277 4.193.039.038c2.248 2.165 5.852 2.133 8.063-.074l2.396-2.392c.54-.54.54-1.414.003-1.955a1.378 1.378 0 0 0-1.951-.003l-2.396 2.392a3.021 3.021 0 0 1-4.205.038l-.02-.019-4.276-4.193c-.652-.64-.972-1.469-.948-2.263a2.68 2.68 0 0 1 .666-1.607L9.36 8.29l4.89-5.111a1.378 1.378 0 0 0-.767-2.179z"/></svg>
+export const KeyIcon       = (p: IconProps) => <I {...p} d="M10 2a4 4 0 0 0-4 4c0 .4.07.8.2 1.2L2 11.4V14h2.6l1-1h1.5l1-1h.5l.6-.6A4 4 0 1 0 10 2zm1 3a1 1 0 1 1 0-2 1 1 0 0 1 0 2z" />
 
 export const FilePlusIcon = (p: IconProps) => (
   <svg width={p.size??16} height={p.size??16} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" style={p.style} className={p.className}>

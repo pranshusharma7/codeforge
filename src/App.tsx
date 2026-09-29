@@ -1275,23 +1275,17 @@ export default function App() {
 
   // ── AI ───────────────────────────────────────────────────────────────────
   const sendAI = async (action: AIAction, text: string) => {
-    // If user is not signed in:
-    if (!authUser) {
-      setShowAuth(true)
-      showToast('🔒 Please sign in with GitHub to use CodeForge AI')
-      return
-    }
-
-    const currentUsage = getAiUsageForUser(authUser.id)
+    const currentUserId = authUser?.id || 'cf_guest_developer'
+    const currentUsage = getAiUsageForUser(currentUserId)
     if (!isPro && currentUsage >= MAX_FREE_MONTHLY_AI) {
       setShowUpgradeModal(true)
       showToast(`⚠️ Monthly free AI limit reached (${MAX_FREE_MONTHLY_AI}/${MAX_FREE_MONTHLY_AI}). Upgrade to Pro!`)
       return
     }
 
-    if (!isPro && authUser) {
+    if (!isPro) {
       const nextUsage = currentUsage + 1
-      localStorage.setItem(`cf_ai_usage_${authUser.id}_${getCurrentMonthKey()}`, String(nextUsage))
+      localStorage.setItem(`cf_ai_usage_${currentUserId}_${getCurrentMonthKey()}`, String(nextUsage))
       setAiUsage(nextUsage)
     }
 
