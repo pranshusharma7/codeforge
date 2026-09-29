@@ -62,6 +62,33 @@ export interface DeviceCodeResponse {
 
 const CLIENT_ID = import.meta.env.VITE_GITHUB_CLIENT_ID as string | undefined
 const API_URL = 'https://api.github.com'
+const GITHUB_OAUTH_ERRORS = new Set([
+  'authorization_pending',
+  'slow_down',
+  'access_denied',
+  'expired_token',
+  'incorrect_client_credentials',
+  'incorrect_device_code',
+  'device_flow_disabled',
+  'bad_verification_code',
+])
+
+async function postOAuthRequest(url: string, body: Record<string, string>): Promise<{ data: any; status: number }> {
+  const controller = new AbortController()
+  const timeout = window.setTimeout(() => controller.abort(), 10000)
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    })
+    const data = await response.json().catch(() => null)
+    return { data, status: response.status }
+  } finally {
+    window.clearTimeout(timeout)
+  }
+}
 
 // Helper to determine auth endpoints (uses Vite dev proxy to avoid CORS when available)
 function getDeviceUrl(): string {
@@ -133,31 +160,27 @@ export async function startGitHubDeviceFlow(): Promise<DeviceCodeResponse> {
 
   let lastError = ''
   for (const url of endpoints) {
+    let data: any
     try {
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
-        body: JSON.stringify({ client_id: CLIENT_ID, scope }),
-      })
-      const contentType = response.headers.get('content-type') || ''
-      if (contentType.includes('json')) {
-        const data = await response.json()
-        if (data.device_code) {
-          return data as DeviceCodeResponse
-        }
-        if (data.error_description) {
-          lastError = data.error_description
-        }
-      }
+      const result = await postOAuthRequest(url, { client_id: CLIENT_ID, scope })
+      data = result.data
     } catch (err: any) {
       lastError = err?.message || 'Network error'
+      continue
     }
+    if (data?.device_code && data?.user_code && data?.verification_uri && data?.expires_in) {
+      return data as DeviceCodeResponse
+    }
+    if (GITHUB_OAUTH_ERRORS.has(data?.error)) throw new Error(data.error_description || data.error)
+    if (data?.error_description) lastError = data.error_description
   }
 
   throw new Error(lastError || 'GitHub authorization could not start. Please check your network connection.')
 }
 
 export async function waitForGitHubToken(device: DeviceCodeResponse): Promise<string> {
+  const clientId = CLIENT_ID
+  if (!clientId) throw new Error('VITE_GITHUB_CLIENT_ID is not configured in .env')
   const deadline = Date.now() + device.expires_in * 1000
   let interval = Math.max(device.interval, 5) * 1000
   const endpoints = [
@@ -165,45 +188,35 @@ export async function waitForGitHubToken(device: DeviceCodeResponse): Promise<st
     'https://corsproxy.io/?' + encodeURIComponent('https://github.com/login/oauth/access_token'),
     'https://github.com/login/oauth/access_token',
   ]
+  let lastNetworkError = ''
 
   while (Date.now() < deadline) {
     await new Promise(resolve => window.setTimeout(resolve, interval))
 
-    let receivedData: any = null
     for (const url of endpoints) {
+      let data: any
       try {
-        const response = await fetch(url, {
-          method: 'POST',
-          headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            client_id: CLIENT_ID,
-            device_code: device.device_code,
-            grant_type: 'urn:ietf:params:oauth:grant-type:device_code',
-          }),
+        const result = await postOAuthRequest(url, {
+          client_id: clientId,
+          device_code: device.device_code,
+          grant_type: 'urn:ietf:params:oauth:grant-type:device_code',
         })
-        const contentType = response.headers.get('content-type') || ''
-        if (contentType.includes('json')) {
-          receivedData = await response.json()
-          if (receivedData) break
-        }
-      } catch {
-        // Try next endpoint
-      }
-    }
-
-    if (receivedData) {
-      if (receivedData.access_token) return receivedData.access_token as string
-      if (receivedData.error === 'authorization_pending') continue
-      if (receivedData.error === 'slow_down') {
-        interval += 5000
+        data = result.data
+      } catch (err: any) {
+        lastNetworkError = err?.message || 'Network error'
         continue
       }
-      if (receivedData.error_description) {
-        throw new Error(receivedData.error_description)
+      if (data?.access_token) return data.access_token as string
+      if (data?.error === 'authorization_pending') break
+      if (data?.error === 'slow_down') {
+        interval += 5000
+        break
       }
+      if (GITHUB_OAUTH_ERRORS.has(data?.error)) throw new Error(data.error_description || data.error)
+      lastNetworkError = data?.error_description || 'GitHub returned an unreadable authorization response.'
     }
   }
-  throw new Error('GitHub authorization expired. Please try again.')
+  throw new Error(lastNetworkError || 'GitHub authorization expired. Please try again.')
 }
 
 export async function getGitHubUser(token: string): Promise<GitHubUser & { scopes?: string[] }> {
