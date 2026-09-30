@@ -75,7 +75,7 @@ const GITHUB_OAUTH_ERRORS = new Set([
 
 async function postOAuthRequest(url: string, body: Record<string, string>): Promise<{ data: any; status: number }> {
   const controller = new AbortController()
-  const timeout = window.setTimeout(() => controller.abort(), 7000)
+  const timeout = window.setTimeout(() => controller.abort(), 15000)
   try {
     const response = await fetch(url, {
       method: 'POST',
@@ -85,13 +85,16 @@ async function postOAuthRequest(url: string, body: Record<string, string>): Prom
     })
     const contentType = response.headers.get('content-type') || ''
     if (contentType.includes('text/html')) {
-      // In static deployment, unmatched API route rewrites to index.html
-      return { data: null, status: 404 }
+      throw new Error(`GitHub OAuth API route is unavailable (HTTP ${response.status}). Check the Vercel API deployment.`)
     }
     const data = await response.json().catch(() => null)
+    if (!data) {
+      throw new Error(`GitHub OAuth API returned an invalid response (HTTP ${response.status}).`)
+    }
     return { data, status: response.status }
-  } catch {
-    return { data: null, status: 0 }
+  } catch (err) {
+    if (err instanceof Error && err.name !== 'AbortError') throw err
+    throw new Error('GitHub OAuth API timed out. Check the Vercel function and try again.')
   } finally {
     window.clearTimeout(timeout)
   }
@@ -239,80 +242,40 @@ export const SAMPLE_DEV_REPOSITORIES: GitHubRepository[] = [
 export async function startGitHubDeviceFlow(): Promise<DeviceCodeResponse> {
   const clientId = CLIENT_ID || 'Ov23liOzK7Vzn4ZGcYzY'
   const scope = 'read:user user:email repo workflow'
-  const endpoints = [
-    getDeviceUrl(),
-    '/api/github-oauth/login/device/code',
-    '/api/github-oauth',
-    '/api/github-device',
-  ]
-
-  let lastError = ''
-  for (const url of endpoints) {
-    let data: any
-    try {
-      const result = await postOAuthRequest(url, { client_id: clientId, scope })
-      data = result.data
-    } catch (err: any) {
-      lastError = err?.message || 'Network error'
-      continue
-    }
-    if (data?.device_code && data?.user_code && data?.verification_uri && data?.expires_in) {
-      return data as DeviceCodeResponse
-    }
-    if (GITHUB_OAUTH_ERRORS.has(data?.error)) {
-      if (data?.error === 'device_flow_disabled') {
-        throw new Error('Device flow is not enabled on this OAuth App. Please check GitHub OAuth App settings.')
-      }
-      throw new Error(data.error_description || data.error)
-    }
-    if (data?.error_description) lastError = data.error_description
+  const { data, status } = await postOAuthRequest(getDeviceUrl(), { client_id: clientId, scope })
+  if (data?.device_code && data?.user_code && data?.verification_uri && data?.expires_in) {
+    return data as DeviceCodeResponse
   }
-
-  throw new Error(
-    lastError ||
-      'GitHub OAuth endpoint could not be reached. Please check your internet connection and try again.'
-  )
+  if (data?.error === 'device_flow_disabled') {
+    throw new Error('Device flow is not enabled for this GitHub OAuth App. Enable it in the GitHub App settings.')
+  }
+  throw new Error(data?.error_description || data?.error || `GitHub could not start authorization (HTTP ${status}).`)
 }
 
 export async function waitForGitHubToken(device: DeviceCodeResponse): Promise<string> {
   const clientId = CLIENT_ID || 'Ov23liOzK7Vzn4ZGcYzY'
   const deadline = Date.now() + device.expires_in * 1000
   let interval = Math.max(device.interval, 5) * 1000
-  const endpoints = [
-    getTokenUrl(),
-    '/api/github-oauth/login/oauth/access_token',
-    '/api/github-oauth',
-    '/api/github-token',
-  ]
-  let lastNetworkError = ''
+  let lastError = ''
 
   while (Date.now() < deadline) {
     await new Promise(resolve => window.setTimeout(resolve, interval))
-
-    for (const url of endpoints) {
-      let data: any
-      try {
-        const result = await postOAuthRequest(url, {
-          client_id: clientId,
-          device_code: device.device_code,
-          grant_type: 'urn:ietf:params:oauth:grant-type:device_code',
-        })
-        data = result.data
-      } catch (err: any) {
-        lastNetworkError = err?.message || 'Network error'
-        continue
-      }
-      if (data?.access_token) return data.access_token as string
-      if (data?.error === 'authorization_pending') break
-      if (data?.error === 'slow_down') {
-        interval += 5000
-        break
-      }
-      if (GITHUB_OAUTH_ERRORS.has(data?.error)) throw new Error(data.error_description || data.error)
-      lastNetworkError = data?.error_description || 'GitHub returned an unreadable authorization response.'
+    const { data, status } = await postOAuthRequest(getTokenUrl(), {
+      client_id: clientId,
+      device_code: device.device_code,
+      grant_type: 'urn:ietf:params:oauth:grant-type:device_code',
+    })
+    if (data?.access_token) return data.access_token as string
+    if (data?.error === 'authorization_pending') continue
+    if (data?.error === 'slow_down') {
+      interval += 5000
+      continue
     }
+    if (GITHUB_OAUTH_ERRORS.has(data?.error)) throw new Error(data.error_description || data.error)
+    lastError = data?.error_description || data?.error || `GitHub token check failed (HTTP ${status}).`
+    throw new Error(lastError)
   }
-  throw new Error(lastNetworkError || 'GitHub authorization expired. Please try again.')
+  throw new Error(lastError || 'GitHub authorization expired. Please try again.')
 }
 
 export async function getGitHubUser(token: string): Promise<GitHubUser & { scopes?: string[] }> {

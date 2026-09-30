@@ -11,7 +11,11 @@ export default async function handler(req, res) {
     res.status(200).end()
     return
   }
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'method_not_allowed', error_description: 'Use POST for GitHub OAuth.' })
+  }
 
+  let timeout
   try {
     let body = req.body
     if (!body && typeof req.on === 'function') {
@@ -32,6 +36,8 @@ export default async function handler(req, res) {
     const clientId = body?.client_id || process.env.VITE_GITHUB_CLIENT_ID || 'Ov23liOzK7Vzn4ZGcYzY'
     const scope = body?.scope || 'read:user user:email repo workflow'
 
+    const controller = new AbortController()
+    timeout = setTimeout(() => controller.abort(), 8000)
     const ghRes = await fetch('https://github.com/login/device/code', {
       method: 'POST',
       headers: {
@@ -39,11 +45,19 @@ export default async function handler(req, res) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ client_id: clientId, scope }),
+      signal: controller.signal,
     })
-
     const data = await ghRes.json().catch(() => ({}))
     return res.status(ghRes.status).json(data)
   } catch (err) {
-    return res.status(500).json({ error: err.message || 'GitHub device code error' })
+    const timedOut = err?.name === 'AbortError'
+    return res.status(timedOut ? 504 : 502).json({
+      error: timedOut ? 'github_timeout' : 'github_unavailable',
+      error_description: timedOut
+        ? 'GitHub did not respond in time. Please retry.'
+        : 'The Vercel OAuth function could not reach GitHub.',
+    })
+  } finally {
+    clearTimeout(timeout)
   }
 }

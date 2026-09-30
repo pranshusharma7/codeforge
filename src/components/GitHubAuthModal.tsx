@@ -89,8 +89,10 @@ export default function GitHubAuthModal({ isOpen, onClose, onSuccess, showToast 
       const raw = err?.message || ''
       if (raw.toLowerCase().includes('device_flow_disabled')) {
         setErrorMsg('GitHub Device Flow is not enabled for this OAuth App. Enable it in the GitHub OAuth App settings and try again.')
-      } else if (raw.toLowerCase().includes('load failed') || raw.toLowerCase().includes('failed to fetch')) {
-        setErrorMsg('Could not reach GitHub OAuth. Check your network and OAuth API configuration, then try again.')
+      } else if (raw.toLowerCase().includes('timed out')) {
+        setErrorMsg(raw)
+      } else if (raw.toLowerCase().includes('failed to fetch')) {
+        setErrorMsg('Could not reach the GitHub OAuth API. Check that the latest Vercel deployment includes the API routes, then retry.')
       } else {
         setErrorMsg(raw || 'GitHub authorization failed or timed out. Please try again.')
       }
