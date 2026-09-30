@@ -23,8 +23,14 @@ import {
 import {
   GitBranchIcon, RepoIcon, PaletteIcon, ShareIcon, DownloadIcon, SaveIcon,
   FolderIcon, FilePlusIcon, FolderPlusIcon, FileOpenIcon, FolderOpenIcon, TrashIcon, RefreshIcon, ChevronDown, GithubIcon,
-  CollapseAllIcon, TerminalIcon, XIcon,
+  CollapseAllIcon, TerminalIcon, XIcon, TrophyIcon,
 } from './components/icons'
+import { ContestHubModal } from './components/contest/ContestHubModal'
+import { ContestPage } from './components/contest/ContestPage'
+import { EventsLandingPage } from './components/events/EventsLandingPage'
+import { PreContestCheckModal } from './components/contest/PreContestCheckModal'
+import { ContestArena } from './components/contest/ContestArena'
+import type { Contest } from './lib/contestTypes'
 import { registerMonacoThemes, DEFAULT_THEME_ID, getThemeById, applyThemeToDocument, getThemeUIColors } from './lib/themes'
 import {
   getSavedCodeHistory, saveCodeSnapshot, deleteSavedCode, getSnippets, saveSnippet, deleteSnippet,
@@ -307,6 +313,16 @@ export default function App() {
   const [commandQuery, setCommandQuery]   = useState('')
   const [authUser, setAuthUserState]      = useState<AuthUser | null>(null)
   const [toast, setToast] = useState<string|null>(null)
+
+  // Contest & Assessment Proctoring state
+  const [viewMode, setViewMode] = useState<'editor' | 'contests'>('editor')
+  const [isContestHubOpen, setIsContestHubOpen] = useState(false)
+  const [selectedContestForCheck, setSelectedContestForCheck] = useState<Contest | null>(null)
+  const [activeContestArena, setActiveContestArena] = useState<{
+    contest: Contest
+    session: any
+    mediaTracks: { videoTrack: MediaStreamTrack | null; screenTrack: MediaStreamTrack | null; audioTrack: MediaStreamTrack | null }
+  } | null>(null)
 
   // Debugger states
   const [isDebugging, setIsDebugging]           = useState(false)
@@ -2496,8 +2512,70 @@ export default function App() {
         </>
       )}
 
-      {/* ── Header ────────────────────────────────────────────────────────── */}
-      <header className="app-header" style={{ height: 46, flexShrink: 0, display: 'flex', alignItems: 'center', zIndex: 40 }}>
+      {/* ── View Switcher: CodeForge Events Platform vs IDE Editor ───────────── */}
+      {viewMode === 'contests' ? (
+        <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
+          <EventsLandingPage
+            logoImg={logoImg}
+            authUser={authUser}
+            onBackToEditor={() => setViewMode('editor')}
+            onOpenAuth={() => setShowAuth(true)}
+            onLaunchArena={(event) => {
+              const convertedContest: Contest = {
+                id: event.id,
+                title: event.title,
+                slug: event.slug,
+                type: event.category === 'assessment' ? 'assessment' : 'competitive',
+                status: event.status === 'LIVE' ? 'live' : event.status === 'COMPLETED' ? 'ended' : 'upcoming',
+                description: event.description,
+                startTime: `${event.startDate}T${event.startTime}:00`,
+                endTime: `${event.endDate}T${event.endTime}:00`,
+                durationMinutes: event.durationMinutes,
+                totalPoints: event.rounds.reduce((acc, r) => acc + (r.maxScore || 100), 0),
+                registeredUsersCount: event.currentParticipantsCount,
+                proctoring: event.proctoring,
+                privacyNotice: {
+                  dataCollected: ['Webcam video snapshots', 'Screen capture stream', 'Window visibility & clipboard telemetry'],
+                  purpose: 'Contest integrity and fair competitive standing verification.',
+                  retentionPolicy: 'Stream frames processed ephemerally; security violation telemetry retained for audit.',
+                  whoHasAccess: 'Authorized contest administrators & anti-cheat audit panel only.',
+                  refusalConsequence: 'Proctored mode will not activate and submission privileges will remain locked.',
+                },
+                problems: event.rounds.flatMap((r) =>
+                  r.questions.map((q) => ({
+                    id: q.id,
+                    title: q.title,
+                    slug: q.slug,
+                    difficulty: q.difficulty,
+                    points: q.points,
+                    timeLimitMs: q.timeLimitMs,
+                    memoryLimitMb: q.memoryLimitMb,
+                    description: q.description,
+                    inputFormat: q.inputFormat,
+                    outputFormat: q.outputFormat,
+                    constraints: q.constraints,
+                    sampleTestCases: q.testCases.filter((tc) => !tc.isHidden).map((tc) => ({
+                      id: tc.id,
+                      input: tc.input,
+                      expectedOutput: tc.expectedOutput,
+                      explanation: tc.explanation,
+                    })),
+                    starterCode: q.starterCode || {
+                      python: '# Write code here\n',
+                      cpp: '// Write code here\n',
+                      javascript: '// Write code here\n',
+                    },
+                  }))
+                ),
+              };
+              setSelectedContestForCheck(convertedContest);
+            }}
+          />
+        </div>
+      ) : (
+        <>
+          {/* ── Header ────────────────────────────────────────────────────────── */}
+          <header className="app-header" style={{ height: 46, flexShrink: 0, display: 'flex', alignItems: 'center', zIndex: 40 }}>
         {/* Logo */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 16px', borderRight: '1px solid var(--border)', height: '100%', flexShrink: 0 }}>
           <img src={logoImg} alt="CodeForge" className="logo-img" />
@@ -2781,9 +2859,57 @@ export default function App() {
           </div>
         </div>
 
+        {/* Contests & Assessments Button (Placed after Download and before Search) */}
+        <button
+          onClick={() => setViewMode('contests')}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            marginLeft: 10,
+            padding: '5px 12px',
+            background: 'linear-gradient(135deg, rgba(6, 182, 212, 0.12), rgba(59, 130, 246, 0.12))',
+            border: '1px solid rgba(6, 182, 212, 0.35)',
+            borderRadius: 6,
+            color: '#38bdf8',
+            fontSize: 12,
+            fontWeight: 600,
+            cursor: 'pointer',
+            transition: 'all 0.15s ease',
+            boxShadow: '0 2px 8px rgba(6, 182, 212, 0.12)',
+            flexShrink: 0
+          }}
+          onMouseEnter={e => {
+            e.currentTarget.style.borderColor = 'rgba(6, 182, 212, 0.6)'
+            e.currentTarget.style.background = 'linear-gradient(135deg, rgba(6, 182, 212, 0.22), rgba(59, 130, 246, 0.22))'
+            e.currentTarget.style.boxShadow = '0 2px 12px rgba(6, 182, 212, 0.25)'
+          }}
+          onMouseLeave={e => {
+            e.currentTarget.style.borderColor = 'rgba(6, 182, 212, 0.35)'
+            e.currentTarget.style.background = 'linear-gradient(135deg, rgba(6, 182, 212, 0.12), rgba(59, 130, 246, 0.12))'
+            e.currentTarget.style.boxShadow = '0 2px 8px rgba(6, 182, 212, 0.12)'
+          }}
+          title="Browse Contests, Assessments, and Anti-Cheat Proctor Arena"
+        >
+          <TrophyIcon style={{ width: 14, height: 14, color: '#38bdf8' }} />
+          <span>Contests</span>
+          <span style={{
+            fontSize: 9,
+            fontWeight: 700,
+            background: 'rgba(239, 68, 68, 0.2)',
+            color: '#f87171',
+            border: '1px solid rgba(239, 68, 68, 0.4)',
+            padding: '1px 5px',
+            borderRadius: 10,
+            textTransform: 'uppercase',
+            letterSpacing: '0.04em'
+          }}>
+            Live
+          </span>
+        </button>
 
-        {/* Search Bar - nicely separated from Language */}
-        <button onClick={() => setShowCommands(true)} className="top-search" style={{ marginLeft: 16 }} aria-label="Search files, commands, or ask AI">
+        {/* Search Bar - nicely separated from Language and Contests */}
+        <button onClick={() => setShowCommands(true)} className="top-search" style={{ marginLeft: 10 }} aria-label="Search files, commands, or ask AI">
           <span style={{ color: 'var(--accent)' }}>⌕</span> Search files, commands, or ask AI...
           <kbd style={{ marginLeft: 'auto', color: 'var(--text-dim)', fontSize: 10 }}>⌘K</kbd>
         </button>
@@ -4073,6 +4199,8 @@ export default function App() {
         <div className="status-item" onClick={() => setWordWrap(p => p === 'on' ? 'off' : 'on')} style={{ opacity: 0.75 }}>Wrap: {wordWrap}</div>
         <div className="status-item" onClick={() => setShowKeys(true)} style={{ borderLeft: '1px solid rgba(255,255,255,0.15)', opacity: 0.75 }}>⌨ Shortcuts</div>
       </div>
+        </>
+      )}
 
       {/* ── Modals ──────────────────────────────────────────────────────────── */}
 
@@ -4244,6 +4372,55 @@ export default function App() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Contest & Assessment Hub Modal */}
+      <ContestHubModal
+        isOpen={isContestHubOpen}
+        onClose={() => setIsContestHubOpen(false)}
+        user={authUser ? { id: String(authUser.id || authUser.login || 'usr_gh'), name: authUser.name || authUser.login || 'Contestant', email: authUser.email } : null}
+        onSelectContestToEnter={(contest) => {
+          setSelectedContestForCheck(contest)
+          setIsContestHubOpen(false)
+        }}
+        onOpenAuth={() => {
+          setShowAuth(true)
+        }}
+      />
+
+      {/* Pre-Contest Device & Transparency Check Modal */}
+      {selectedContestForCheck && (
+        <PreContestCheckModal
+          contest={selectedContestForCheck}
+          user={authUser ? { id: String(authUser.id || authUser.login || 'usr_gh'), name: authUser.name || authUser.login || 'Contestant', email: authUser.email } : null}
+          isOpen={true}
+          onClose={() => setSelectedContestForCheck(null)}
+          onStartSession={(session, mediaTracks) => {
+            setActiveContestArena({
+              contest: selectedContestForCheck,
+              session,
+              mediaTracks,
+            })
+            setSelectedContestForCheck(null)
+          }}
+          onOpenAuth={() => {
+            setShowAuth(true)
+          }}
+        />
+      )}
+
+      {/* Secure Contest Arena Fullscreen Overlay */}
+      {activeContestArena && (
+        <ContestArena
+          contest={activeContestArena.contest}
+          session={activeContestArena.session}
+          user={authUser ? { id: String(authUser.id || authUser.login || 'usr_gh'), name: authUser.name || authUser.login || 'Contestant', email: authUser.email } : { id: 'usr_guest', name: 'Contestant' }}
+          mediaTracks={activeContestArena.mediaTracks}
+          onExitArena={() => {
+            setActiveContestArena(null)
+            setIsContestHubOpen(true)
+          }}
+        />
       )}
 
       {/* Injected AI message styles */}

@@ -148,7 +148,7 @@ function codeForgeApiServerPlugin(): Plugin {
   return {
     name: 'codeforge-api-server',
     configureServer(server) {
-      server.middlewares.use((req, res, next) => {
+      server.middlewares.use(async (req, res, next) => {
         const url = req.url || ''
 
         // CORS preflight for all /api/ endpoints
@@ -159,6 +159,22 @@ function codeForgeApiServerPlugin(): Plugin {
           res.writeHead(200)
           res.end()
           return
+        }
+
+        // Contest API endpoints
+        if (url.startsWith('/api/contest/')) {
+          try {
+            // Dynamically require or import handler
+            const { handleContestApi } = await import('./api/contest/handler.js')
+            if (handleContestApi(req, res)) {
+              return
+            }
+          } catch (err: any) {
+            console.error('Contest API error:', err)
+            res.writeHead(500, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ error: err.message || 'Contest API handler failed' }))
+            return
+          }
         }
 
         // 1. GitHub Device Flow: /api/github-device or /api/github-oauth/login/device/code
