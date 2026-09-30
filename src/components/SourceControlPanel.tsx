@@ -102,7 +102,6 @@ export default function SourceControlPanel({
 
   // File tree browsing state
   const [showFileTree, setShowFileTree] = useState(false)
-  const [showFullModalBrowser, setShowFullModalBrowser] = useState(false)
   const [treeLoading, setTreeLoading] = useState(false)
   const [treeItems, setTreeItems] = useState<RepoTreeItem[]>([])
   const [treeFilter, setTreeFilter] = useState('')
@@ -489,25 +488,6 @@ export default function SourceControlPanel({
               >
                 <FolderIcon size={11} />
                 {showFileTree ? 'Hide Files' : 'Browse Files'}
-              </button>
-
-              <button
-                onClick={() => setShowFullModalBrowser(true)}
-                title="Open repository in full GitHub Explorer modal"
-                style={{
-                  background: 'transparent',
-                  border: '1px solid #30363d',
-                  borderRadius: 4,
-                  color: '#7d8590',
-                  fontSize: 10,
-                  padding: '3px 6px',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 3,
-                }}
-              >
-                <span>↗ Full View</span>
               </button>
             </div>
           </div>
@@ -989,55 +969,6 @@ export default function SourceControlPanel({
             )}
           </div>
         </>
-      )}
-
-      {/* ── Fullscreen GitHub Repository Browser Modal ──────────────── */}
-      {showFullModalBrowser && activeRepo && authUser && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(0, 0, 0, 0.78)',
-            backdropFilter: 'blur(6px)',
-            display: 'grid',
-            placeItems: 'center',
-            zIndex: 999999,
-            padding: 20,
-          }}
-          onClick={() => setShowFullModalBrowser(false)}
-        >
-          <div
-            style={{
-              width: '100%',
-              maxWidth: 960,
-              height: '84vh',
-              boxShadow: '0 24px 60px rgba(0, 0, 0, 0.85)',
-              borderRadius: 8,
-              overflow: 'hidden',
-            }}
-            onClick={e => e.stopPropagation()}
-          >
-            <GitHubRepoBrowser
-              accessToken={authUser.accessToken}
-              repository={activeRepo}
-              currentBranch={targetBranch || activeRepo.default_branch || 'main'}
-              isModal={true}
-              onClose={() => setShowFullModalBrowser(false)}
-              onOpenFile={fileData => {
-                onOpenFileFromRepo(activeRepo, fileData.path, fileData.content, fileData.sha, fileData.branch)
-                setShowFullModalBrowser(false)
-              }}
-              onImportMultipleFiles={
-                onImportMultipleFiles
-                  ? files => {
-                      onImportMultipleFiles(activeRepo, files)
-                      setShowFullModalBrowser(false)
-                    }
-                  : undefined
-              }
-            />
-          </div>
-        </div>
       )}
     </div>
   )

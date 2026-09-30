@@ -20,7 +20,16 @@ export default async function handler(req, res) {
 
   try {
     let body = req.body
-    if (typeof body === 'string') {
+    if (!body && typeof req.on === 'function') {
+      body = await new Promise(resolve => {
+        let raw = ''
+        req.on('data', chunk => { raw += chunk })
+        req.on('end', () => {
+          try { resolve(JSON.parse(raw)) } catch { resolve({}) }
+        })
+        req.on('error', () => resolve({}))
+      })
+    } else if (typeof body === 'string') {
       try {
         body = JSON.parse(body)
       } catch {}

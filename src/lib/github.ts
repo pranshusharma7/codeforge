@@ -262,7 +262,7 @@ export async function startGitHubDeviceFlow(): Promise<DeviceCodeResponse> {
     }
     if (GITHUB_OAUTH_ERRORS.has(data?.error)) {
       if (data?.error === 'device_flow_disabled') {
-        throw new Error('Device flow is not enabled on this OAuth App. Please use the "Personal Access Token" tab to connect instantly!')
+        throw new Error('Device flow is not enabled on this OAuth App. Please check GitHub OAuth App settings.')
       }
       throw new Error(data.error_description || data.error)
     }
@@ -271,7 +271,7 @@ export async function startGitHubDeviceFlow(): Promise<DeviceCodeResponse> {
 
   throw new Error(
     lastError ||
-      'GitHub OAuth endpoint could not be reached via browser. Please use the "Personal Access Token" tab to connect directly with 100% reliability.'
+      'GitHub OAuth endpoint could not be reached. Please check your internet connection and try again.'
   )
 }
 
