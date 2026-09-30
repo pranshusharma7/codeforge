@@ -4,8 +4,12 @@ import { LANGUAGES, getLangById } from './lib/languages'
 import { executeCode, statusLabel } from './lib/judge0'
 import { generateAIResponse, type AIMessage, type AIAction } from './lib/aiResponses'
 import { aiProviderLabel, isLiveAI } from './engine/ai'
-import { createGitHubRepository, getGitHubRepositories, getGitHubUser, type GitHubRepository, SAMPLE_DEV_REPOSITORIES } from './lib/github'
+import { createGitHubRepository, getGitHubRepositories, getGitHubUser, type GitHubRepository, SAMPLE_DEV_REPOSITORIES, getFileCommits, type GitHubCommitSummary } from './lib/github'
 import SourceControlPanel, { type TabWithRepo } from './components/SourceControlPanel'
+import VisualDiffViewer from './components/VisualDiffViewer'
+import GitCloneModal from './components/GitCloneModal'
+import GitPullRequestModal from './components/GitPullRequestModal'
+import GitBlameBar from './components/GitBlameBar'
 import SettingsModal from './components/SettingsModal'
 import GitHubAuthModal from './components/GitHubAuthModal'
 import UpgradeProModal from './components/UpgradeProModal'
@@ -225,6 +229,21 @@ def solve():
 if __name__ == "__main__":
     solve()
 `,
+  originalCode: `# Welcome to CodeForge — Online Code Compiler & IDE!
+# Multi-language compiler, Monaco editor, LeetCode runner & AI copilot.
+
+def solve():
+    message = "Hello, World from CodeForge!"
+    print(f"🚀 {message}")
+    
+    numbers = [3, 1, 4, 1, 5, 9, 2, 6, 5]
+    print(f"Sorted numbers: {sorted(numbers)}")
+    print("Execution is ready: Python, C++, Java, JS, Rust & more.")
+
+if __name__ == "__main__":
+    solve()
+`,
+  modified: false,
 }
 
 // ── App ────────────────────────────────────────────────────────────────────
@@ -313,6 +332,32 @@ export default function App() {
   const [commandQuery, setCommandQuery]   = useState('')
   const [authUser, setAuthUserState]      = useState<AuthUser | null>(null)
   const [toast, setToast] = useState<string|null>(null)
+
+  // Source Control, Diff Viewer, PR & Git Blame states
+  const [diffView, setDiffView] = useState<{ original: string; modified: string; filename: string } | null>(null)
+  const [showGitCloneModal, setShowGitCloneModal] = useState(false)
+  const [showGitPrModal, setShowGitPrModal] = useState(false)
+  const [gitPrBranches, setGitPrBranches] = useState<string[]>(['main'])
+  const [gitPrCurrentBranch, setGitPrCurrentBranch] = useState<string>('main')
+  const [showGitBlame, setShowGitBlame] = useState(false)
+  const [cursorLine, setCursorLine] = useState(1)
+  const [latestFileCommit, setLatestFileCommit] = useState<GitHubCommitSummary | null>(null)
+
+  // Track latest commit for active file for Git Blame
+  useEffect(() => {
+    if (!authUser?.accessToken || !activeRepo || !curTab.repoPath) {
+      setLatestFileCommit(null)
+      return
+    }
+    const owner = activeRepo.owner?.login || authUser.login || authUser.name
+    getFileCommits(authUser.accessToken, owner, activeRepo.name, curTab.repoPath, curTab.repoBranch || 'main', 1)
+      .then(commits => {
+        setLatestFileCommit(commits[0] || null)
+      })
+      .catch(() => {
+        setLatestFileCommit(null)
+      })
+  }, [curTab.repoPath, curTab.repoName, curTab.repoBranch, activeRepo?.id, authUser?.accessToken])
 
   // Contest & Assessment Proctoring state
   const [viewMode, setViewMode] = useState<'editor' | 'contests'>('editor')
@@ -851,7 +896,8 @@ export default function App() {
       setTabs(p => {
         const target = p.find(t => t.id === activeTab)
         if (target && target.code !== currentCode) {
-          return p.map(t => t.id === activeTab ? { ...t, code: currentCode, modified: true } : t)
+          const isMod = target.originalCode !== undefined ? currentCode !== target.originalCode : true
+          return p.map(t => t.id === activeTab ? { ...t, code: currentCode, modified: isMod } : t)
         }
         return p
       })
@@ -872,7 +918,8 @@ export default function App() {
       setTabs(p => {
         const target = p.find(t => t.id === activeTab)
         if (target && target.code !== code) {
-          return p.map(t => t.id === activeTab ? { ...t, code, modified: true } : t)
+          const isMod = target.originalCode !== undefined ? code !== target.originalCode : true
+          return p.map(t => t.id === activeTab ? { ...t, code, modified: isMod } : t)
         }
         return p
       })
@@ -1430,6 +1477,7 @@ export default function App() {
       name: filename,
       lang: detected.id,
       code: content,
+      originalCode: content,
       modified: false,
       repoOwner: repo.owner?.login || authUser?.login || authUser?.name,
       repoName: repo.name,
@@ -1465,6 +1513,7 @@ export default function App() {
         name: f.path,
         lang: detected.id,
         code: f.content,
+        originalCode: f.content,
         modified: false,
         repoOwner: repo.owner?.login || authUser?.login || authUser?.name,
         repoName: repo.name,
@@ -1483,7 +1532,7 @@ export default function App() {
 
   const handleCommitSuccess = (tabId: string, newSha: string, commitUrl: string, commitSha: string) => {
     setTabs(prev =>
-      prev.map(tab => (tab.id === tabId ? { ...tab, modified: false, repoSha: newSha } : tab))
+      prev.map(tab => (tab.id === tabId ? { ...tab, modified: false, repoSha: newSha, originalCode: tab.code } : tab))
     )
   }
 
@@ -1794,6 +1843,7 @@ export default function App() {
   const handleEditorMount = (ed: any, monacoInstance: any) => {
     editorRef.current = ed
     ed.onDidChangeCursorPosition((e: any) => {
+      setCursorLine(e.position.lineNumber)
       const text = `Ln ${e.position.lineNumber}, Col ${e.position.column}`
       const el1 = document.getElementById('editor-cursor-pos-header')
       if (el1) el1.textContent = text
@@ -2701,6 +2751,35 @@ export default function App() {
                     <span>Open Project / Folder...</span>
                   </div>
                 </button>
+
+                <div style={{ height: 1, background: 'var(--border)', margin: '4px 0' }} />
+
+                <button
+                  onClick={() => {
+                    setOpenMenuOpen(false)
+                    setShowGitCloneModal(true)
+                  }}
+                  style={{
+                    width: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '8px 12px',
+                    background: 'none',
+                    border: 'none',
+                    color: 'var(--text-base)',
+                    fontSize: 12,
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                  }}
+                  onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-hover)')}
+                  onMouseLeave={e => (e.currentTarget.style.background = 'none')}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <GithubIcon size={14} style={{ color: 'var(--accent)' }} />
+                    <span>Clone / Import from GitHub...</span>
+                  </div>
+                </button>
               </div>
             )}
           </div>
@@ -3414,6 +3493,13 @@ export default function App() {
                   onCommitSuccess={handleCommitSuccess}
                   onConnectGitHub={() => setShowAuth(true)}
                   onRefreshRepos={refreshRepositories}
+                  onOpenVisualDiff={(orig, mod, fname) => setDiffView({ original: orig, modified: mod, filename: fname })}
+                  onOpenCloneModal={() => setShowGitCloneModal(true)}
+                  onOpenPrModal={(curBranch, branchList) => {
+                    setGitPrCurrentBranch(curBranch)
+                    setGitPrBranches(branchList)
+                    setShowGitPrModal(true)
+                  }}
                   showToast={showToast}
                 />
               )}
@@ -3823,6 +3909,15 @@ export default function App() {
                   ))}
                 </div>
               </div>
+            ) : diffView ? (
+              <VisualDiffViewer
+                original={diffView.original}
+                modified={diffView.modified}
+                filename={diffView.filename}
+                language={curLang.monacoId}
+                theme={activeMonacoTheme}
+                onClose={() => setDiffView(null)}
+              />
             ) : (
               <>
                 <FloatingDebugBar
@@ -3841,6 +3936,16 @@ export default function App() {
                   playSpeed={playSpeed}
                   onChangePlaySpeed={setPlaySpeed}
                 />
+
+                {showGitBlame && (
+                  <GitBlameBar
+                    latestCommit={latestFileCommit}
+                    activeFileName={curTab.name}
+                    cursorLine={cursorLine}
+                    isModified={curTab.modified || (curTab.originalCode !== undefined && curTab.code !== curTab.originalCode)}
+                    onToggleBlame={() => setShowGitBlame(false)}
+                  />
+                )}
 
                 <MonacoEditor
                   height="100%"
@@ -4123,11 +4228,30 @@ export default function App() {
           <div
             className="status-item"
             onClick={() => { setPanel('source-control'); setSideOpen(true) }}
-            style={{ borderRight: '1px solid rgba(255,255,255,0.15)', cursor: 'pointer' }}
+            title="Active Repository & Branch (Click to open Source Control)"
+            style={{ borderRight: '1px solid rgba(255,255,255,0.15)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}
           >
-            <GitBranchIcon size={12} /> {activeRepo.name}
+            <GitBranchIcon size={12} />
+            <span>{activeRepo.name}</span>
+            <span style={{ opacity: 0.5 }}>:</span>
+            <span style={{ color: '#38bdf8' }}>{curTab.repoBranch || 'main'}</span>
           </div>
         )}
+        <div
+          className="status-item"
+          onClick={() => setShowGitBlame(p => !p)}
+          title="Toggle Git Blame line annotation"
+          style={{
+            borderRight: '1px solid rgba(255,255,255,0.15)',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 4,
+            color: showGitBlame ? '#38bdf8' : 'inherit',
+          }}
+        >
+          <span>⑂ Git Blame {showGitBlame ? 'On' : 'Off'}</span>
+        </div>
         {/* Toggle Output & Terminal button right next to Github.md / activeRepo */}
         <div
           className="status-item"
@@ -4391,6 +4515,26 @@ export default function App() {
           }}
         />
       )}
+
+      {/* Git Clone / Import Modal */}
+      <GitCloneModal
+        isOpen={showGitCloneModal}
+        token={authUser?.accessToken}
+        onClose={() => setShowGitCloneModal(false)}
+        onImportFiles={handleImportMultipleFilesFromRepo}
+        showToast={showToast}
+      />
+
+      {/* Git Pull Request Modal */}
+      <GitPullRequestModal
+        isOpen={showGitPrModal}
+        token={authUser?.accessToken || ''}
+        activeRepo={activeRepo}
+        currentBranch={gitPrCurrentBranch}
+        availableBranches={gitPrBranches}
+        onClose={() => setShowGitPrModal(false)}
+        showToast={showToast}
+      />
 
       {/* Injected AI message styles */}
       <style>{`

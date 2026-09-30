@@ -613,3 +613,155 @@ export async function commitMultipleRepoFiles(
 
   return result
 }
+
+export async function createRepoBranch(
+  token: string,
+  owner: string,
+  repo: string,
+  newBranchName: string,
+  fromBranch = 'main'
+): Promise<string> {
+  const cleanBranch = newBranchName.trim().replace(/^refs\/heads\//, '')
+  if (!cleanBranch) throw new Error('Branch name cannot be empty.')
+
+  // 1. Get SHA of the base branch
+  const refRes = await fetch(
+    `${API_URL}/repos/${owner}/${repo}/git/ref/heads/${encodeURIComponent(fromBranch)}`,
+    { headers: githubHeaders(token) }
+  )
+  if (!refRes.ok) {
+    throw new Error(`Base branch "${fromBranch}" not found on repository.`)
+  }
+  const refData = await refRes.json()
+  const baseSha = refData.object?.sha
+  if (!baseSha) throw new Error(`Could not find latest commit SHA for "${fromBranch}".`)
+
+  // 2. Create new branch ref
+  const createRes = await fetch(`${API_URL}/repos/${owner}/${repo}/git/refs`, {
+    method: 'POST',
+    headers: { ...githubHeaders(token), 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      ref: `refs/heads/${cleanBranch}`,
+      sha: baseSha,
+    }),
+  })
+
+  if (!createRes.ok) {
+    const errData = await createRes.json().catch(() => ({}))
+    throw new Error(errData.message || `Failed to create branch "${cleanBranch}".`)
+  }
+
+  return cleanBranch
+}
+
+export async function createPullRequest(
+  token: string,
+  owner: string,
+  repo: string,
+  title: string,
+  body: string,
+  headBranch: string,
+  baseBranch = 'main'
+): Promise<{ url: string; number: number; title: string }> {
+  if (!title.trim()) throw new Error('Pull Request title is required.')
+  if (headBranch === baseBranch) {
+    throw new Error(`Head branch and base branch cannot be the same ("${headBranch}").`)
+  }
+
+  const response = await fetch(`${API_URL}/repos/${owner}/${repo}/pulls`, {
+    method: 'POST',
+    headers: { ...githubHeaders(token), 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      title: title.trim(),
+      body: body.trim(),
+      head: headBranch,
+      base: baseBranch,
+    }),
+  })
+
+  const data = await response.json().catch(() => ({}))
+  if (!response.ok) {
+    let errorMsg = data.message || 'Failed to create Pull Request.'
+    if (data.errors && Array.isArray(data.errors)) {
+      const detail = data.errors.map((e: any) => e.message).filter(Boolean).join(', ')
+      if (detail) errorMsg = `${errorMsg}: ${detail}`
+    }
+    throw new Error(errorMsg)
+  }
+
+  return {
+    url: data.html_url || `https://github.com/${owner}/${repo}/pulls`,
+    number: data.number || 1,
+    title: data.title || title,
+  }
+}
+
+export function parseGitHubRepoUrl(input: string): { owner: string; repo: string } | null {
+  const clean = input.trim().replace(/\.git$/, '')
+  // Match https://github.com/owner/repo or github.com/owner/repo
+  const urlMatch = clean.match(/(?:https?:\/\/)?(?:www\.)?github\.com\/([a-zA-Z0-9_.-]+)\/([a-zA-Z0-9_.-]+)/)
+  if (urlMatch) {
+    return { owner: urlMatch[1], repo: urlMatch[2] }
+  }
+  // Match owner/repo
+  const slugMatch = clean.match(/^([a-zA-Z0-9_.-]+)\/([a-zA-Z0-9_.-]+)$/)
+  if (slugMatch) {
+    return { owner: slugMatch[1], repo: slugMatch[2] }
+  }
+  return null
+}
+
+export async function fetchPublicRepo(
+  repoUrlOrSlug: string,
+  token?: string
+): Promise<{ repo: GitHubRepository; tree: RepoTreeItem[] }> {
+  const parsed = parseGitHubRepoUrl(repoUrlOrSlug)
+  if (!parsed) {
+    throw new Error('Please enter a valid GitHub URL (e.g. https://github.com/facebook/react or owner/repo)')
+  }
+
+  const headers: Record<string, string> = { Accept: 'application/vnd.github.v3+json' }
+  if (token) headers['Authorization'] = `Bearer ${token}`
+
+  // 1. Fetch repo details
+  const repoRes = await fetch(`${API_URL}/repos/${parsed.owner}/${parsed.repo}`, { headers })
+  if (!repoRes.ok) {
+    if (repoRes.status === 404) throw new Error(`Repository "${parsed.owner}/${parsed.repo}" not found or private.`)
+    throw new Error(`GitHub error: ${repoRes.statusText}`)
+  }
+  const repoData: GitHubRepository = await repoRes.json()
+
+  // 2. Fetch repo tree
+  const defaultBranch = repoData.default_branch || 'main'
+  const tree = await getRepoTree(token || '', parsed.owner, parsed.repo, defaultBranch)
+
+  return { repo: repoData, tree }
+}
+
+export async function getFileCommits(
+  token: string,
+  owner: string,
+  repo: string,
+  path: string,
+  branch?: string,
+  limit = 5
+): Promise<GitHubCommitSummary[]> {
+  const cleanPath = path.startsWith('/') ? path.slice(1) : path
+  const url = `${API_URL}/repos/${owner}/${repo}/commits?path=${encodeURIComponent(cleanPath)}&per_page=${limit}${branch ? `&sha=${encodeURIComponent(branch)}` : ''}`
+  try {
+    const response = await fetch(url, { headers: githubHeaders(token) })
+    if (!response.ok) return []
+    const data = await response.json()
+    return data.map((item: any) => ({
+      sha: (item.sha || '').slice(0, 7),
+      fullSha: item.sha,
+      message: item.commit?.message || 'Commit',
+      authorName: item.commit?.author?.name || item.author?.login || 'Committer',
+      authorAvatar: item.author?.avatar_url,
+      date: item.commit?.author?.date || '',
+      html_url: item.html_url,
+    }))
+  } catch {
+    return []
+  }
+}
