@@ -60,7 +60,7 @@ export interface DeviceCodeResponse {
   interval: number
 }
 
-const CLIENT_ID = import.meta.env.VITE_GITHUB_CLIENT_ID as string | undefined
+const CLIENT_ID = (import.meta.env.VITE_GITHUB_CLIENT_ID as string | undefined)?.trim()
 const API_URL = 'https://api.github.com'
 const GITHUB_OAUTH_ERRORS = new Set([
   'authorization_pending',
@@ -232,7 +232,7 @@ export const SAMPLE_DEV_REPOSITORIES: GitHubRepository[] = [
 ]
 
 export async function startGitHubDeviceFlow(): Promise<DeviceCodeResponse> {
-  const clientId = CLIENT_ID || 'Ov23liOzK7Vzn4ZGcYzY'
+  const clientId = (CLIENT_ID || 'Ov23liOzK7Vzn4ZGcYzY').trim()
   const scope = 'read:user user:email repo workflow'
   const endpoints = [
     '/api/github-device',
@@ -265,7 +265,7 @@ export async function startGitHubDeviceFlow(): Promise<DeviceCodeResponse> {
 }
 
 export async function waitForGitHubToken(device: DeviceCodeResponse): Promise<string> {
-  const clientId = CLIENT_ID || 'Ov23liOzK7Vzn4ZGcYzY'
+  const clientId = (CLIENT_ID || 'Ov23liOzK7Vzn4ZGcYzY').trim()
   const deadline = Date.now() + device.expires_in * 1000
   let interval = Math.max(device.interval, 5) * 1000
   const endpoints = [
