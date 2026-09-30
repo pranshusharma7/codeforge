@@ -37,7 +37,7 @@ export default async function handler(req, res) {
     const scope = body?.scope || 'read:user user:email repo workflow'
 
     const controller = new AbortController()
-    timeout = setTimeout(() => controller.abort(), 8000)
+    timeout = setTimeout(() => controller.abort(), 25000)
     const ghRes = await fetch('https://github.com/login/device/code', {
       method: 'POST',
       headers: {

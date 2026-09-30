@@ -75,7 +75,7 @@ const GITHUB_OAUTH_ERRORS = new Set([
 
 async function postOAuthRequest(url: string, body: Record<string, string>): Promise<{ data: any; status: number }> {
   const controller = new AbortController()
-  const timeout = window.setTimeout(() => controller.abort(), 15000)
+  const timeout = window.setTimeout(() => controller.abort(), 30000)
   try {
     const response = await fetch(url, {
       method: 'POST',

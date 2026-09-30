@@ -41,7 +41,7 @@ export default async function handler(req, res) {
     }
 
     const controller = new AbortController()
-    timeout = setTimeout(() => controller.abort(), 8000)
+    timeout = setTimeout(() => controller.abort(), 25000)
     const ghRes = await fetch('https://github.com/login/oauth/access_token', {
       method: 'POST',
       headers: {
