@@ -75,7 +75,7 @@ const GITHUB_OAUTH_ERRORS = new Set([
 
 async function postOAuthRequest(url: string, body: Record<string, string>): Promise<{ data: any; status: number }> {
   const controller = new AbortController()
-  const timeout = window.setTimeout(() => controller.abort(), 12000)
+  const timeout = window.setTimeout(() => controller.abort(), 7000)
   try {
     const response = await fetch(url, {
       method: 'POST',
@@ -242,9 +242,8 @@ export async function startGitHubDeviceFlow(): Promise<DeviceCodeResponse> {
   const endpoints = [
     getDeviceUrl(),
     '/api/github-oauth/login/device/code',
-    'https://corsproxy.io/?' + encodeURIComponent('https://github.com/login/device/code'),
-    'https://api.allorigins.win/raw?url=' + encodeURIComponent('https://github.com/login/device/code'),
-    'https://github.com/login/device/code',
+    '/api/github-oauth',
+    '/api/github-device',
   ]
 
   let lastError = ''
@@ -282,9 +281,8 @@ export async function waitForGitHubToken(device: DeviceCodeResponse): Promise<st
   const endpoints = [
     getTokenUrl(),
     '/api/github-oauth/login/oauth/access_token',
-    'https://corsproxy.io/?' + encodeURIComponent('https://github.com/login/oauth/access_token'),
-    'https://api.allorigins.win/raw?url=' + encodeURIComponent('https://github.com/login/oauth/access_token'),
-    'https://github.com/login/oauth/access_token',
+    '/api/github-oauth',
+    '/api/github-token',
   ]
   let lastNetworkError = ''
 

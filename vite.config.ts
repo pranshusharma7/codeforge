@@ -145,11 +145,8 @@ function codeForgeLiveServerPlugin(): Plugin {
  * to eliminate browser CORS restrictions in local development.
  */
 function codeForgeApiServerPlugin(): Plugin {
-  return {
-    name: 'codeforge-api-server',
-    configureServer(server) {
-      server.middlewares.use(async (req, res, next) => {
-        const url = req.url || ''
+  const apiMiddleware = async (req: any, res: any, next: any) => {
+    const url = req.url || ''
 
         // CORS preflight for all /api/ endpoints
         if (url.startsWith('/api/') && req.method === 'OPTIONS') {
@@ -177,13 +174,13 @@ function codeForgeApiServerPlugin(): Plugin {
           }
         }
 
-        // 1. GitHub Device Flow: /api/github-device or /api/github-oauth/login/device/code
+        // GitHub OAuth Handler: Device Flow & Token Exchange (covers /api/github-device, /api/github-token, /api/github-oauth, /device/code, /access_token)
         if (
           req.method === 'POST' &&
-          (url.startsWith('/api/github-device') || url.includes('/device/code'))
+          (url.startsWith('/api/github-') || url.includes('/device/code') || url.includes('/access_token'))
         ) {
           let body = ''
-          req.on('data', chunk => {
+          req.on('data', (chunk: any) => {
             body += chunk
           })
           req.on('end', async () => {
@@ -193,61 +190,36 @@ function codeForgeApiServerPlugin(): Plugin {
                 parsed = JSON.parse(body)
               } catch {}
               const clientId = parsed?.client_id || process.env.VITE_GITHUB_CLIENT_ID || 'Ov23liOzK7Vzn4ZGcYzY'
-              const scope = parsed?.scope || 'read:user user:email repo workflow'
-              const ghRes = await fetch('https://github.com/login/device/code', {
-                method: 'POST',
-                headers: {
-                  Accept: 'application/json',
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ client_id: clientId, scope }),
-              })
-              const data = await ghRes.json().catch(() => ({}))
-              res.writeHead(ghRes.status, {
-                'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': '*',
-              })
-              res.end(JSON.stringify(data))
-            } catch (err: any) {
-              res.writeHead(500, {
-                'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': '*',
-              })
-              res.end(JSON.stringify({ error: err.message || 'Internal device error' }))
-            }
-          })
-          return
-        }
 
-        // 2. GitHub Token Exchange: /api/github-token or /api/github-oauth/login/oauth/access_token
-        if (
-          req.method === 'POST' &&
-          (url.startsWith('/api/github-token') || url.includes('/access_token'))
-        ) {
-          let body = ''
-          req.on('data', chunk => {
-            body += chunk
-          })
-          req.on('end', async () => {
-            try {
-              let parsed: any = {}
-              try {
-                parsed = JSON.parse(body)
-              } catch {}
-              const clientId = parsed?.client_id || process.env.VITE_GITHUB_CLIENT_ID || 'Ov23liOzK7Vzn4ZGcYzY'
-              const deviceCode = parsed?.device_code
-              const grantType = parsed?.grant_type || 'urn:ietf:params:oauth:grant-type:device_code'
-              const ghRes = await fetch('https://github.com/login/oauth/access_token', {
+              const isTokenExchange = Boolean(
+                parsed?.device_code ||
+                parsed?.grant_type ||
+                url.includes('access_token') ||
+                url.includes('github-token')
+              )
+
+              const targetUrl = isTokenExchange
+                ? 'https://github.com/login/oauth/access_token'
+                : 'https://github.com/login/device/code'
+
+              const payload = isTokenExchange
+                ? {
+                    client_id: clientId,
+                    device_code: parsed?.device_code,
+                    grant_type: parsed?.grant_type || 'urn:ietf:params:oauth:grant-type:device_code',
+                  }
+                : {
+                    client_id: clientId,
+                    scope: parsed?.scope || 'read:user user:email repo workflow',
+                  }
+
+              const ghRes = await fetch(targetUrl, {
                 method: 'POST',
                 headers: {
                   Accept: 'application/json',
                   'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({
-                  client_id: clientId,
-                  device_code: deviceCode,
-                  grant_type: grantType,
-                }),
+                body: JSON.stringify(payload),
               })
               const data = await ghRes.json().catch(() => ({}))
               res.writeHead(ghRes.status, {
@@ -260,7 +232,7 @@ function codeForgeApiServerPlugin(): Plugin {
                 'Content-Type': 'application/json',
                 'Access-Control-Allow-Origin': '*',
               })
-              res.end(JSON.stringify({ error: err.message || 'Internal token error' }))
+              res.end(JSON.stringify({ error: err.message || 'GitHub OAuth proxy error' }))
             }
           })
           return
@@ -269,7 +241,7 @@ function codeForgeApiServerPlugin(): Plugin {
         // 3. Google Gemini AI Proxy: /api/ai/gemini
         if (req.method === 'POST' && url.startsWith('/api/ai/gemini')) {
           let body = ''
-          req.on('data', chunk => {
+          req.on('data', (chunk: any) => {
             body += chunk
           })
           req.on('end', async () => {
@@ -374,8 +346,16 @@ function codeForgeApiServerPlugin(): Plugin {
           return
         }
 
-        next()
-      })
+    next()
+  }
+
+  return {
+    name: 'codeforge-api-server',
+    configureServer(server) {
+      server.middlewares.use(apiMiddleware)
+    },
+    configurePreviewServer(server) {
+      server.middlewares.use(apiMiddleware)
     },
   }
 }

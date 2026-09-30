@@ -4,7 +4,7 @@ import { LANGUAGES, getLangById } from './lib/languages'
 import { executeCode, statusLabel } from './lib/judge0'
 import { generateAIResponse, type AIMessage, type AIAction } from './lib/aiResponses'
 import { aiProviderLabel, isLiveAI } from './engine/ai'
-import { createGitHubRepository, getGitHubRepositories, getGitHubUser, type GitHubRepository } from './lib/github'
+import { createGitHubRepository, getGitHubRepositories, getGitHubUser, type GitHubRepository, SAMPLE_DEV_REPOSITORIES } from './lib/github'
 import SourceControlPanel, { type TabWithRepo } from './components/SourceControlPanel'
 import SettingsModal from './components/SettingsModal'
 import GitHubAuthModal from './components/GitHubAuthModal'
@@ -492,6 +492,9 @@ export default function App() {
           if (repos.length > 0) setActiveRepo(repos[0])
         })
         .catch(() => {})
+    } else if (savedUser?.provider === 'guest' || (!savedUser?.accessToken && savedUser)) {
+      setRepositories(SAMPLE_DEV_REPOSITORIES)
+      setActiveRepo(SAMPLE_DEV_REPOSITORIES[0])
     }
     const shared = decodeShare()
     if (shared) {
