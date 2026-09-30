@@ -201,13 +201,33 @@ function checkUserIsPro(userId: string): boolean {
   }
 }
 
+const DEFAULT_STARTER_TAB: Tab = {
+  id: 'starter-main-py',
+  name: 'main.py',
+  lang: 'python',
+  code: `# Welcome to CodeForge — Online Code Compiler & IDE!
+# Multi-language compiler, Monaco editor, LeetCode runner & AI copilot.
+
+def solve():
+    message = "Hello, World from CodeForge!"
+    print(f"🚀 {message}")
+    
+    numbers = [3, 1, 4, 1, 5, 9, 2, 6, 5]
+    print(f"Sorted numbers: {sorted(numbers)}")
+    print("Execution is ready: Python, C++, Java, JS, Rust & more.")
+
+if __name__ == "__main__":
+    solve()
+`,
+}
+
 // ── App ────────────────────────────────────────────────────────────────────
 export default function App() {
   const monaco = useMonaco()
 
   // editor
-  const [tabs, setTabs]         = useState<Tab[]>([])
-  const [activeTab, setActiveTab] = useState('')
+  const [tabs, setTabs]         = useState<Tab[]>([DEFAULT_STARTER_TAB])
+  const [activeTab, setActiveTab] = useState('starter-main-py')
   const [fontSize, setFontSize]   = useState(14)
   const [wordWrap, setWordWrap]   = useState<'on'|'off'>('off')
   const [showMini, setShowMini]   = useState(false)

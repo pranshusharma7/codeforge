@@ -152,11 +152,10 @@ export default function AIAppPanel({
       // Fall through to direct Google Gemini 3.8 Flash
     }
 
-    // 2. Direct call to Google Gemini 3.8 Flash
+    // 2. Direct call to Google Gemini with automatic fallback on demand spikes
     const key = geminiApiKey.trim() || (import.meta.env.VITE_AI_KEY as string) || ''
     if (!key) throw new Error('No Gemini key')
 
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${encodeURIComponent(key)}`
     const userPrompt = code.trim()
       ? `Active File (${lang || 'code'}):\n\`\`\`${lang || 'text'}\n${code}\n\`\`\`\n\nPrompt: ${prompt}`
       : prompt
@@ -176,24 +175,37 @@ export default function AIAppPanel({
       }
     ]
 
-    const resp = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents,
-        generationConfig: { temperature: 0.2, maxOutputTokens: 3000 }
-      })
-    })
+    const candidateModels = ['gemini-3.8-flash', 'gemini-2.5-flash', 'gemini-2.5-pro']
+    let lastErr = ''
 
-    if (!resp.ok) {
-      const data = await resp.json().catch(() => ({}))
-      throw new Error(data.error?.message || `Gemini API HTTP ${resp.status}`)
+    for (const m of candidateModels) {
+      try {
+        const resp = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${encodeURIComponent(key)}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents,
+              generationConfig: { temperature: 0.2, maxOutputTokens: 3000 }
+            })
+          }
+        )
+
+        if (resp.ok) {
+          const json = await resp.json()
+          const text = json.candidates?.[0]?.content?.parts?.map((p: any) => p.text || '').join('') || ''
+          if (text.trim()) return text
+        } else {
+          const data = await resp.json().catch(() => ({}))
+          lastErr = data.error?.message || `Gemini API HTTP ${resp.status}`
+        }
+      } catch (err: any) {
+        lastErr = err.message
+      }
     }
 
-    const json = await resp.json()
-    const text = json.candidates?.[0]?.content?.parts?.map((p: any) => p.text || '').join('') || ''
-    if (!text.trim()) throw new Error('Empty response from Gemini')
-    return text
+    throw new Error(lastErr || 'Empty response from Gemini')
   }
 
   // Send message handler

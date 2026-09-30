@@ -71,8 +71,10 @@ export default function GitHubAuthModal({ isOpen, onClose, onSuccess, showToast 
       const device = await startGitHubDeviceFlow()
       setDeviceData(device)
 
-      // Open verification page automatically in a new window/tab
-      window.open(device.verification_uri, '_blank', 'noopener,noreferrer')
+      // Try opening verification page; if popup blocker blocks it, user can click the button
+      try {
+        window.open(device.verification_uri, '_blank', 'noopener,noreferrer')
+      } catch {}
 
       // Wait for user to authorize code on GitHub
       const accessToken = await waitForGitHubToken(device)
@@ -95,7 +97,12 @@ export default function GitHubAuthModal({ isOpen, onClose, onSuccess, showToast 
       onSuccess(authUser, repos)
       onClose()
     } catch (err: any) {
-      setErrorMsg(err.message || 'GitHub authorization failed or timed out.')
+      const raw = err?.message || ''
+      if (raw.toLowerCase().includes('load failed') || raw.toLowerCase().includes('failed to fetch')) {
+        setErrorMsg('Direct browser connection to GitHub OAuth was blocked by browser CORS security. Please use the "Personal Access Token" tab or "1-Click Dev Mode" to connect instantly.')
+      } else {
+        setErrorMsg(raw || 'GitHub authorization failed or timed out.')
+      }
       setDeviceData(null)
     } finally {
       setBusy(false)

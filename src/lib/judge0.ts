@@ -81,12 +81,27 @@ const JUDGE0_ID_TO_LANG: Record<number, string> = {
  * Universal Code Execution Engine
  * Automatically routes to Wandbox (free Linux cloud compilers) or fast client-side browser runner
  */
-export async function executeCode(params: {
-  sourceCode: string
-  languageId?: number
-  lang?: string
-  stdin?: string
-}): Promise<ExecutionResult> {
+export async function executeCode(
+  paramsOrCode:
+    | {
+        sourceCode: string
+        languageId?: number
+        lang?: string
+        stdin?: string
+      }
+    | string,
+  maybeLangId?: number | string,
+  maybeStdin?: string
+): Promise<ExecutionResult> {
+  const params =
+    typeof paramsOrCode === 'string'
+      ? {
+          sourceCode: paramsOrCode,
+          languageId: typeof maybeLangId === 'number' ? maybeLangId : undefined,
+          lang: typeof maybeLangId === 'string' ? maybeLangId : undefined,
+          stdin: maybeStdin,
+        }
+      : paramsOrCode
   const startTime = performance.now()
   const langKey = (params.lang || (params.languageId ? JUDGE0_ID_TO_LANG[params.languageId] : ''))?.toLowerCase().trim() || ''
 
