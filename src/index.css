@@ -642,3 +642,73 @@ html, body, #root {
   contain: layout style;
 }
 
+/* ── Antigravity & Copilot AI Styling System ──────────────────────────────── */
+@keyframes ai-orb-pulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 16px rgba(56, 189, 248, 0.4), 0 0 32px rgba(168, 85, 247, 0.2);
+  }
+  50% {
+    transform: scale(1.06);
+    box-shadow: 0 0 24px rgba(56, 189, 248, 0.6), 0 0 45px rgba(168, 85, 247, 0.35);
+  }
+}
+
+@keyframes ai-gradient-shift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes ai-shimmer-sweep {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+@keyframes ai-beacon-ping {
+  0% { transform: scale(1); opacity: 1; }
+  75%, 100% { transform: scale(2.2); opacity: 0; }
+}
+
+.ai-glow-orb {
+  animation: ai-orb-pulse 3.5s ease-in-out infinite;
+}
+
+.ai-gradient-text {
+  background: linear-gradient(135deg, #38bdf8 0%, #818cf8 45%, #c084fc 100%);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: ai-gradient-shift 6s ease infinite;
+}
+
+.ai-composer-box {
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+}
+
+.ai-composer-box:focus-within {
+  border-color: #38bdf8 !important;
+  box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.2), 0 8px 30px rgba(0, 0, 0, 0.5) !important;
+}
+
+.ai-quick-chip {
+  transition: all 0.15s ease;
+}
+
+.ai-quick-chip:hover {
+  transform: translateY(-1px);
+  background: rgba(56, 189, 248, 0.1) !important;
+  border-color: rgba(56, 189, 248, 0.4) !important;
+  color: #38bdf8 !important;
+}
+
+.ai-code-block {
+  transition: border-color 0.2s ease;
+}
+
+.ai-code-block:hover {
+  border-color: rgba(56, 189, 248, 0.35) !important;
+}
+
+
