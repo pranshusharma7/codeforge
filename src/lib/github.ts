@@ -79,10 +79,17 @@ async function postOAuthRequest(url: string, body: Record<string, string>): Prom
   try {
     const response = await fetch(url, {
       method: 'POST',
+      redirect: 'manual',
       headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
       signal: controller.signal,
     })
+    if (
+      response.type === 'opaqueredirect' ||
+      (response.redirected && new URL(response.url).origin !== window.location.origin)
+    ) {
+      throw new Error('Vercel Deployment Protection is blocking the GitHub OAuth API. Make the production deployment public or use an unprotected production domain.')
+    }
     const contentType = response.headers.get('content-type') || ''
     if (contentType.includes('text/html')) {
       throw new Error(`GitHub OAuth API route is unavailable (HTTP ${response.status}). Check the Vercel API deployment.`)

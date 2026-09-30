@@ -3,6 +3,14 @@
   "installCommand": "npm install",
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
+  "functions": {
+    "api/github-device.js": {
+      "maxDuration": 30
+    },
+    "api/github-token.js": {
+      "maxDuration": 30
+    }
+  },
   "rewrites": [
     {
       "source": "/preview.html",
