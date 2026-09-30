@@ -478,7 +478,6 @@ html, body, #root {
   transition: background 0.1s;
 }
 .status-item:hover { background: rgba(0,0,0,0.2); }
-.status-item.accent { }
 .status-item.success { color: #acf2bd; }
 .status-item.error { color: #ffa198; }
 .status-item.warning { color: #f2cc60; }

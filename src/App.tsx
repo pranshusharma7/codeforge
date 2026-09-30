@@ -30,7 +30,7 @@ import { ContestPage } from './components/contest/ContestPage'
 import { EventsLandingPage } from './components/events/EventsLandingPage'
 import { PreContestCheckModal } from './components/contest/PreContestCheckModal'
 import { ContestArena } from './components/contest/ContestArena'
-import type { Contest } from './lib/contestTypes'
+import type { Contest, ContestProblem } from './lib/contestTypes'
 import { registerMonacoThemes, DEFAULT_THEME_ID, getThemeById, applyThemeToDocument, getThemeUIColors } from './lib/themes'
 import {
   getSavedCodeHistory, saveCodeSnapshot, deleteSavedCode, getSnippets, saveSnippet, deleteSnippet,
@@ -2560,11 +2560,12 @@ export default function App() {
                       expectedOutput: tc.expectedOutput,
                       explanation: tc.explanation,
                     })),
-                    starterCode: q.starterCode || {
-                      python: '# Write code here\n',
-                      cpp: '// Write code here\n',
-                      javascript: '// Write code here\n',
-                    },
+                    starterCode: {
+                      ...q.starterCode,
+                      python: q.starterCode?.python || '# Write code here\n',
+                      cpp: q.starterCode?.cpp || '// Write code here\n',
+                      javascript: q.starterCode?.javascript || '// Write code here\n',
+                    } as ContestProblem['starterCode'],
                   }))
                 ),
               };
