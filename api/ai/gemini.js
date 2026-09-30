@@ -25,6 +25,9 @@ export default async function handler(req, res) {
     }
 
     const key = process.env.VITE_AI_KEY
+    if (!key) {
+      return res.status(500).json({ ok: false, error: 'VITE_AI_KEY is not configured' })
+    }
     const model = process.env.VITE_AI_MODEL || 'gemini-3.8-flash'
     const prompt = body?.prompt || ''
     const code = body?.code || ''

@@ -279,6 +279,14 @@ function codeForgeApiServerPlugin(): Plugin {
                 parsed = JSON.parse(body)
               } catch {}
               const key = process.env.VITE_AI_KEY
+              if (!key) {
+                res.writeHead(500, {
+                  'Content-Type': 'application/json',
+                  'Access-Control-Allow-Origin': '*',
+                })
+                res.end(JSON.stringify({ ok: false, error: 'VITE_AI_KEY is not configured' }))
+                return
+              }
               const model = process.env.VITE_AI_MODEL || 'gemini-3.8-flash'
               const prompt = parsed?.prompt || ''
               const code = parsed?.code || ''
