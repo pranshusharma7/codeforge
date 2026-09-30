@@ -575,10 +575,10 @@ export default function App() {
     setToast(msg); setTimeout(() => setToast(null), 2800)
   }
 
-  // Keep activeCodeRef synchronized with the active tab's code
+  // Keep activeCodeRef synchronized with the active tab's code upon tab switch
   useEffect(() => {
     activeCodeRef.current = curTab.code
-  }, [curTab.id, curTab.code])
+  }, [curTab.id])
 
   // Instant zero-latency getter that queries the live Monaco model or buffer ref
   const getActiveCode = useCallback(() => {
@@ -819,11 +819,52 @@ export default function App() {
   }, [downloadMenuOpen])
 
 
-  // Instant synchronous keystroke handler: keeps activeCodeRef and tabs state in sync with Monaco
+  const syncTabsTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Flush any pending debounced code update directly into tabs state (e.g. before save, run, tab switch)
+  const flushTabsSync = useCallback(() => {
+    if (syncTabsTimerRef.current) {
+      clearTimeout(syncTabsTimerRef.current)
+      syncTabsTimerRef.current = null
+    }
+    const currentCode = activeCodeRef.current
+    if (currentCode !== undefined) {
+      setTabs(p => {
+        const target = p.find(t => t.id === activeTab)
+        if (target && target.code !== currentCode) {
+          return p.map(t => t.id === activeTab ? { ...t, code: currentCode, modified: true } : t)
+        }
+        return p
+      })
+    }
+  }, [activeTab])
+
+  // Instant zero-latency typing handler:
+  // 1. Immediately updates activeCodeRef in memory with zero input lag.
+  // 2. Debounces the full React tree state update so individual keystrokes NEVER cause
+  //    re-renders of App, preventing frame drops, stutter, or typing latency.
   const updateCode = useCallback((code: string) => {
     activeCodeRef.current = code
-    setTabs(p => p.map(t => t.id === activeTab ? { ...t, code, modified: true } : t))
+
+    if (syncTabsTimerRef.current) {
+      clearTimeout(syncTabsTimerRef.current)
+    }
+    syncTabsTimerRef.current = setTimeout(() => {
+      setTabs(p => {
+        const target = p.find(t => t.id === activeTab)
+        if (target && target.code !== code) {
+          return p.map(t => t.id === activeTab ? { ...t, code, modified: true } : t)
+        }
+        return p
+      })
+    }, 280)
   }, [activeTab])
+
+  const switchActiveTab = useCallback((tabId: string) => {
+    if (tabId === activeTab) return
+    flushTabsSync()
+    setActiveTab(tabId)
+  }, [activeTab, flushTabsSync])
 
   const switchLang = (langId: string) => {
     const l = getLangById(langId)
@@ -1204,6 +1245,7 @@ export default function App() {
   // ── Run ──────────────────────────────────────────────────────────────────
   const handleRun = useCallback(async () => {
     if (running) return
+    flushTabsSync()
     let activeTabToUse = curTab
     let codeToRun = getActiveCode()
 
@@ -1520,6 +1562,7 @@ export default function App() {
       showToast('⚠️ No active file to save')
       return
     }
+    flushTabsSync()
     const currentCode = getActiveCode()
 
     // 1. If tab has native File System Access handle (direct write to user's disk file)
@@ -1909,30 +1952,35 @@ export default function App() {
     lineNumbers: 'on' as const,
     glyphMargin: true,
     renderLineHighlight: 'all' as const,
+    renderLineHighlightOnlyWhenFocus: true,
     scrollBeyondLastLine: false,
     smoothScrolling: true,
-    cursorSmoothCaretAnimation: 'off' as const,
-    cursorBlinking: 'blink' as const,
+    cursorSmoothCaretAnimation: 'on' as const,
+    cursorBlinking: 'smooth' as const,
     cursorStyle: 'line' as const,
     cursorWidth: 2,
+    cursorSurroundingLines: 3,
+    cursorSurroundingLinesStyle: 'default' as const,
     bracketPairColorization: { enabled: true, independentColorPoolPerBracketType: true },
     guides: {
-      bracketPairs: true,
+      bracketPairs: 'active' as const,
       bracketPairsHorizontal: true,
       highlightActiveBracketPair: true,
       indentation: true,
       highlightActiveIndentation: true,
     },
-    autoClosingBrackets: 'languageDefined' as const,
-    autoClosingQuotes: 'languageDefined' as const,
+    autoClosingBrackets: 'always' as const,
+    autoClosingQuotes: 'always' as const,
     autoClosingOvertype: 'auto' as const,
     autoSurround: 'languageDefined' as const,
-    autoIndent: 'advanced' as const,
+    autoIndent: 'full' as const,
     formatOnPaste: false,
     formatOnType: false,
     tabSize: 2,
     insertSpaces: true,
     renderWhitespace: 'selection' as const,
+    renderControlCharacters: false,
+    stopRenderingLineAfter: -1,
     acceptSuggestionOnEnter: 'smart' as const,
     tabCompletion: 'on' as const,
     snippetSuggestions: 'top' as const,
@@ -1946,31 +1994,41 @@ export default function App() {
       showVariables: true,
       showConstants: true,
       preview: true,
+      snippetsPreventQuickSuggestions: false,
     },
     quickSuggestions: {
       other: true,
       comments: false,
-      strings: true,
+      strings: false,
     },
+    quickSuggestionsDelay: 10,
     parameterHints: { enabled: true, cycle: true },
     folding: true,
     foldingHighlight: true,
     showFoldingControls: 'mouseover' as const,
     matchBrackets: 'always' as const,
+    codeLens: false,
+    lightbulb: { enabled: 'off' as any },
+    inlayHints: { enabled: 'off' as any },
+    wordBasedSuggestions: 'currentDocument' as const,
+    unicodeHighlight: {
+      ambiguousCharacters: false,
+      invisibleCharacters: false,
+    },
     scrollbar: {
       vertical: 'visible' as const,
       horizontal: 'visible' as const,
       verticalScrollbarSize: 9,
       horizontalScrollbarSize: 9,
-      useShadows: true,
+      useShadows: false,
     },
     overviewRulerLanes: 2,
     hideCursorInOverviewRuler: false,
     padding: { top: 14, bottom: 14 },
     contextmenu: true,
     mouseWheelZoom: false,
-    mouseWheelScrollSensitivity: 1.2,
-    fastScrollSensitivity: 4,
+    mouseWheelScrollSensitivity: 1.0,
+    fastScrollSensitivity: 5,
     multiCursorModifier: 'ctrlCmd' as const,
     roundedSelection: true,
     accessibilitySupport: 'off' as const,
@@ -3113,7 +3171,7 @@ export default function App() {
                                     return (
                                       <div
                                         key={t.id}
-                                        onClick={() => { if (!isRenaming) setActiveTab(t.id) }}
+                                        onClick={() => { if (!isRenaming) switchActiveTab(t.id) }}
                                         onContextMenu={(e) => {
                                           e.preventDefault()
                                           e.stopPropagation()
@@ -3167,7 +3225,7 @@ export default function App() {
                         const isRenaming = renameTarget?.id === t.id
                         return (
                           <div key={t.id}
-                            onClick={() => { if (!isRenaming) setActiveTab(t.id) }}
+                            onClick={() => { if (!isRenaming) switchActiveTab(t.id) }}
                             onContextMenu={(e) => {
                               e.preventDefault()
                               e.stopPropagation()
@@ -3393,7 +3451,7 @@ export default function App() {
           <div style={{ display: 'flex', alignItems: 'center', background: 'var(--bg-header)', borderBottom: '1px solid var(--border)', overflowX: 'auto', flexShrink: 0, height: 35 }}>
             {tabs.map(t => {
               return (
-                <div key={t.id} className={`editor-tab ${activeTab === t.id ? 'active' : ''}`} onClick={() => setActiveTab(t.id)}>
+                <div key={t.id} className={`editor-tab ${activeTab === t.id ? 'active' : ''}`} onClick={() => switchActiveTab(t.id)}>
                   <FileIcon fileName={t.name} size={14} />
                   {t.repoName && <span style={{ color: 'var(--accent)', fontSize: 10, marginRight: 2 }}>{t.repoName}:</span>}
                   <span>{t.name.split('/').pop()}</span>
