@@ -2701,38 +2701,6 @@ export default function App() {
                     <span>Open Project / Folder...</span>
                   </div>
                 </button>
-
-                <div style={{ height: 1, background: 'var(--border)', margin: '4px 0' }} />
-
-                <button
-                  onClick={() => {
-                    setOpenMenuOpen(false)
-                    handleSaveAsDisk()
-                  }}
-                  style={{
-                    width: '100%',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    padding: '8px 12px',
-                    background: 'none',
-                    border: 'none',
-                    color: 'var(--text-base)',
-                    fontSize: 12,
-                    cursor: 'pointer',
-                    textAlign: 'left',
-                  }}
-                  onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-hover)')}
-                  onMouseLeave={e => (e.currentTarget.style.background = 'none')}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <SaveIcon size={14} style={{ color: '#38bdf8' }} />
-                    <span>Save As... (Choose Location)</span>
-                  </div>
-                  <kbd style={{ fontSize: 10, color: 'var(--text-dim)', background: 'var(--bg-app)', border: '1px solid var(--border)', borderRadius: 3, padding: '1px 5px' }}>
-                    Ctrl+Shift+S
-                  </kbd>
-                </button>
               </div>
             )}
           </div>
@@ -2858,6 +2826,45 @@ export default function App() {
                     <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>Entire workspace as .zip</span>
                   </div>
                 </button>
+
+                <div style={{ height: 1, background: 'var(--border)', margin: '2px 4px' }} />
+
+                <button
+                  onClick={() => {
+                    setDownloadMenuOpen(false)
+                    handleSaveAsDisk()
+                  }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 9,
+                    width: '100%',
+                    padding: '7px 10px',
+                    background: 'none',
+                    border: 'none',
+                    borderRadius: 5,
+                    color: 'var(--text-base)',
+                    fontSize: 12,
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    transition: 'background 0.1s',
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-hover)' }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'none' }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 22, height: 22, borderRadius: 4, background: 'rgba(56, 189, 248, 0.12)', color: '#38bdf8', flexShrink: 0 }}>
+                    <SaveIcon size={13} />
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                      <span style={{ fontWeight: 500 }}>Save As... (Choose Location)</span>
+                      <kbd style={{ fontSize: 9, color: 'var(--text-dim)', background: 'var(--bg-app)', border: '1px solid var(--border)', borderRadius: 3, padding: '1px 4px' }}>
+                        Ctrl+Shift+S
+                      </kbd>
+                    </div>
+                    <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>Choose folder on computer</span>
+                  </div>
+                </button>
               </div>
             )}
           </div>
@@ -2924,6 +2931,7 @@ export default function App() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 8px' }}>
           {/* AI Toggle */}
           <button onClick={() => setAiOpen(p => !p)}
+            title="CodeForge AI"
             style={{
               display: 'flex', alignItems: 'center', gap: 5,
               background: aiOpen ? 'var(--accent-subtle)' : 'transparent',
@@ -2935,7 +2943,7 @@ export default function App() {
               transition: 'all .1s'
             }}>
             <span style={{ fontSize: 12 }}>✦</span>
-            AI {aiOpen ? 'On' : 'Off'}
+            CodeForge AI {aiOpen ? 'On' : 'Off'}
           </button>
 
           {/* Debugger */}
@@ -2979,17 +2987,11 @@ export default function App() {
           <button data-tooltip="Share Code" onClick={doShare} className="activity-btn" style={{ marginBottom: 4 }} aria-label="Share Code">
             <ShareIcon size={16} />
           </button>
-          <button data-tooltip="Download Code" onClick={() => downloadCode(curTab.name, curTab.code)} className="activity-btn" style={{ marginBottom: 4 }} aria-label="Download Code">
-            <DownloadIcon size={16} />
-          </button>
           <button data-tooltip="VS Code Themes" onClick={() => openSettings('themes')} className="activity-btn" style={{ marginBottom: 4 }} aria-label="VS Code Themes">
             <PaletteIcon size={16} />
           </button>
-          <button data-tooltip="Settings" onClick={() => setShowSettings(true)} className="activity-btn" style={{ marginBottom: 4 }}>
+          <button data-tooltip="Settings" onClick={() => setShowSettings(true)} className="activity-btn" style={{ marginBottom: 8 }}>
             <I d="M8 5a3 3 0 1 0 0 6 3 3 0 0 0 0-6Zm-5 3H1M15 8h-2M4.2 4.2 3 3M12 12l-1.2-1.2M4.2 11.8 3 13M12 4 10.8 5.2" s={16} sw={1.2} />
-          </button>
-          <button data-tooltip="Keyboard Shortcuts" onClick={() => setShowKeys(true)} className="activity-btn" style={{ marginBottom: 8 }}>
-            <I d="M2 4h12v8H2zM5 4v8M11 4v8M2 8h12" s={16} sw={1.2} />
           </button>
         </div>
 
@@ -4102,9 +4104,6 @@ export default function App() {
 
       {/* ── Premium Status bar ─────────────────────────────────────────────── */}
       <div className="status-bar">
-        <div className="status-item" onClick={() => setSideOpen(p => !p)} style={{ borderRight: '1px solid rgba(255,255,255,0.15)' }}>
-          <I d="M2 4h12M2 8h12M2 12h12" s={11} sw={1.5} /> {sideOpen ? 'Explorer' : 'Open'}
-        </div>
         <div className="status-item" style={{ borderRight: '1px solid rgba(255,255,255,0.15)' }}>
           <div style={{ width: 7, height: 7, borderRadius: '50%', background: 'rgba(255,255,255,0.8)' }} />
           {curLang.label}
@@ -4159,40 +4158,6 @@ export default function App() {
           )}
         </div>
         <div style={{ flex: 1 }} />
-        {hasOpenTab && (
-          curTab.isLocalDisk ? (
-            <div
-              className="status-item"
-              onClick={() => saveCurrentFile()}
-              title="Linked to local disk file. Click or press Ctrl+S to save directly to your computer."
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 4,
-                color: '#38bdf8',
-                fontWeight: 500,
-                cursor: 'pointer',
-              }}
-            >
-              <span>💾 Disk Synced</span>
-            </div>
-          ) : (
-            <div
-              className="status-item"
-              onClick={handleSaveAsDisk}
-              title="Click to link and save this file directly to your local computer disk"
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 4,
-                opacity: 0.75,
-                cursor: 'pointer',
-              }}
-            >
-              <span>💾 Link to Local File</span>
-            </div>
-          )
-        )}
         <div id="editor-cursor-pos-status" className="status-item" style={{ fontFamily: 'JetBrains Mono, monospace', opacity: 0.8 }}>
           Ln 1, Col 1
         </div>

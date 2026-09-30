@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import type { AuthUser } from '../lib/storage'
 import { askAI } from '../engine/ai'
+import logoImg from '../assets/logo.png'
 import {
   SendIcon,
   BugIcon,
@@ -35,32 +36,6 @@ interface Props {
   showToast: (msg: string) => void
 }
 
-// Antigravity & Copilot Modern AI Icon
-const AntigravitySparkleIcon = ({ size = 18 }: { size?: number }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-    <path
-      d="M12 2L14.4 9.6L22 12L14.4 14.4L12 22L9.6 14.4L2 12L9.6 9.6L12 2Z"
-      fill="url(#ag-grad-primary)"
-    />
-    <path
-      d="M19 3L20.2 6.8L24 8L20.2 9.2L19 13L17.8 9.2L14 8L17.8 6.8L19 3Z"
-      fill="url(#ag-grad-secondary)"
-      opacity="0.85"
-    />
-    <defs>
-      <linearGradient id="ag-grad-primary" x1="2" y1="2" x2="22" y2="22" gradientUnits="userSpaceOnUse">
-        <stop stopColor="#38bdf8" />
-        <stop offset="0.5" stopColor="#818cf8" />
-        <stop offset="1" stopColor="#c084fc" />
-      </linearGradient>
-      <linearGradient id="ag-grad-secondary" x1="14" y1="3" x2="24" y2="13" gradientUnits="userSpaceOnUse">
-        <stop stopColor="#38bdf8" />
-        <stop offset="1" stopColor="#f472b6" />
-      </linearGradient>
-    </defs>
-  </svg>
-)
-
 export default function AIAppPanel({
   authUser,
   onOpenGitHubAuth,
@@ -89,7 +64,7 @@ export default function AIAppPanel({
       {
         id: 'welcome',
         role: 'assistant',
-        content: `### ✦ Antigravity Copilot Online\n\nWelcome **@${effectiveDisplayName}**! I'm your pair programming assistant powered by **Google Gemini 3.8 Flash**.\n\nI have active context of \`${curTab.name || 'main.py'}\`. How can I assist you today?\n\n- **Fix Bugs:** Automatically pinpoint syntax and runtime issues\n- **Deep Code Review:** High-standard architectural and Big-O assessment\n- **Optimize Execution:** Speed, algorithmic complexity, and memory efficiency\n- **Generate Unit Tests:** Comprehensive edge cases and test runners`,
+        content: `### ✦ CodeForge AI Online\n\nWelcome **@${effectiveDisplayName}**! I'm your pair programming assistant powered by **CodeForge AI**.\n\nI have active context of \`${curTab.name || 'main.py'}\`. How can I assist you today?\n\n- **Fix Bugs:** Automatically pinpoint syntax and runtime issues\n- **Deep Code Review:** High-standard architectural and Big-O assessment\n- **Optimize Execution:** Speed, algorithmic complexity, and memory efficiency\n- **Generate Unit Tests:** Comprehensive edge cases and test runners`,
         timestamp: Date.now(),
       },
     ]
@@ -116,7 +91,7 @@ export default function AIAppPanel({
       {
         id: 'welcome',
         role: 'assistant',
-        content: `### ✦ Antigravity Copilot Online\n\nWelcome **@${effectiveDisplayName}**! I'm your pair programming assistant powered by **Google Gemini 3.8 Flash**.\n\nI have active context of \`${curTab.name || 'main.py'}\`. How can I assist you today?\n\n- **Fix Bugs:** Automatically pinpoint syntax and runtime issues\n- **Deep Code Review:** High-standard architectural and Big-O assessment\n- **Optimize Execution:** Speed, algorithmic complexity, and memory efficiency\n- **Generate Unit Tests:** Comprehensive edge cases and test runners`,
+        content: `### ✦ CodeForge AI Online\n\nWelcome **@${effectiveDisplayName}**! I'm your pair programming assistant powered by **CodeForge AI**.\n\nI have active context of \`${curTab.name || 'main.py'}\`. How can I assist you today?\n\n- **Fix Bugs:** Automatically pinpoint syntax and runtime issues\n- **Deep Code Review:** High-standard architectural and Big-O assessment\n- **Optimize Execution:** Speed, algorithmic complexity, and memory efficiency\n- **Generate Unit Tests:** Comprehensive edge cases and test runners`,
         timestamp: Date.now(),
       },
     ])
@@ -172,7 +147,7 @@ export default function AIAppPanel({
         role: 'user',
         parts: [
           {
-            text: 'You are CodeForge Copilot, an elite senior software architect and AI pair programmer. Provide high-quality, production-ready code in fenced markdown blocks with language tags, followed by concise explanations, Big-O complexity analysis, and edge cases.',
+            text: 'You are CodeForge AI, an elite senior software architect and AI pair programmer. Provide high-quality, production-ready code in fenced markdown blocks with language tags, followed by concise explanations, Big-O complexity analysis, and edge cases.',
           },
         ],
       },
@@ -307,12 +282,12 @@ export default function AIAppPanel({
     showToast('Chat history cleared')
   }
 
-  // Render message markdown & VS Code Copilot style code blocks
+  // Render message markdown & theme-aligned code blocks
   const renderMessageContent = (text: string, msgId: string) => {
     const parts = text.split(/(```[\s\S]*?```)/g)
 
     return (
-      <div style={{ lineHeight: 1.6, fontSize: 12.5, color: '#e2e8f0' }}>
+      <div style={{ lineHeight: 1.6, fontSize: 12.5, color: 'var(--text-base)' }}>
         {parts.map((part, idx) => {
           if (part.startsWith('```') && part.endsWith('```')) {
             const rawContent = part.slice(3, -3)
@@ -328,46 +303,46 @@ export default function AIAppPanel({
                 className="ai-code-block"
                 style={{
                   margin: '10px 0',
-                  borderRadius: 10,
-                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  borderRadius: 8,
+                  border: '1px solid var(--border)',
                   overflow: 'hidden',
-                  background: '#070a12',
-                  boxShadow: '0 8px 24px rgba(0, 0, 0, 0.45)',
+                  background: 'var(--bg-app)',
+                  boxShadow: '0 4px 16px rgba(0, 0, 0, 0.15)',
                 }}
               >
-                {/* Code Block Header (Mac/VS Code style) */}
+                {/* Code Block Header */}
                 <div
                   style={{
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
                     padding: '6px 12px',
-                    background: 'rgba(255, 255, 255, 0.03)',
-                    borderBottom: '1px solid rgba(255, 255, 255, 0.07)',
+                    background: 'var(--bg-card)',
+                    borderBottom: '1px solid var(--border)',
                     fontSize: 11,
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <div style={{ display: 'flex', gap: 5 }}>
-                      <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'rgba(239, 68, 68, 0.6)' }} />
-                      <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'rgba(245, 158, 11, 0.6)' }} />
-                      <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'rgba(34, 197, 94, 0.6)' }} />
+                      <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#ef4444', opacity: 0.75 }} />
+                      <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#f59e0b', opacity: 0.75 }} />
+                      <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#22c55e', opacity: 0.75 }} />
                     </div>
-                    <span style={{ fontWeight: 600, color: '#38bdf8', textTransform: 'lowercase', fontFamily: 'JetBrains Mono, monospace' }}>
+                    <span style={{ fontWeight: 600, color: 'var(--accent)', textTransform: 'lowercase', fontFamily: 'JetBrains Mono, monospace' }}>
                       {lang || curTab.lang || 'code'}
                     </span>
-                    <span style={{ color: '#64748b', fontSize: 10 }}>• {lineCount} lines</span>
+                    <span style={{ color: 'var(--text-muted)', fontSize: 10 }}>• {lineCount} lines</span>
                   </div>
 
                   <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                     <button
                       onClick={() => handleCopyCode(codeBlock, blockKey)}
                       style={{
-                        background: 'rgba(255, 255, 255, 0.05)',
-                        border: '1px solid rgba(255, 255, 255, 0.1)',
-                        borderRadius: 5,
+                        background: 'var(--bg-hover)',
+                        border: '1px solid var(--border)',
+                        borderRadius: 4,
                         cursor: 'pointer',
-                        color: copiedCodeIdx === blockKey ? '#34d399' : '#cbd5e1',
+                        color: copiedCodeIdx === blockKey ? 'var(--green, #22c55e)' : 'var(--text-base)',
                         fontSize: 10,
                         padding: '3px 8px',
                         display: 'flex',
@@ -388,11 +363,11 @@ export default function AIAppPanel({
                           showToast(`Inserted into ${curTab.name} ⚡`)
                         }}
                         style={{
-                          background: 'linear-gradient(135deg, rgba(56, 189, 248, 0.2) 0%, rgba(129, 140, 248, 0.25) 100%)',
-                          border: '1px solid rgba(56, 189, 248, 0.4)',
-                          borderRadius: 5,
+                          background: 'var(--accent-subtle)',
+                          border: '1px solid var(--accent-border)',
+                          borderRadius: 4,
                           cursor: 'pointer',
-                          color: '#38bdf8',
+                          color: 'var(--accent)',
                           fontSize: 10,
                           fontWeight: 600,
                           padding: '3px 9px',
@@ -417,7 +392,7 @@ export default function AIAppPanel({
                     fontSize: 11.5,
                     fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
                     overflowX: 'auto',
-                    color: '#e2e8f0',
+                    color: 'var(--text-base)',
                     lineHeight: 1.55,
                   }}
                 >
@@ -440,7 +415,7 @@ export default function AIAppPanel({
                       style={{
                         fontSize: 13,
                         fontWeight: 700,
-                        color: '#f8fafc',
+                        color: 'var(--text-base)',
                         marginTop: 10,
                         marginBottom: 6,
                         display: 'flex',
@@ -448,7 +423,7 @@ export default function AIAppPanel({
                         gap: 6,
                       }}
                     >
-                      <span style={{ width: 3, height: 13, background: '#38bdf8', borderRadius: 2 }} />
+                      <span style={{ width: 3, height: 13, background: 'var(--accent)', borderRadius: 2 }} />
                       <span>{line.replace('### ', '')}</span>
                     </div>
                   )
@@ -460,12 +435,12 @@ export default function AIAppPanel({
                     <div
                       key={lIdx}
                       style={{
-                        borderLeft: '2px solid #818cf8',
+                        borderLeft: '2px solid var(--accent)',
                         padding: '4px 10px',
                         margin: '6px 0',
-                        color: '#94a3b8',
+                        color: 'var(--text-muted)',
                         fontSize: 11.5,
-                        background: 'rgba(129, 140, 248, 0.06)',
+                        background: 'var(--accent-subtle)',
                         borderRadius: '0 6px 6px 0',
                       }}
                     >
@@ -491,7 +466,7 @@ export default function AIAppPanel({
                     }}
                   >
                     {isBullet && (
-                      <span style={{ color: '#38bdf8', fontSize: 10, flexShrink: 0 }}>✦</span>
+                      <span style={{ color: 'var(--accent)', fontSize: 10, flexShrink: 0 }}>✦</span>
                     )}
                     <div>
                       {inlineParts.map((sub, sIdx) => {
@@ -502,11 +477,11 @@ export default function AIAppPanel({
                               style={{
                                 fontFamily: "'JetBrains Mono', monospace",
                                 fontSize: '0.88em',
-                                background: 'rgba(255, 255, 255, 0.08)',
+                                background: 'var(--bg-hover)',
                                 padding: '1px 6px',
                                 borderRadius: 4,
-                                border: '1px solid rgba(255, 255, 255, 0.1)',
-                                color: '#38bdf8',
+                                border: '1px solid var(--border)',
+                                color: 'var(--accent)',
                               }}
                             >
                               {sub.slice(1, -1)}
@@ -518,7 +493,7 @@ export default function AIAppPanel({
                           <span key={sIdx}>
                             {boldParts.map((bp, bIdx) =>
                               bp.startsWith('**') ? (
-                                <strong key={bIdx} style={{ color: '#f1f5f9', fontWeight: 600 }}>
+                                <strong key={bIdx} style={{ color: 'var(--text-base)', fontWeight: 600 }}>
                                   {bp.slice(2, -2)}
                                 </strong>
                               ) : (
@@ -547,49 +522,52 @@ export default function AIAppPanel({
         flexDirection: 'column',
         height: '100%',
         overflow: 'hidden',
-        background: '#090d16',
+        background: 'var(--bg-panel)',
+        color: 'var(--text-base)',
         position: 'relative',
-        backgroundImage:
-          'radial-gradient(ellipse at 85% 10%, rgba(56, 189, 248, 0.06), transparent 50%), radial-gradient(ellipse at 15% 85%, rgba(168, 85, 247, 0.05), transparent 50%)',
       }}
     >
-      {/* ── Top Header: Google Antigravity & Copilot Branding ───────────────── */}
+      {/* ── Top Header: CodeForge AI Branding ───────────────── */}
       <div
         style={{
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
           padding: '10px 14px',
-          borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
-          background: 'rgba(13, 17, 23, 0.85)',
-          backdropFilter: 'blur(16px)',
+          borderBottom: '1px solid var(--border)',
+          background: 'var(--bg-header)',
           flexShrink: 0,
           gap: 8,
           zIndex: 10,
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-          {/* Glowing Orb Sparkle */}
+          {/* CodeForge Logo Image */}
           <div
             className="ai-glow-orb"
             style={{
               width: 30,
               height: 30,
-              borderRadius: 8,
-              background: 'linear-gradient(135deg, rgba(56, 189, 248, 0.15) 0%, rgba(168, 85, 247, 0.2) 100%)',
-              border: '1px solid rgba(56, 189, 248, 0.4)',
+              borderRadius: 6,
+              background: 'var(--bg-card)',
+              border: '1px solid var(--border)',
               display: 'grid',
               placeItems: 'center',
               flexShrink: 0,
+              padding: 4,
             }}
           >
-            <AntigravitySparkleIcon size={16} />
+            <img
+              src={logoImg}
+              alt="CodeForge AI"
+              style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+            />
           </div>
 
           <div style={{ minWidth: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span className="ai-gradient-text" style={{ fontSize: 13, fontWeight: 700, letterSpacing: '0.01em' }}>
-                CodeForge Copilot
+              <span style={{ fontSize: 13, fontWeight: 700, letterSpacing: '0.01em', color: 'var(--text-base)' }}>
+                CodeForge AI
               </span>
               <span
                 style={{
@@ -598,17 +576,17 @@ export default function AIAppPanel({
                   padding: '1px 6px',
                   borderRadius: 999,
                   background: isPro
-                    ? 'linear-gradient(135deg, rgba(168, 85, 247, 0.2), rgba(236, 72, 153, 0.2))'
+                    ? 'var(--accent-subtle)'
                     : isQuotaExceeded
                     ? 'rgba(239, 68, 68, 0.15)'
-                    : 'rgba(56, 189, 248, 0.12)',
-                  color: isPro ? '#c084fc' : isQuotaExceeded ? '#f87171' : '#38bdf8',
+                    : 'var(--bg-hover)',
+                  color: isPro ? 'var(--accent)' : isQuotaExceeded ? '#ef4444' : 'var(--text-muted)',
                   border: `1px solid ${
                     isPro
-                      ? 'rgba(168, 85, 247, 0.4)'
+                      ? 'var(--accent-border)'
                       : isQuotaExceeded
                       ? 'rgba(239, 68, 68, 0.3)'
-                      : 'rgba(56, 189, 248, 0.3)'
+                      : 'var(--border)'
                   }`,
                 }}
               >
@@ -616,18 +594,18 @@ export default function AIAppPanel({
               </span>
             </div>
 
-            <div style={{ fontSize: 10, color: '#94a3b8', display: 'flex', alignItems: 'center', gap: 6, marginTop: 1 }}>
+            <div style={{ fontSize: 10, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 6, marginTop: 1 }}>
               <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                 <span
                   style={{
                     width: 6,
                     height: 6,
                     borderRadius: '50%',
-                    background: '#34d399',
-                    boxShadow: '0 0 6px #34d399',
+                    background: '#22c55e',
+                    boxShadow: '0 0 6px rgba(34, 197, 94, 0.6)',
                   }}
                 />
-                <span style={{ color: '#38bdf8', fontWeight: 600 }}>Gemini 3.8 Flash</span>
+                <span style={{ color: 'var(--accent)', fontWeight: 600 }}>Gemini 3.8 Flash</span>
               </span>
               <span>•</span>
               <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -639,7 +617,7 @@ export default function AIAppPanel({
                   style={{
                     background: 'none',
                     border: 'none',
-                    color: '#818cf8',
+                    color: 'var(--accent)',
                     cursor: 'pointer',
                     fontSize: 10,
                     textDecoration: 'underline',
@@ -661,9 +639,9 @@ export default function AIAppPanel({
             style={{
               padding: '5px 8px',
               borderRadius: 6,
-              background: 'rgba(255, 255, 255, 0.04)',
-              border: '1px solid rgba(255, 255, 255, 0.08)',
-              color: '#94a3b8',
+              background: 'var(--bg-card)',
+              border: '1px solid var(--border)',
+              color: 'var(--text-muted)',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
@@ -671,23 +649,34 @@ export default function AIAppPanel({
               fontSize: 11,
               transition: 'all 0.15s ease',
             }}
+            onMouseEnter={e => {
+              e.currentTarget.style.color = 'var(--text-base)'
+              e.currentTarget.style.background = 'var(--bg-hover)'
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.color = 'var(--text-muted)'
+              e.currentTarget.style.background = 'var(--bg-card)'
+            }}
           >
             <TrashIcon size={12} />
           </button>
 
           <button
             onClick={onClose}
-            title="Close Copilot Panel"
+            title="Close CodeForge AI"
             style={{
               padding: '5px 8px',
               borderRadius: 6,
               background: 'none',
               border: 'none',
-              color: '#94a3b8',
+              color: 'var(--text-muted)',
               cursor: 'pointer',
               display: 'grid',
               placeItems: 'center',
+              transition: 'color 0.15s ease',
             }}
+            onMouseEnter={e => (e.currentTarget.style.color = 'var(--text-base)')}
+            onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-muted)')}
           >
             <XIcon size={13} />
           </button>
@@ -699,13 +688,13 @@ export default function AIAppPanel({
         <div
           style={{
             padding: '8px 14px',
-            background: 'linear-gradient(90deg, rgba(239, 68, 68, 0.15) 0%, rgba(220, 38, 38, 0.2) 100%)',
-            borderBottom: '1px solid rgba(239, 68, 68, 0.3)',
+            background: 'rgba(239, 68, 68, 0.12)',
+            borderBottom: '1px solid rgba(239, 68, 68, 0.25)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
             fontSize: 11.5,
-            color: '#fca5a5',
+            color: '#ef4444',
           }}
         >
           <span>Free quota reached ({maxFreeAI}/{maxFreeAI}). Upgrade for unlimited requests.</span>
@@ -714,7 +703,7 @@ export default function AIAppPanel({
             style={{
               padding: '3px 9px',
               borderRadius: 5,
-              background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+              background: '#ef4444',
               border: 'none',
               color: '#ffffff',
               fontSize: 10,
@@ -727,14 +716,14 @@ export default function AIAppPanel({
         </div>
       )}
 
-      {/* ── Copilot Quick Action Command Bar ───────────────────────────────── */}
+      {/* ── Quick Action Command Bar ────────────────────────────────────────── */}
       <div
         style={{
           display: 'flex',
           gap: 6,
           padding: '7px 12px',
-          borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
-          background: 'rgba(0, 0, 0, 0.25)',
+          borderBottom: '1px solid var(--border)',
+          background: 'var(--bg-app)',
           overflowX: 'auto',
           flexShrink: 0,
         }}
@@ -754,9 +743,9 @@ export default function AIAppPanel({
             style={{
               padding: '4px 9px',
               borderRadius: 6,
-              background: 'rgba(255, 255, 255, 0.04)',
-              border: '1px solid rgba(255, 255, 255, 0.08)',
-              color: '#cbd5e1',
+              background: 'var(--bg-card)',
+              border: '1px solid var(--border)',
+              color: 'var(--text-base)',
               fontSize: 11,
               fontWeight: 500,
               display: 'flex',
@@ -767,7 +756,7 @@ export default function AIAppPanel({
               flexShrink: 0,
             }}
           >
-            <span style={{ color: '#38bdf8' }}>{item.icon}</span>
+            <span style={{ color: 'var(--accent)' }}>{item.icon}</span>
             <span>{item.desc}</span>
           </button>
         ))}
@@ -782,6 +771,7 @@ export default function AIAppPanel({
           display: 'flex',
           flexDirection: 'column',
           gap: 16,
+          background: 'var(--bg-app)',
         }}
       >
         {messages.map(msg => {
@@ -796,27 +786,31 @@ export default function AIAppPanel({
                 width: '100%',
               }}
             >
-              {/* Message Header (Badge + Timestamp) */}
+              {/* Message Header (Logo/Badge + Timestamp) */}
               <div
                 style={{
                   display: 'flex',
                   alignItems: 'center',
                   gap: 6,
                   fontSize: 10.5,
-                  color: '#64748b',
+                  color: 'var(--text-dim)',
                   marginBottom: 4,
                   padding: '0 4px',
                 }}
               >
                 {!isUser ? (
                   <>
-                    <AntigravitySparkleIcon size={13} />
-                    <span style={{ fontWeight: 600, color: '#38bdf8' }}>
-                      Antigravity Copilot
+                    <img
+                      src={logoImg}
+                      alt="CodeForge AI"
+                      style={{ width: 13, height: 13, objectFit: 'contain' }}
+                    />
+                    <span style={{ fontWeight: 600, color: 'var(--accent)' }}>
+                      CodeForge AI
                     </span>
                   </>
                 ) : (
-                  <span style={{ fontWeight: 600, color: '#94a3b8' }}>@{effectiveDisplayName}</span>
+                  <span style={{ fontWeight: 600, color: 'var(--text-muted)' }}>@{effectiveDisplayName}</span>
                 )}
                 <span>•</span>
                 <span>{new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
@@ -829,15 +823,9 @@ export default function AIAppPanel({
                   width: isUser ? 'auto' : '100%',
                   padding: isUser ? '10px 14px' : '12px 14px',
                   borderRadius: isUser ? '14px 14px 2px 14px' : '10px',
-                  background: isUser
-                    ? 'linear-gradient(135deg, rgba(30, 41, 59, 0.9) 0%, rgba(15, 23, 42, 0.95) 100%)'
-                    : 'rgba(15, 23, 42, 0.55)',
-                  border: isUser
-                    ? '1px solid rgba(56, 189, 248, 0.35)'
-                    : '1px solid rgba(255, 255, 255, 0.07)',
-                  boxShadow: isUser
-                    ? '0 4px 14px rgba(0, 0, 0, 0.35)'
-                    : '0 4px 20px rgba(0, 0, 0, 0.25)',
+                  background: isUser ? 'var(--accent-subtle)' : 'var(--bg-card)',
+                  border: isUser ? '1px solid var(--accent-border)' : '1px solid var(--border)',
+                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
                 }}
               >
                 {renderMessageContent(msg.content, msg.id)}
@@ -846,26 +834,26 @@ export default function AIAppPanel({
           )
         })}
 
-        {/* Thinking / Synthesizing State (Google Antigravity & Copilot style) */}
+        {/* Thinking / Synthesizing State */}
         {isThinking && (
           <div
             style={{
               padding: '12px 14px',
               borderRadius: 10,
-              background: 'rgba(15, 23, 42, 0.65)',
-              border: '1px solid rgba(56, 189, 248, 0.2)',
+              background: 'var(--bg-card)',
+              border: '1px solid var(--border)',
               display: 'flex',
               alignItems: 'center',
               gap: 10,
-              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)',
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
             }}
           >
             <SpinnerIcon size={16} className="text-sky-400" />
             <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              <div style={{ fontSize: 12, fontWeight: 600, color: '#38bdf8', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--accent)', display: 'flex', alignItems: 'center', gap: 6 }}>
                 <span>Synthesizing code solution...</span>
               </div>
-              <div style={{ fontSize: 10, color: '#94a3b8' }}>
+              <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>
                 Analyzing context in {curTab.name} • Gemini 3.8 Flash
               </div>
             </div>
@@ -875,22 +863,21 @@ export default function AIAppPanel({
         <div ref={messagesEndRef} />
       </div>
 
-      {/* ── Floating Modern Composer Box (Cursor / Copilot style) ─────────────── */}
+      {/* ── Composer Box ──────────────────────────────────────────────────── */}
       <div
         style={{
           padding: '10px 14px 14px',
-          borderTop: '1px solid rgba(255, 255, 255, 0.08)',
-          background: 'rgba(13, 17, 23, 0.85)',
-          backdropFilter: 'blur(16px)',
+          borderTop: '1px solid var(--border)',
+          background: 'var(--bg-header)',
           flexShrink: 0,
         }}
       >
         <div
           className="ai-composer-box"
           style={{
-            background: 'rgba(15, 23, 42, 0.95)',
-            border: '1px solid rgba(255, 255, 255, 0.12)',
-            borderRadius: 12,
+            background: 'var(--bg-card)',
+            border: '1px solid var(--border)',
+            borderRadius: 10,
             padding: '10px 12px',
             display: 'flex',
             flexDirection: 'column',
@@ -902,10 +889,10 @@ export default function AIAppPanel({
             <button
               onClick={() => setActiveTabContext(p => !p)}
               style={{
-                background: activeTabContext ? 'rgba(56, 189, 248, 0.15)' : 'rgba(255, 255, 255, 0.05)',
-                border: `1px solid ${activeTabContext ? 'rgba(56, 189, 248, 0.4)' : 'rgba(255, 255, 255, 0.1)'}`,
-                borderRadius: 6,
-                color: activeTabContext ? '#38bdf8' : '#94a3b8',
+                background: activeTabContext ? 'var(--accent-subtle)' : 'var(--bg-hover)',
+                border: `1px solid ${activeTabContext ? 'var(--accent-border)' : 'var(--border)'}`,
+                borderRadius: 5,
+                color: activeTabContext ? 'var(--accent)' : 'var(--text-muted)',
                 padding: '2px 8px',
                 fontSize: 10.5,
                 fontWeight: 600,
@@ -920,7 +907,7 @@ export default function AIAppPanel({
               <span style={{ fontSize: 9, opacity: 0.8 }}>({activeTabContext ? 'Active' : 'Muted'})</span>
             </button>
 
-            <span style={{ fontSize: 10, color: '#64748b' }}>
+            <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>
               {remainingQueries} queries left
             </span>
           </div>
@@ -933,7 +920,7 @@ export default function AIAppPanel({
             placeholder={
               isQuotaExceeded
                 ? 'Monthly quota reached. Upgrade to Pro...'
-                : 'Ask Copilot anything, /fix, /optimize, /explain...'
+                : 'Ask CodeForge AI anything, /fix, /optimize, /explain...'
             }
             disabled={isQuotaExceeded}
             onChange={e => setInputPrompt(e.target.value)}
@@ -948,7 +935,7 @@ export default function AIAppPanel({
               background: 'transparent',
               border: 'none',
               outline: 'none',
-              color: '#f8fafc',
+              color: 'var(--text-base)',
               fontSize: 12.5,
               fontFamily: 'inherit',
               lineHeight: 1.5,
@@ -959,11 +946,11 @@ export default function AIAppPanel({
 
           {/* Composer Footer Actions */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 4 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 10, color: '#64748b' }}>
-              <span style={{ padding: '1px 5px', borderRadius: 4, background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.08)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 10, color: 'var(--text-dim)' }}>
+              <span style={{ padding: '1px 5px', borderRadius: 4, background: 'var(--bg-hover)', border: '1px solid var(--border)' }}>
                 ↵ Enter to send
               </span>
-              <span style={{ padding: '1px 5px', borderRadius: 4, background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.08)' }}>
+              <span style={{ padding: '1px 5px', borderRadius: 4, background: 'var(--bg-hover)', border: '1px solid var(--border)' }}>
                 Shift+↵ New line
               </span>
             </div>
@@ -977,20 +964,20 @@ export default function AIAppPanel({
                 borderRadius: '50%',
                 background:
                   inputPrompt.trim() && !isThinking && !isQuotaExceeded
-                    ? 'linear-gradient(135deg, #38bdf8 0%, #818cf8 100%)'
-                    : 'rgba(255, 255, 255, 0.08)',
-                color: '#ffffff',
+                    ? 'var(--accent)'
+                    : 'var(--bg-hover)',
+                color: inputPrompt.trim() && !isThinking && !isQuotaExceeded ? '#ffffff' : 'var(--text-dim)',
                 border: 'none',
                 cursor: inputPrompt.trim() && !isThinking && !isQuotaExceeded ? 'pointer' : 'not-allowed',
                 display: 'grid',
                 placeItems: 'center',
                 boxShadow:
                   inputPrompt.trim() && !isThinking && !isQuotaExceeded
-                    ? '0 0 12px rgba(56, 189, 248, 0.4)'
+                    ? '0 0 10px var(--accent-subtle)'
                     : 'none',
                 transition: 'all 0.15s ease',
               }}
-              title="Send to Copilot"
+              title="Send to CodeForge AI"
             >
               <SendIcon size={14} />
             </button>
