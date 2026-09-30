@@ -7,11 +7,8 @@ import {
   waitForGitHubToken,
   getGitHubUser,
   getGitHubRepositories,
-  authenticateWithToken,
-  createGuestDevUser,
-  SAMPLE_DEV_REPOSITORIES,
 } from '../lib/github'
-import { SpinnerIcon, ExternalLinkIcon, CheckIcon, KeyIcon } from './icons'
+import { SpinnerIcon, ExternalLinkIcon, CheckIcon } from './icons'
 
 interface Props {
   isOpen: boolean
@@ -20,10 +17,7 @@ interface Props {
   showToast: (msg: string) => void
 }
 
-type AuthTab = 'device' | 'token' | 'guest'
-
 export default function GitHubAuthModal({ isOpen, onClose, onSuccess, showToast }: Props) {
-  const [activeTab, setActiveTab] = useState<AuthTab>('device')
   const [busy, setBusy] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
 
@@ -32,13 +26,6 @@ export default function GitHubAuthModal({ isOpen, onClose, onSuccess, showToast 
   const [copiedCode, setCopiedCode] = useState(false)
   const [pollStatus, setPollStatus] = useState<string>('')
   const abortControllerRef = useRef<boolean>(false)
-
-  // PAT Token State
-  const [patToken, setPatToken] = useState('')
-  const [showTokenText, setShowTokenText] = useState(false)
-
-  // Guest Mode State
-  const [guestName, setGuestName] = useState('Developer')
 
   // Reset state when opening/closing
   useEffect(() => {
@@ -101,11 +88,11 @@ export default function GitHubAuthModal({ isOpen, onClose, onSuccess, showToast 
       if (abortControllerRef.current) return
       const raw = err?.message || ''
       if (raw.toLowerCase().includes('device_flow_disabled')) {
-        setErrorMsg('GitHub Device Flow is currently not enabled for this OAuth App. Please check GitHub OAuth App settings or switch to Personal Access Token.')
+        setErrorMsg('GitHub Device Flow is not enabled for this OAuth App. Enable it in the GitHub OAuth App settings and try again.')
       } else if (raw.toLowerCase().includes('load failed') || raw.toLowerCase().includes('failed to fetch')) {
-        setErrorMsg('Direct browser connection to GitHub OAuth was blocked by network/CORS. Use Personal Access Token for 100% reliable direct connection.')
+        setErrorMsg('Could not reach GitHub OAuth. Check your network and OAuth API configuration, then try again.')
       } else {
-        setErrorMsg(raw || 'GitHub authorization failed or timed out. Please try again or use Personal Access Token.')
+        setErrorMsg(raw || 'GitHub authorization failed or timed out. Please try again.')
       }
       setDeviceData(null)
     } finally {
@@ -129,37 +116,6 @@ export default function GitHubAuthModal({ isOpen, onClose, onSuccess, showToast 
     setDeviceData(null)
     setErrorMsg('')
     setPollStatus('')
-  }
-
-  // ── 2. Personal Access Token (100% Direct to GitHub API, No Proxy) ──────────
-  const handleTokenAuth = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault()
-    const clean = patToken.trim()
-    if (!clean) {
-      setErrorMsg('Please enter your GitHub Personal Access Token (starts with ghp_ or github_pat_).')
-      return
-    }
-
-    setBusy(true)
-    setErrorMsg('')
-    try {
-      const { user, repos } = await authenticateWithToken(clean)
-      showToast(`✓ Welcome @${user.login || user.name}! GitHub connected successfully.`)
-      onSuccess(user, repos)
-      onClose()
-    } catch (err: any) {
-      setErrorMsg(err.message || 'Failed to authenticate with GitHub token. Please verify token permissions.')
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  // ── 3. 1-Click Instant Guest / Local Developer Mode ─────────────────────────
-  const handleContinueAsGuest = () => {
-    const user = createGuestDevUser(guestName)
-    showToast(`✓ Welcome @${user.login}! Working in Developer mode.`)
-    onSuccess(user, SAMPLE_DEV_REPOSITORIES)
-    onClose()
   }
 
   return (
@@ -227,98 +183,8 @@ export default function GitHubAuthModal({ isOpen, onClose, onSuccess, showToast 
           Sync repositories, edit files, and commit directly from CodeForge.
         </p>
 
-        {/* Navigation Tabs */}
-        <div
-          style={{
-            display: 'flex',
-            background: '#161b22',
-            border: '1px solid #30363d',
-            borderRadius: 8,
-            padding: 3,
-            gap: 4,
-            marginBottom: 18,
-          }}
-        >
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('device')
-              setErrorMsg('')
-            }}
-            style={{
-              flex: 1,
-              padding: '7px 10px',
-              fontSize: 12,
-              fontWeight: 600,
-              border: 'none',
-              borderRadius: 6,
-              cursor: 'pointer',
-              background: activeTab === 'device' ? '#238636' : 'transparent',
-              color: activeTab === 'device' ? '#ffffff' : '#8b949e',
-              transition: 'all 0.15s ease',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 6,
-            }}
-          >
-            <span>⚡</span> OAuth Flow
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('token')
-              setErrorMsg('')
-            }}
-            style={{
-              flex: 1,
-              padding: '7px 10px',
-              fontSize: 12,
-              fontWeight: 600,
-              border: 'none',
-              borderRadius: 6,
-              cursor: 'pointer',
-              background: activeTab === 'token' ? '#1f6feb' : 'transparent',
-              color: activeTab === 'token' ? '#ffffff' : '#8b949e',
-              transition: 'all 0.15s ease',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 6,
-            }}
-          >
-            <KeyIcon size={13} /> Token (100% Reliable)
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('guest')
-              setErrorMsg('')
-            }}
-            style={{
-              flex: 1,
-              padding: '7px 10px',
-              fontSize: 12,
-              fontWeight: 600,
-              border: 'none',
-              borderRadius: 6,
-              cursor: 'pointer',
-              background: activeTab === 'guest' ? '#30363d' : 'transparent',
-              color: activeTab === 'guest' ? '#f0f6fc' : '#8b949e',
-              transition: 'all 0.15s ease',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 6,
-            }}
-          >
-            <span>🚀</span> Instant Guest
-          </button>
-        </div>
-
         {/* ── TAB 1: OAuth Device Code Flow ──────────────────────────── */}
-        {activeTab === 'device' && (
-          <div>
+        <div>
             {!deviceData ? (
               <div>
                 <div
@@ -472,168 +338,9 @@ export default function GitHubAuthModal({ isOpen, onClose, onSuccess, showToast 
                 </button>
               </div>
             )}
-          </div>
-        )}
+        </div>
 
-        {/* ── TAB 2: Personal Access Token (100% Guaranteed Direct) ──── */}
-        {activeTab === 'token' && (
-          <form onSubmit={handleTokenAuth} style={{ textAlign: 'left' }}>
-            <div
-              style={{
-                background: 'rgba(31, 111, 235, 0.08)',
-                border: '1px solid rgba(56, 139, 253, 0.3)',
-                borderRadius: 8,
-                padding: '10px 12px',
-                marginBottom: 14,
-                fontSize: 12,
-                color: '#58a6ff',
-                lineHeight: 1.5,
-              }}
-            >
-              <strong>🛡️ 100% Reliable Direct API Connection:</strong> Connects directly to GitHub REST API with native CORS. Works anywhere, on any network, without proxy servers.
-            </div>
-
-            <div style={{ marginBottom: 12 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                <label style={{ fontSize: 12, fontWeight: 600, color: '#c9d1d9' }}>
-                  GitHub Personal Access Token:
-                </label>
-                <a
-                  href="https://github.com/settings/tokens/new?scopes=repo,read:user,user:email&description=CodeForge%20IDE"
-                  target="_blank"
-                  rel="noreferrer"
-                  style={{
-                    fontSize: 11,
-                    color: '#58a6ff',
-                    textDecoration: 'underline',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 4,
-                  }}
-                >
-                  Generate Token on GitHub <ExternalLinkIcon size={10} />
-                </a>
-              </div>
-
-              <div style={{ position: 'relative' }}>
-                <input
-                  type={showTokenText ? 'text' : 'password'}
-                  value={patToken}
-                  onChange={e => setPatToken(e.target.value)}
-                  placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
-                  disabled={busy}
-                  className="ide-input"
-                  style={{
-                    width: '100%',
-                    padding: '9px 40px 9px 12px',
-                    fontSize: 13,
-                    fontFamily: 'JetBrains Mono, monospace',
-                    background: '#161b22',
-                    border: '1px solid #30363d',
-                    borderRadius: 6,
-                    color: '#f0f6fc',
-                  }}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowTokenText(p => !p)}
-                  style={{
-                    position: 'absolute',
-                    right: 8,
-                    top: '50%',
-                    transform: 'translateY(-50%)',
-                    background: 'none',
-                    border: 'none',
-                    color: '#7d8590',
-                    cursor: 'pointer',
-                    fontSize: 12,
-                    padding: 4,
-                  }}
-                >
-                  {showTokenText ? 'Hide' : 'Show'}
-                </button>
-              </div>
-              <div style={{ fontSize: 11, color: '#7d8590', marginTop: 4 }}>
-                Requires <code>repo</code> and <code>read:user</code> scopes to browse and commit code.
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              disabled={busy || !patToken.trim()}
-              className="btn btn-primary"
-              style={{
-                width: '100%',
-                justifyContent: 'center',
-                padding: '10px 16px',
-                fontSize: 13,
-                fontWeight: 600,
-                gap: 8,
-                background: 'linear-gradient(135deg, #1f6feb 0%, #388bfd 100%)',
-                boxShadow: '0 4px 12px rgba(31, 111, 235, 0.3)',
-              }}
-            >
-              {busy ? (
-                <>
-                  <SpinnerIcon size={14} /> Verifying GitHub Token...
-                </>
-              ) : (
-                <>
-                  <KeyIcon size={14} /> Connect with Token
-                </>
-              )}
-            </button>
-          </form>
-        )}
-
-        {/* ── TAB 3: 1-Click Instant Guest / Local Developer Mode ─────── */}
-        {activeTab === 'guest' && (
-          <div style={{ textAlign: 'left' }}>
-            <p style={{ color: '#8b949e', fontSize: 12, lineHeight: 1.6, marginBottom: 14 }}>
-              Continue immediately as a Local Developer! No tokens or GitHub account required. All IDE features, multi-language execution, Monaco editor, and Gemini AI copilot work right away.
-            </p>
-
-            <div style={{ marginBottom: 14 }}>
-              <label style={{ fontSize: 12, fontWeight: 600, color: '#c9d1d9', display: 'block', marginBottom: 6 }}>
-                Developer Display Name:
-              </label>
-              <input
-                type="text"
-                value={guestName}
-                onChange={e => setGuestName(e.target.value)}
-                placeholder="Developer"
-                className="ide-input"
-                style={{
-                  width: '100%',
-                  padding: '9px 12px',
-                  fontSize: 13,
-                  background: '#161b22',
-                  border: '1px solid #30363d',
-                  borderRadius: 6,
-                  color: '#f0f6fc',
-                }}
-              />
-            </div>
-
-            <button
-              onClick={handleContinueAsGuest}
-              className="btn btn-primary"
-              style={{
-                width: '100%',
-                justifyContent: 'center',
-                padding: '10px 16px',
-                fontSize: 13,
-                fontWeight: 600,
-                gap: 8,
-                background: 'linear-gradient(135deg, #238636 0%, #2ea043 100%)',
-              }}
-            >
-              🚀 Continue as @{guestName.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '_') || 'developer'}
-            </button>
-          </div>
-        )}
-
-        {/* Error Notification with Instant Fallback Actions */}
+        {/* OAuth error and retry action */}
         {errorMsg && (
           <div
             style={{
@@ -652,62 +359,26 @@ export default function GitHubAuthModal({ isOpen, onClose, onSuccess, showToast 
             <div>{errorMsg}</div>
 
             <div style={{ marginTop: 10, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              {activeTab === 'device' && (
-                <>
-                  <button
-                    onClick={handleStartOAuth}
-                    style={{
-                      background: '#30363d',
-                      border: '1px solid #484f58',
-                      borderRadius: 4,
-                      color: '#f0f6fc',
-                      fontSize: 11,
-                      padding: '4px 10px',
-                      cursor: 'pointer',
-                      fontWeight: 600,
-                    }}
-                  >
-                    ↻ Try Again
-                  </button>
-                  <button
-                    onClick={() => {
-                      setActiveTab('token')
-                      setErrorMsg('')
-                    }}
-                    style={{
-                      background: '#1f6feb',
-                      border: 'none',
-                      borderRadius: 4,
-                      color: '#ffffff',
-                      fontSize: 11,
-                      padding: '4px 10px',
-                      cursor: 'pointer',
-                      fontWeight: 600,
-                    }}
-                  >
-                    🔑 Switch to Personal Access Token
-                  </button>
-                </>
-              )}
               <button
-                onClick={handleContinueAsGuest}
+                onClick={handleStartOAuth}
                 style={{
-                  background: 'transparent',
+                  background: '#30363d',
                   border: '1px solid #484f58',
                   borderRadius: 4,
-                  color: '#8b949e',
+                  color: '#f0f6fc',
                   fontSize: 11,
                   padding: '4px 10px',
                   cursor: 'pointer',
+                  fontWeight: 600,
                 }}
               >
-                🚀 Skip & Continue as Guest
+                Try Again
               </button>
             </div>
           </div>
         )}
 
-        {/* Footer info & Instant Skip Action */}
+        {/* OAuth security note */}
         <div
           style={{
             marginTop: 18,
@@ -715,27 +386,12 @@ export default function GitHubAuthModal({ isOpen, onClose, onSuccess, showToast 
             borderTop: '1px solid #21262d',
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'space-between',
+            justifyContent: 'center',
             fontSize: 11,
             color: '#7d8590',
           }}
         >
-          <button
-            type="button"
-            onClick={handleContinueAsGuest}
-            style={{
-              background: 'none',
-              border: 'none',
-              color: '#8b949e',
-              cursor: 'pointer',
-              fontSize: 11,
-              padding: 0,
-              textDecoration: 'underline',
-            }}
-          >
-            ⚡ Quick Skip & continue as Guest
-          </button>
-          <span>🔒 Tokens saved locally only</span>
+          <span>GitHub OAuth authorization</span>
         </div>
       </div>
     </div>
