@@ -484,12 +484,19 @@ function handleChatMessage(msg: string, code: string, lang: string, result?: Exe
   if (lower.includes('review') || lower.includes('feedback')) return codeReview(code, lang)
   if (lower.includes('comment') || lower.includes('document')) return addComments(code, lang)
   if (lower.includes('test')) return generateTests(code, lang)
+  if (
+    (lower.includes('html') && (lower.includes('css') || lower.includes('js') || lower.includes('javascript'))) ||
+    lower.includes('web app') || lower.includes('website') || lower.includes('todo') || lower.includes('calculator') ||
+    lower.includes('counter') || lower.includes('clock')
+  ) {
+    return generateTests(code, 'html') // will be handled by askAI in live mode
+  }
   if (lower.includes('complexity') || lower.includes('big o')) {
     const c = detectComplexity(code)
     return `## Time & Space Complexity\n\n**Time**: \`${c}\`\n**Space**: \`O(n)\`\n\n${getComplexityExplanation(c, code)}`
   }
   if (lower.includes('hello') || lower.includes('hi')) {
-    return `👋 Hello! I'm CodeForge AI, your coding assistant.\n\nI can help you:\n- **Explain** what your code does\n- **Fix** bugs and errors\n- **Optimize** for speed and memory\n- **Review** code quality\n- **Add comments** and documentation\n- **Generate tests**\n\nJust ask, or click one of the quick action buttons above!`
+    return `👋 Hello! I'm CodeForge AI, your coding assistant.\n\nI can help you:\n- **Full-Stack Web Apps:** HTML, CSS, and complete JavaScript\n- **Explain** what your code does\n- **Fix** bugs and runtime errors\n- **Optimize** for speed and memory\n- **Review** code quality and architecture\n- **Generate unit tests**\n\nJust ask, or tell me what you want to build!`
   }
 
   return `## Response to: "${msg}"\n\nBased on your ${lang} code, here's my analysis:\n\n${getGeneralResponse(code, lang, msg)}\n\n---\n*Click a quick action button for specific analysis: Explain, Fix Bug, Optimize, or Review.*`

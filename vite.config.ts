@@ -1,8 +1,32 @@
-import { defineConfig, type Plugin } from 'vite'
+import { defineConfig, loadEnv, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import path from 'node:path'
 import http from 'node:http'
+import fs from 'node:fs'
+
+// Helper to get environment variables reliably in dev server plugins
+function getReliableEnv(): Record<string, string> {
+  const result: Record<string, string> = { ...(process.env as Record<string, string>) }
+  try {
+    const envPath = path.resolve(process.cwd(), '.env')
+    if (fs.existsSync(envPath)) {
+      const content = fs.readFileSync(envPath, 'utf-8')
+      for (const line of content.split('\n')) {
+        const trimmed = line.trim()
+        if (trimmed && !trimmed.startsWith('#') && trimmed.includes('=')) {
+          const idx = trimmed.indexOf('=')
+          const key = trimmed.slice(0, idx).trim()
+          const val = trimmed.slice(idx + 1).trim().replace(/^["']|["']$/g, '')
+          if (key && val) {
+            result[key] = val
+          }
+        }
+      }
+    }
+  } catch {}
+  return result
+}
 
 /**
  * CodeForge Live Server Plugin
@@ -250,7 +274,10 @@ function codeForgeApiServerPlugin(): Plugin {
               try {
                 parsed = JSON.parse(body)
               } catch {}
-              const key = process.env.VITE_AI_KEY
+
+              const env = getReliableEnv()
+              const key = env.VITE_AI_KEY || process.env.VITE_AI_KEY || ''
+
               if (!key) {
                 res.writeHead(500, {
                   'Content-Type': 'application/json',
@@ -259,38 +286,57 @@ function codeForgeApiServerPlugin(): Plugin {
                 res.end(JSON.stringify({ ok: false, error: 'VITE_AI_KEY is not configured' }))
                 return
               }
-              const model = process.env.VITE_AI_MODEL || 'gemini-3.8-flash'
+
               const prompt = parsed?.prompt || ''
               const code = parsed?.code || ''
               const lang = parsed?.lang || 'code'
               const history = parsed?.history || []
 
-              const userPrompt = code.trim()
-                ? `Active File (${lang}):\n\`\`\`${lang}\n${code}\n\`\`\`\n\nPrompt: ${prompt}`
+              const systemInstructionText =
+                `You are CodeForge AI, an elite senior software architect and full-stack programmer acting with the full intelligence, depth, and helpfulness of Google Gemini and ChatGPT.
+
+When a user asks for code, especially web development requests involving HTML, CSS, and JavaScript:
+1. ALWAYS provide the COMPLETE code for EVERY requested technology. NEVER omit, truncate, or skip JavaScript, CSS, or HTML!
+2. Structure your response cleanly using markdown with clear headings:
+   - ### 1. HTML (Structure) inside a \`\`\`html code block
+   - ### 2. CSS (Styling) inside a \`\`\`css code block (beautiful, modern styling with flexbox/grid, gradients, smooth transitions)
+   - ### 3. JavaScript (Logic & Interactivity) inside a \`\`\`javascript code block (complete, fully functional logic with all event listeners, functions, and state management)
+   - ### 4. All-in-One File (index.html) inside a \`\`\`html code block with embedded <style> and <script> so the user can copy/paste and run/preview it immediately with one click.
+3. Provide a friendly, detailed walkthrough explaining how the code works, key features, and tips for customization, just like ChatGPT and Gemini.
+4. For all other programming languages (Python, C++, Java, Rust, Go, SQL, etc.), always provide complete, production-ready, runnable solutions without any placeholders or TODOs, along with Big-O time and space complexity analysis.`
+
+              const contents: any[] = []
+
+              // Build conversation history ensuring valid alternating user/model roles
+              if (Array.isArray(history) && history.length > 0) {
+                let lastRole = ''
+                for (const msg of history.slice(-6)) {
+                  const role = msg.role === 'assistant' ? 'model' : 'user'
+                  if (role !== lastRole && msg.content && typeof msg.content === 'string' && msg.content.trim()) {
+                    contents.push({
+                      role,
+                      parts: [{ text: msg.content.trim() }],
+                    })
+                    lastRole = role
+                  }
+                }
+              }
+
+              // Append current user prompt
+              const finalUserContent = code.trim()
+                ? `Active Workspace File (${lang} - ${parsed?.fileName || 'current'}):\n\`\`\`${lang}\n${code}\n\`\`\`\n\nUser Request: ${prompt}`
                 : prompt
 
-              const contents = [
-                {
+              if (contents.length > 0 && contents[contents.length - 1].role === 'user') {
+                contents[contents.length - 1].parts[0].text += `\n\n${finalUserContent}`
+              } else {
+                contents.push({
                   role: 'user',
-                  parts: [
-                    {
-                      text: 'You are CodeForge AI, an elite senior programming copilot inside an online compiler. Provide production-ready, complete code inside fenced markdown blocks, along with concise explanations and Big-O complexity analysis.',
-                    },
-                  ],
-                },
-                ...history.slice(-6).map((m: any) => ({
-                  role: m.role === 'assistant' ? 'model' : 'user',
-                  parts: [{ text: m.content }],
-                })),
-                {
-                  role: 'user',
-                  parts: [{ text: userPrompt }],
-                },
-              ]
+                  parts: [{ text: finalUserContent }],
+                })
+              }
 
-              const candidateModels = [model, 'gemini-2.5-flash', 'gemini-2.5-pro'].filter(
-                (m, idx, arr) => arr.indexOf(m) === idx
-              )
+              const candidateModels = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash']
               let text = ''
               let lastErr = ''
 
@@ -302,15 +348,22 @@ function codeForgeApiServerPlugin(): Plugin {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({
+                        systemInstruction: {
+                          parts: [{ text: systemInstructionText }],
+                        },
                         contents,
-                        generationConfig: { temperature: 0.2, maxOutputTokens: 3000 },
+                        generationConfig: {
+                          temperature: 0.3,
+                          maxOutputTokens: 8192,
+                        },
                       }),
                     }
                   )
 
                   if (geminiRes.ok) {
                     const json = await geminiRes.json()
-                    text = json.candidates?.[0]?.content?.parts?.map((p: any) => p.text || '').join('') || ''
+                    text =
+                      json.candidates?.[0]?.content?.parts?.map((p: any) => p.text || '').join('') || ''
                     if (text.trim()) break
                   } else {
                     const errData = await geminiRes.json().catch(() => ({}))

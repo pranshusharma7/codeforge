@@ -28,7 +28,7 @@ const ENV_AI_MODEL =
   (ENV_AI_PROVIDER === 'openai'
     ? 'gpt-4o-mini'
     : ENV_AI_PROVIDER === 'gemini'
-    ? 'gemini-3.8-flash'
+    ? 'gemini-2.5-flash'
     : 'claude-3-5-sonnet-20241022')
 const ENV_AI_URL =
   (import.meta.env.VITE_AI_API_URL as string | undefined) ??
@@ -39,7 +39,16 @@ const ENV_AI_URL =
     : 'https://api.anthropic.com/v1/messages')
 
 const SYSTEM_PROMPT =
-  'You are CodeForge AI, an elite senior programming copilot and software architect inside an online compiler. Understand requirements deeply, ask clarifying questions only if critically necessary, and otherwise solve the task. When asked to write or fix code, return a complete, runnable, production-quality solution in a fenced code block with the language tag, followed by concise explanations, complexity analysis, and edge cases. Never use placeholders like TODO or "rest of code".'
+  `You are CodeForge AI, an elite senior programming copilot and full-stack software architect acting with the intelligence, depth, and helpfulness of Google Gemini and ChatGPT.
+When a user asks for code, especially web development requests involving HTML, CSS, and JavaScript:
+1. ALWAYS provide the COMPLETE code for EVERY requested technology. NEVER omit or truncate JavaScript, CSS, or HTML!
+2. Structure your response cleanly using markdown with clear headings:
+   - ### 1. HTML (Structure) inside a \`\`\`html code block
+   - ### 2. CSS (Styling) inside a \`\`\`css code block (beautiful, modern styling with flexbox/grid, gradients, smooth transitions)
+   - ### 3. JavaScript (Logic & Interactivity) inside a \`\`\`javascript code block (complete, fully functional logic with all event listeners, functions, and state management)
+   - ### 4. All-in-One File (index.html) inside a \`\`\`html code block with embedded <style> and <script> so the user can copy/paste and run/preview it immediately with one click.
+3. Provide a friendly, detailed walkthrough explaining how the code works, key features, and tips for customization, just like ChatGPT and Gemini.
+4. For all other programming languages (Python, C++, Java, Rust, Go, SQL, etc.), always provide complete, production-ready, runnable solutions without any placeholders or TODOs, along with Big-O time and space complexity analysis.`
 
 export function isLiveAI(): boolean {
   return isBYOKActive() || Boolean(ENV_AI_KEY)
@@ -264,7 +273,11 @@ async function callHostEnvProvider(messages: { role: string; content: string }[]
             role: m.role === 'assistant' ? 'model' : 'user',
             parts: [{ text: m.content }],
           })),
-          generationConfig: { temperature: 0.2, maxOutputTokens: 4096 },
+          generationConfig: {
+            temperature: 0.3,
+            maxOutputTokens: 8192,
+            thinkingConfig: { thinkingBudget: 0 },
+          },
         }
       : { model: ENV_AI_MODEL, messages: [{ role: 'system', content: SYSTEM_PROMPT }, ...messages], temperature: 0.2 }
   )
@@ -310,6 +323,789 @@ function generateIntelligentResponse(prompt: string, code: string, langLabel: st
   const isJs = lang.includes('js') || lang.includes('ts')
   const isCpp = lang.includes('c++') || lang.includes('cpp') || lang.includes('c')
   const isJava = lang.includes('java')
+
+  // ── 🌐 Full-Stack HTML, CSS & JavaScript Web Solutions (Gemini & ChatGPT style)
+  const isWebPrompt =
+    (p.includes('html') && (p.includes('css') || p.includes('js') || p.includes('javascript'))) ||
+    p.includes('web app') ||
+    p.includes('website') ||
+    p.includes('to-do') ||
+    p.includes('todo') ||
+    p.includes('calculator') ||
+    p.includes('counter') ||
+    p.includes('clock') ||
+    p.includes('weather')
+
+  if (isWebPrompt) {
+    if (p.includes('counter') || p.includes('click')) {
+      return `### ✦ Interactive Modern Counter App (HTML, CSS & JavaScript)
+
+Here is the complete, high-quality solution with structure, styling, and interactive JavaScript logic:
+
+---
+
+### 1. HTML (\`index.html\`)
+\`\`\`html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Interactive Counter App</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="counter-card">
+    <div class="header">
+      <span class="badge">⚡ CodeForge Demo</span>
+      <h1>Counter App</h1>
+    </div>
+
+    <div class="display-container">
+      <span id="counterValue" class="count-value">0</span>
+    </div>
+
+    <div class="button-group">
+      <button id="decrementBtn" class="btn btn-danger" title="Decrease count">-1</button>
+      <button id="resetBtn" class="btn btn-secondary" title="Reset to zero">Reset</button>
+      <button id="incrementBtn" class="btn btn-success" title="Increase count">+1</button>
+    </div>
+
+    <div class="step-control">
+      <label for="stepInput">Step Size:</label>
+      <input type="number" id="stepInput" value="1" min="1" max="100">
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
+\`\`\`
+
+---
+
+### 2. CSS (\`style.css\`)
+\`\`\`css
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+body {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: radial-gradient(circle at top left, #1e1b4b, #0f172a);
+  color: #f8fafc;
+  padding: 20px;
+}
+
+.counter-card {
+  background: rgba(30, 41, 59, 0.7);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 36px 40px;
+  border-radius: 20px;
+  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.6);
+  text-align: center;
+  width: 100%;
+  max-width: 380px;
+  transition: transform 0.2s ease;
+}
+
+.header h1 {
+  font-size: 22px;
+  font-weight: 700;
+  margin-top: 8px;
+}
+
+.badge {
+  font-size: 11px;
+  font-weight: 600;
+  background: rgba(99, 102, 241, 0.2);
+  color: #818cf8;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(99, 102, 241, 0.3);
+}
+
+.display-container {
+  margin: 28px 0;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 24px;
+  border-radius: 14px;
+}
+
+.count-value {
+  font-size: 64px;
+  font-weight: 800;
+  color: #38bdf8;
+  font-variant-numeric: tabular-nums;
+  transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  display: inline-block;
+}
+
+.count-value.positive { color: #34d399; }
+.count-value.negative { color: #f87171; }
+
+.button-group {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.btn {
+  flex: 1;
+  padding: 12px 0;
+  font-size: 14px;
+  font-weight: 600;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn:active { transform: scale(0.96); }
+
+.btn-success {
+  background: #10b981;
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35);
+}
+.btn-success:hover { background: #059669; }
+
+.btn-danger {
+  background: #ef4444;
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(239, 68, 68, 0.35);
+}
+.btn-danger:hover { background: #dc2626; }
+
+.btn-secondary {
+  background: rgba(255, 255, 255, 0.08);
+  color: #cbd5e1;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+.btn-secondary:hover { background: rgba(255, 255, 255, 0.15); }
+
+.step-control {
+  margin-top: 20px;
+  font-size: 13px;
+  color: #94a3b8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.step-control input {
+  width: 60px;
+  padding: 4px 8px;
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #f8fafc;
+  border-radius: 6px;
+  text-align: center;
+  font-weight: 600;
+}
+\`\`\`
+
+---
+
+### 3. JavaScript (\`script.js\`)
+\`\`\`javascript
+// State
+let count = 0;
+
+// Elements
+const display = document.getElementById('counterValue');
+const incrementBtn = document.getElementById('incrementBtn');
+const decrementBtn = document.getElementById('decrementBtn');
+const resetBtn = document.getElementById('resetBtn');
+const stepInput = document.getElementById('stepInput');
+
+function updateDisplay() {
+  display.textContent = count;
+  display.classList.remove('positive', 'negative');
+  if (count > 0) display.classList.add('positive');
+  else if (count < 0) display.classList.add('negative');
+
+  // Micro-bounce animation
+  display.style.transform = 'scale(1.15)';
+  setTimeout(() => { display.style.transform = 'scale(1)'; }, 100);
+}
+
+function getStep() {
+  const step = parseInt(stepInput.value, 10);
+  return isNaN(step) || step <= 0 ? 1 : step;
+}
+
+// Event Listeners
+incrementBtn.addEventListener('click', () => {
+  count += getStep();
+  updateDisplay();
+});
+
+decrementBtn.addEventListener('click', () => {
+  count -= getStep();
+  updateDisplay();
+});
+
+resetBtn.addEventListener('click', () => {
+  count = 0;
+  updateDisplay();
+});
+
+// Keyboard Shortcuts (ArrowUp / ArrowDown / R)
+window.addEventListener('keydown', (e) => {
+  if (e.target.tagName === 'INPUT') return;
+  if (e.key === 'ArrowUp' || e.key === '+') {
+    count += getStep();
+    updateDisplay();
+  } else if (e.key === 'ArrowDown' || e.key === '-') {
+    count -= getStep();
+    updateDisplay();
+  } else if (e.key.toLowerCase() === 'r') {
+    count = 0;
+    updateDisplay();
+  }
+});
+\`\`\`
+
+---
+
+### 4. Complete All-in-One File (\`index.html\`)
+\`\`\`html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Interactive Counter App</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+    body { min-height: 100vh; display: flex; justify-content: center; align-items: center; background: radial-gradient(circle at top left, #1e1b4b, #0f172a); color: #f8fafc; padding: 20px; }
+    .counter-card { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.1); padding: 36px 40px; border-radius: 20px; box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.6); text-align: center; width: 100%; max-width: 380px; }
+    .header h1 { font-size: 22px; font-weight: 700; margin-top: 8px; }
+    .badge { font-size: 11px; font-weight: 600; background: rgba(99, 102, 241, 0.2); color: #818cf8; padding: 4px 10px; border-radius: 999px; border: 1px solid rgba(99, 102, 241, 0.3); }
+    .display-container { margin: 28px 0; background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255, 255, 255, 0.06); padding: 24px; border-radius: 14px; }
+    .count-value { font-size: 64px; font-weight: 800; color: #38bdf8; font-variant-numeric: tabular-nums; transition: transform 0.15s ease; display: inline-block; }
+    .count-value.positive { color: #34d399; }
+    .count-value.negative { color: #f87171; }
+    .button-group { display: flex; gap: 12px; justify-content: center; }
+    .btn { flex: 1; padding: 12px 0; font-size: 14px; font-weight: 600; border: none; border-radius: 10px; cursor: pointer; transition: all 0.15s ease; }
+    .btn:active { transform: scale(0.96); }
+    .btn-success { background: #10b981; color: #fff; }
+    .btn-danger { background: #ef4444; color: #fff; }
+    .btn-secondary { background: rgba(255, 255, 255, 0.08); color: #cbd5e1; border: 1px solid rgba(255, 255, 255, 0.1); }
+    .step-control { margin-top: 20px; font-size: 13px; color: #94a3b8; display: flex; align-items: center; justify-content: center; gap: 8px; }
+    .step-control input { width: 60px; padding: 4px 8px; background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(255, 255, 255, 0.15); color: #f8fafc; border-radius: 6px; text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="counter-card">
+    <div class="header">
+      <span class="badge">⚡ CodeForge Demo</span>
+      <h1>Counter App</h1>
+    </div>
+    <div class="display-container">
+      <span id="counterValue" class="count-value">0</span>
+    </div>
+    <div class="button-group">
+      <button id="decrementBtn" class="btn btn-danger">-1</button>
+      <button id="resetBtn" class="btn btn-secondary">Reset</button>
+      <button id="incrementBtn" class="btn btn-success">+1</button>
+    </div>
+    <div class="step-control">
+      <label for="stepInput">Step Size:</label>
+      <input type="number" id="stepInput" value="1" min="1" max="100">
+    </div>
+  </div>
+  <script>
+    let count = 0;
+    const display = document.getElementById('counterValue');
+    const incrementBtn = document.getElementById('incrementBtn');
+    const decrementBtn = document.getElementById('decrementBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const stepInput = document.getElementById('stepInput');
+    function updateDisplay() {
+      display.textContent = count;
+      display.classList.remove('positive', 'negative');
+      if (count > 0) display.classList.add('positive');
+      else if (count < 0) display.classList.add('negative');
+    }
+    const getStep = () => Math.max(1, parseInt(stepInput.value, 10) || 1);
+    incrementBtn.addEventListener('click', () => { count += getStep(); updateDisplay(); });
+    decrementBtn.addEventListener('click', () => { count -= getStep(); updateDisplay(); });
+    resetBtn.addEventListener('click', () => { count = 0; updateDisplay(); });
+  </script>
+</body>
+</html>
+\`\`\`
+
+---
+### 💡 Key Features Included:
+- **Separation of Concerns:** Separate HTML structure, CSS styles, and JavaScript logic.
+- **Dynamic Color Coding:** Automatically turns emerald green on positive, crimson red on negative.
+- **Interactive Step Size:** Customize step increments (e.g. +5, +10).
+- **Keyboard Shortcuts:** Use **↑**, **↓**, and **R** on your keyboard to control the counter!`
+    }
+
+    // Default rich Web Application template (To-Do List / App)
+    return `### ✦ Interactive To-Do List Application (HTML, CSS & JavaScript)
+
+Here is a full-featured, responsive **To-Do List Web Application** with complete structure, modern styling, and interactive JavaScript with **LocalStorage persistence**:
+
+---
+
+### 1. HTML (\`index.html\`)
+\`\`\`html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Modern To-Do List</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="todo-app">
+    <header class="app-header">
+      <h1>My Tasks</h1>
+      <p id="taskStats">0 tasks remaining</p>
+    </header>
+
+    <form id="todoForm" class="todo-input-row">
+      <input 
+        type="text" 
+        id="taskInput" 
+        placeholder="What needs to be done?" 
+        autocomplete="off" 
+        required
+      >
+      <button type="submit" class="add-btn">+ Add</button>
+    </form>
+
+    <div class="filters">
+      <button class="filter-btn active" data-filter="all">All</button>
+      <button class="filter-btn" data-filter="active">Active</button>
+      <button class="filter-btn" data-filter="completed">Completed</button>
+    </div>
+
+    <ul id="taskList" class="task-list"></ul>
+
+    <footer class="app-footer">
+      <button id="clearCompletedBtn" class="clear-btn">Clear Completed</button>
+    </footer>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
+\`\`\`
+
+---
+
+### 2. CSS (\`style.css\`)
+\`\`\`css
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+body {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+  color: #f8fafc;
+  padding: 20px;
+}
+
+.todo-app {
+  background: rgba(30, 41, 59, 0.75);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  width: 100%;
+  max-width: 440px;
+  border-radius: 20px;
+  padding: 32px 28px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+}
+
+.app-header h1 {
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.app-header p {
+  color: #94a3b8;
+  font-size: 13px;
+  margin-top: 4px;
+}
+
+.todo-input-row {
+  display: flex;
+  gap: 10px;
+  margin: 24px 0 16px;
+}
+
+.todo-input-row input {
+  flex: 1;
+  padding: 12px 16px;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  color: #f8fafc;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.todo-input-row input:focus {
+  border-color: #6366f1;
+}
+
+.add-btn {
+  padding: 12px 20px;
+  background: #6366f1;
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.add-btn:hover { background: #4f46e5; }
+
+.filters {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding-bottom: 12px;
+}
+
+.filter-btn {
+  background: none;
+  border: none;
+  color: #94a3b8;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 4px 10px;
+  border-radius: 6px;
+}
+
+.filter-btn.active {
+  background: rgba(99, 102, 241, 0.2);
+  color: #818cf8;
+}
+
+.task-list {
+  list-style: none;
+  max-height: 320px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.task-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(15, 23, 42, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  padding: 12px 14px;
+  border-radius: 10px;
+  transition: all 0.15s;
+}
+
+.task-item:hover {
+  background: rgba(15, 23, 42, 0.7);
+}
+
+.task-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+}
+
+.task-checkbox {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: #6366f1;
+}
+
+.task-text {
+  font-size: 14px;
+  color: #f1f5f9;
+  transition: all 0.2s;
+}
+
+.task-item.completed .task-text {
+  text-decoration: line-through;
+  color: #64748b;
+}
+
+.delete-btn {
+  background: none;
+  border: none;
+  color: #ef4444;
+  cursor: pointer;
+  font-size: 16px;
+  opacity: 0.6;
+  transition: opacity 0.2s;
+}
+
+.delete-btn:hover { opacity: 1; }
+
+.app-footer {
+  margin-top: 20px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.clear-btn {
+  background: none;
+  border: none;
+  color: #94a3b8;
+  font-size: 12px;
+  cursor: pointer;
+}
+.clear-btn:hover { color: #f87171; }
+\`\`\`
+
+---
+
+### 3. JavaScript (\`script.js\`)
+\`\`\`javascript
+// State
+let tasks = JSON.parse(localStorage.getItem('cf_tasks') || '[]');
+let currentFilter = 'all';
+
+// DOM Elements
+const form = document.getElementById('todoForm');
+const input = document.getElementById('taskInput');
+const list = document.getElementById('taskList');
+const stats = document.getElementById('taskStats');
+const filterBtns = document.querySelectorAll('.filter-btn');
+const clearCompletedBtn = document.getElementById('clearCompletedBtn');
+
+// Save to LocalStorage
+function saveTasks() {
+  localStorage.setItem('cf_tasks', JSON.stringify(tasks));
+  render();
+}
+
+// Render Tasks
+function render() {
+  list.innerHTML = '';
+
+  const filteredTasks = tasks.filter(task => {
+    if (currentFilter === 'active') return !task.completed;
+    if (currentFilter === 'completed') return task.completed;
+    return true;
+  });
+
+  filteredTasks.forEach(task => {
+    const li = document.createElement('li');
+    li.className = \`task-item \${task.completed ? 'completed' : ''}\`;
+
+    li.innerHTML = \`
+      <div class="task-content">
+        <input 
+          type="checkbox" 
+          class="task-checkbox" 
+          \${task.completed ? 'checked' : ''}
+        >
+        <span class="task-text">\${escapeHtml(task.text)}</span>
+      </div>
+      <button class="delete-btn" title="Delete Task">✕</button>
+    \`;
+
+    // Toggle Complete
+    li.querySelector('.task-checkbox').addEventListener('change', () => {
+      task.completed = !task.completed;
+      saveTasks();
+    });
+
+    // Delete Task
+    li.querySelector('.delete-btn').addEventListener('click', () => {
+      tasks = tasks.filter(t => t.id !== task.id);
+      saveTasks();
+    });
+
+    list.appendChild(li);
+  });
+
+  // Update Remaining Counter
+  const remaining = tasks.filter(t => !t.completed).length;
+  stats.textContent = \`\${remaining} task\${remaining === 1 ? '' : 's'} remaining\`;
+}
+
+// Add New Task
+form.addEventListener('submit', (e) => {
+  e.preventDefault();
+  const text = input.value.trim();
+  if (!text) return;
+
+  tasks.push({
+    id: crypto.randomUUID(),
+    text,
+    completed: false,
+    createdAt: Date.now()
+  });
+
+  input.value = '';
+  saveTasks();
+});
+
+// Filters
+filterBtns.forEach(btn => {
+  btn.addEventListener('click', () => {
+    filterBtns.forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentFilter = btn.dataset.filter;
+    render();
+  });
+});
+
+// Clear Completed
+clearCompletedBtn.addEventListener('click', () => {
+  tasks = tasks.filter(t => !t.completed);
+  saveTasks();
+});
+
+// Utility
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+// Initial Run
+render();
+\`\`\`
+
+---
+
+### 4. Complete All-in-One File (\`index.html\`)
+\`\`\`html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Modern To-Do List</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+    body { min-height: 100vh; display: flex; justify-content: center; align-items: center; background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%); color: #f8fafc; padding: 20px; }
+    .todo-app { background: rgba(30, 41, 59, 0.75); backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.1); width: 100%; max-width: 440px; border-radius: 20px; padding: 32px 28px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); }
+    .app-header h1 { font-size: 24px; font-weight: 700; }
+    .app-header p { color: #94a3b8; font-size: 13px; margin-top: 4px; }
+    .todo-input-row { display: flex; gap: 10px; margin: 24px 0 16px; }
+    .todo-input-row input { flex: 1; padding: 12px 16px; background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 10px; color: #f8fafc; font-size: 14px; outline: none; }
+    .add-btn { padding: 12px 20px; background: #6366f1; color: #fff; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; }
+    .filters { display: flex; gap: 8px; margin-bottom: 16px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); padding-bottom: 12px; }
+    .filter-btn { background: none; border: none; color: #94a3b8; font-size: 12px; font-weight: 500; cursor: pointer; padding: 4px 10px; border-radius: 6px; }
+    .filter-btn.active { background: rgba(99, 102, 241, 0.2); color: #818cf8; }
+    .task-list { list-style: none; max-height: 320px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
+    .task-item { display: flex; align-items: center; justify-content: space-between; background: rgba(15, 23, 42, 0.4); border: 1px solid rgba(255, 255, 255, 0.05); padding: 12px 14px; border-radius: 10px; }
+    .task-content { display: flex; align-items: center; gap: 12px; flex: 1; }
+    .task-checkbox { width: 18px; height: 18px; cursor: pointer; accent-color: #6366f1; }
+    .task-text { font-size: 14px; color: #f1f5f9; }
+    .task-item.completed .task-text { text-decoration: line-through; color: #64748b; }
+    .delete-btn { background: none; border: none; color: #ef4444; cursor: pointer; font-size: 16px; opacity: 0.6; }
+    .app-footer { margin-top: 20px; display: flex; justify-content: flex-end; }
+    .clear-btn { background: none; border: none; color: #94a3b8; font-size: 12px; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <div class="todo-app">
+    <header class="app-header">
+      <h1>My Tasks</h1>
+      <p id="taskStats">0 tasks remaining</p>
+    </header>
+    <form id="todoForm" class="todo-input-row">
+      <input type="text" id="taskInput" placeholder="What needs to be done?" required>
+      <button type="submit" class="add-btn">+ Add</button>
+    </form>
+    <div class="filters">
+      <button class="filter-btn active" data-filter="all">All</button>
+      <button class="filter-btn" data-filter="active">Active</button>
+      <button class="filter-btn" data-filter="completed">Completed</button>
+    </div>
+    <ul id="taskList" class="task-list"></ul>
+    <footer class="app-footer">
+      <button id="clearCompletedBtn" class="clear-btn">Clear Completed</button>
+    </footer>
+  </div>
+  <script>
+    let tasks = JSON.parse(localStorage.getItem('cf_tasks') || '[]');
+    let currentFilter = 'all';
+    const form = document.getElementById('todoForm');
+    const input = document.getElementById('taskInput');
+    const list = document.getElementById('taskList');
+    const stats = document.getElementById('taskStats');
+    const filterBtns = document.querySelectorAll('.filter-btn');
+    const clearCompletedBtn = document.getElementById('clearCompletedBtn');
+    function saveTasks() { localStorage.setItem('cf_tasks', JSON.stringify(tasks)); render(); }
+    function render() {
+      list.innerHTML = '';
+      const filtered = tasks.filter(t => currentFilter === 'active' ? !t.completed : currentFilter === 'completed' ? t.completed : true);
+      filtered.forEach(task => {
+        const li = document.createElement('li');
+        li.className = 'task-item ' + (task.completed ? 'completed' : '');
+        li.innerHTML = '<div class="task-content"><input type="checkbox" class="task-checkbox" ' + (task.completed ? 'checked' : '') + '><span class="task-text">' + task.text + '</span></div><button class="delete-btn">✕</button>';
+        li.querySelector('.task-checkbox').addEventListener('change', () => { task.completed = !task.completed; saveTasks(); });
+        li.querySelector('.delete-btn').addEventListener('click', () => { tasks = tasks.filter(t => t.id !== task.id); saveTasks(); });
+        list.appendChild(li);
+      });
+      const remaining = tasks.filter(t => !t.completed).length;
+      stats.textContent = remaining + ' task' + (remaining === 1 ? '' : 's') + ' remaining';
+    }
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      if (!input.value.trim()) return;
+      tasks.push({ id: crypto.randomUUID(), text: input.value.trim(), completed: false });
+      input.value = '';
+      saveTasks();
+    });
+    filterBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        filterBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentFilter = btn.dataset.filter;
+        render();
+      });
+    });
+    clearCompletedBtn.addEventListener('click', () => { tasks = tasks.filter(t => !t.completed); saveTasks(); });
+    render();
+  </script>
+</body>
+</html>
+\`\`\`
+
+---
+### 💡 Included Features:
+- **Full CRUD Support:** Add, complete, and delete tasks dynamically.
+- **LocalStorage Persistence:** Tasks remain saved even after refreshing the page.
+- **Filtering System:** Switch seamlessly between All, Active, and Completed views.
+- **Auto-Counter:** Live count of incomplete tasks.`
+  }
 
   // Fibonacci
   if (p.includes('fibonacci') || p.includes('fib')) {

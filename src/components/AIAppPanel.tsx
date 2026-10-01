@@ -121,20 +121,28 @@ export default function AIAppPanel({
     lang: string,
     history: { role: string; content: string }[]
   ) => {
+    // 1. Try server proxy first (reliable, key kept on backend)
     try {
+      const controller = new AbortController()
+      const timer = setTimeout(() => controller.abort(), 35000)
       const srvRes = await fetch('/api/ai/gemini', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt, code, lang, history }),
-      })
+        signal: controller.signal,
+      }).finally(() => clearTimeout(timer))
+
       if (srvRes.ok) {
         const srvData = await srvRes.json()
         if (srvData.ok && srvData.text) {
           return srvData.text
         }
       }
-    } catch {}
+    } catch (e) {
+      console.warn('Backend /api/ai/gemini fetch error:', e)
+    }
 
+    // 2. Direct browser fetch to Google Generative AI
     const key = geminiApiKey.trim() || (import.meta.env.VITE_AI_KEY as string) || ''
     if (!key) throw new Error('No Gemini key')
 
@@ -142,26 +150,28 @@ export default function AIAppPanel({
       ? `Active Context (${lang || 'code'} - ${curTab.name}):\n\`\`\`${lang || 'text'}\n${code}\n\`\`\`\n\nPrompt: ${prompt}`
       : prompt
 
-    const contents = [
-      {
-        role: 'user',
-        parts: [
-          {
-            text: 'You are CodeForge AI, an elite senior software architect and AI pair programmer. Provide high-quality, production-ready code in fenced markdown blocks with language tags, followed by concise explanations, Big-O complexity analysis, and edge cases.',
-          },
-        ],
-      },
-      ...history.slice(-6).map(m => ({
-        role: m.role === 'assistant' ? 'model' : 'user',
-        parts: [{ text: m.content }],
-      })),
-      {
-        role: 'user',
-        parts: [{ text: userPrompt }],
-      },
-    ]
+    const systemInstructionText =
+      'You are CodeForge AI, an elite senior software architect and full-stack programmer acting with the depth and helpfulness of Google Gemini and ChatGPT. When asked for code, especially web development (HTML, CSS, JS), always provide COMPLETE code for all 3 technologies (HTML, CSS, JS) without placeholders or omissions, plus an all-in-one index.html runnable version, followed by a friendly explanation.'
 
-    const candidateModels = ['gemini-3.8-flash', 'gemini-2.5-flash', 'gemini-2.5-pro']
+    const contents: any[] = []
+    if (Array.isArray(history) && history.length > 0) {
+      let lastRole = ''
+      for (const msg of history.slice(-6)) {
+        const role = msg.role === 'assistant' ? 'model' : 'user'
+        if (role !== lastRole && msg.content && typeof msg.content === 'string' && msg.content.trim()) {
+          contents.push({ role, parts: [{ text: msg.content.trim() }] })
+          lastRole = role
+        }
+      }
+    }
+
+    if (contents.length > 0 && contents[contents.length - 1].role === 'user') {
+      contents[contents.length - 1].parts[0].text += `\n\n${userPrompt}`
+    } else {
+      contents.push({ role: 'user', parts: [{ text: userPrompt }] })
+    }
+
+    const candidateModels = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash']
     let lastErr = ''
 
     for (const model of candidateModels) {
@@ -172,8 +182,13 @@ export default function AIAppPanel({
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
+              systemInstruction: { parts: [{ text: systemInstructionText }] },
               contents,
-              generationConfig: { temperature: 0.2, maxOutputTokens: 3000 },
+              generationConfig: {
+                temperature: 0.3,
+                maxOutputTokens: 8192,
+                thinkingConfig: { thinkingBudget: 0 },
+              },
             }),
           }
         )
@@ -230,14 +245,11 @@ export default function AIAppPanel({
       let reply = ''
       let isLiveGemini = false
 
-      if (geminiApiKey.trim()) {
-        try {
-          reply = await callGeminiAPI(raw, activeCode, curTab.lang, historyContext)
-          isLiveGemini = true
-        } catch {
-          reply = await askAI(raw, activeCode, curTab.lang, historyContext)
-        }
-      } else {
+      try {
+        reply = await callGeminiAPI(raw, activeCode, curTab.lang, historyContext)
+        isLiveGemini = true
+      } catch (geminiErr: any) {
+        console.warn('callGeminiAPI failed, falling back to askAI engine:', geminiErr)
         reply = await askAI(raw, activeCode, curTab.lang, historyContext)
       }
 
