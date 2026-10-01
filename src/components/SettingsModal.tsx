@@ -41,6 +41,10 @@ interface Props {
     sha: string,
     branch: string
   ) => void
+  onImportMultipleFiles?: (
+    repo: GitHubRepository,
+    files: { path: string; name: string; content: string; sha: string; branch: string }[]
+  ) => void
   showToast: (msg: string) => void
 }
 
@@ -72,6 +76,7 @@ export default function SettingsModal({
   onRefreshRepos,
   onSelectRepoForCommit,
   onOpenFileFromRepo,
+  onImportMultipleFiles,
   showToast,
 }: Props) {
   const [activeTabName, setActiveTabName] = useState<'editor' | 'themes' | 'repos' | 'profile'>('editor')
@@ -575,6 +580,14 @@ export default function SettingsModal({
                   onOpenFileFromRepo(repo, path, content, sha, branch)
                   onClose()
                 }}
+                onImportMultipleFiles={
+                  onImportMultipleFiles
+                    ? (repo, files) => {
+                        onImportMultipleFiles(repo, files)
+                        onClose()
+                      }
+                    : undefined
+                }
                 showToast={showToast}
               />
             )}

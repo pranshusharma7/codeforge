@@ -44,6 +44,7 @@ export default function GitHubRepoBrowser({
   const [filterQuery, setFilterQuery] = useState('')
   const [loadingPath, setLoadingPath] = useState<string | null>(null)
   const [importingAll, setImportingAll] = useState(false)
+  const [importProgress, setImportProgress] = useState<{ current: number; total: number } | null>(null)
 
   const owner = repository.owner?.login || repository.full_name?.split('/')[0] || ''
   const repoName = repository.name
@@ -183,42 +184,76 @@ export default function GitHubRepoBrowser({
     }
   }
 
-  // Import all files in the current folder or whole repo
-  const handleImportCurrentDirectory = async () => {
+  // Import all files in the current folder or a specific directory
+  const handleImportDirectory = async (folderPathPrefix?: string) => {
     if (!onImportMultipleFiles || importingAll || !accessToken) return
-    const targetBlobs = currentPath
-      ? treeItems.filter(i => i.type === 'blob' && i.path.startsWith(`${currentPath}/`))
+    const targetPath = folderPathPrefix !== undefined ? folderPathPrefix : currentPath
+    const targetBlobs = targetPath
+      ? treeItems.filter(i => i.type === 'blob' && (i.path === targetPath || i.path.startsWith(`${targetPath}/`)))
       : treeItems.filter(i => i.type === 'blob')
 
-    if (targetBlobs.length === 0) return
-    if (targetBlobs.length > 30) {
-      const confirm = window.confirm(`This will import ${targetBlobs.length} files into your editor tabs. Continue?`)
-      if (!confirm) return
+    if (targetBlobs.length === 0) {
+      alert('No files found to import in this folder.')
+      return
+    }
+
+    // Skip large binaries, images, archives, lockfiles, and git internals
+    const validBlobs = targetBlobs.filter(item => {
+      const p = item.path.toLowerCase()
+      if (p.includes('/.git/') || p.startsWith('.git/')) return false
+      if (p.includes('/node_modules/') || p.startsWith('node_modules/')) return false
+      if (
+        p.endsWith('.png') || p.endsWith('.jpg') || p.endsWith('.jpeg') ||
+        p.endsWith('.gif') || p.endsWith('.ico') || p.endsWith('.webp') ||
+        p.endsWith('.pdf') || p.endsWith('.zip') || p.endsWith('.tar') ||
+        p.endsWith('.gz') || p.endsWith('.exe') || p.endsWith('.wasm') ||
+        p.endsWith('.mp4') || p.endsWith('.mp3')
+      ) return false
+      if (item.size && item.size > 1024 * 1024) return false
+      return true
+    })
+
+    if (validBlobs.length === 0) {
+      alert('No text or code files found to import in this folder.')
+      return
     }
 
     setImportingAll(true)
+    setImportProgress({ current: 0, total: validBlobs.length })
     const imported: { path: string; name: string; content: string; sha: string; branch: string }[] = []
 
     try {
-      for (const item of targetBlobs.slice(0, 40)) {
-        try {
-          const data = await getRepoFileContent(accessToken, owner, repoName, item.path, branch)
-          imported.push({
-            path: data.path,
-            name: data.name,
-            content: data.content,
-            sha: data.sha,
-            branch,
-          })
-        } catch (e) {
-          console.warn('Failed to load blob', item.path, e)
+      const BATCH_SIZE = 8
+      for (let i = 0; i < validBlobs.length; i += BATCH_SIZE) {
+        const batch = validBlobs.slice(i, i + BATCH_SIZE)
+        const settled = await Promise.allSettled(
+          batch.map(item => getRepoFileContent(accessToken, owner, repoName, item.path, branch))
+        )
+        for (const res of settled) {
+          if (res.status === 'fulfilled' && res.value) {
+            imported.push({
+              path: res.value.path,
+              name: res.value.name,
+              content: res.value.content,
+              sha: res.value.sha,
+              branch,
+            })
+          }
         }
+        setImportProgress({ current: Math.min(i + batch.length, validBlobs.length), total: validBlobs.length })
       }
+
       if (imported.length > 0) {
         onImportMultipleFiles(imported)
+      } else {
+        alert('Could not import files from GitHub. Please check your network or repository permissions.')
       }
+    } catch (err: any) {
+      console.error('Failed to import directory:', err)
+      alert(`Import failed: ${err.message}`)
     } finally {
       setImportingAll(false)
+      setImportProgress(null)
     }
   }
 
@@ -437,7 +472,7 @@ export default function GitHubRepoBrowser({
 
           {onImportMultipleFiles && (
             <button
-              onClick={handleImportCurrentDirectory}
+              onClick={() => handleImportDirectory()}
               disabled={importingAll || loading}
               className="btn btn-primary"
               style={{
@@ -452,7 +487,13 @@ export default function GitHubRepoBrowser({
               title="Import all files in this directory into CodeForge editor tabs"
             >
               {importingAll ? <SpinnerIcon size={11} /> : '📥'}
-              {currentPath ? 'Import Folder' : 'Import All'}
+              {importingAll
+                ? importProgress
+                  ? `Importing (${importProgress.current}/${importProgress.total})...`
+                  : 'Importing...'
+                : currentPath
+                ? 'Import Folder'
+                : 'Import All'}
             </button>
           )}
         </div>
@@ -605,7 +646,41 @@ export default function GitHubRepoBrowser({
                   </span>
                   <span style={{ color: 'var(--accent)', fontWeight: 600, fontSize: 11 }}>{folder.name}/</span>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  {onImportMultipleFiles && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleImportDirectory(folder.fullPath)
+                      }}
+                      disabled={importingAll}
+                      title={`Import all files in "${folder.name}" into editor tabs`}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 3,
+                        fontSize: 10,
+                        fontWeight: 600,
+                        padding: '2px 7px',
+                        borderRadius: 4,
+                        border: '1px solid var(--border)',
+                        background: 'var(--bg-card)',
+                        color: 'var(--accent)',
+                        cursor: importingAll ? 'not-allowed' : 'pointer',
+                        transition: 'all 0.15s',
+                      }}
+                      onMouseEnter={e => {
+                        e.currentTarget.style.background = 'var(--accent)'
+                        e.currentTarget.style.color = '#fff'
+                      }}
+                      onMouseLeave={e => {
+                        e.currentTarget.style.background = 'var(--bg-card)'
+                        e.currentTarget.style.color = 'var(--accent)'
+                      }}
+                    >
+                      📥 Import
+                    </button>
+                  )}
                   <span
                     style={{
                       fontSize: 10,

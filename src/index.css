@@ -628,11 +628,7 @@ html, body, #root {
 .diff-add { background: rgba(63, 185, 80, 0.08); border-left: 2px solid var(--green); }
 .diff-del { background: rgba(248, 81, 73, 0.08); border-left: 2px solid var(--red); }
 
-/* ── Ultra-Smooth Monaco Editor Typing & Caret ────────────────────────────── */
-.monaco-editor .cursors-layer .cursor {
-  will-change: transform, top, left;
-}
-
+/* ── Ultra-Smooth Monaco Editor Scrolling & Rendering ────────────────────────── */
 .monaco-editor,
 .monaco-editor .inputarea.ime-input {
   text-rendering: optimizeSpeed;
@@ -640,8 +636,8 @@ html, body, #root {
   -moz-osx-font-smoothing: grayscale;
 }
 
-.monaco-editor .view-line {
-  contain: layout style;
+.monaco-editor .overflow-guard {
+  will-change: scroll-position;
 }
 
 /* ── CodeForge AI Styling System ──────────────────────────────── */

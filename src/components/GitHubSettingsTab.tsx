@@ -33,6 +33,10 @@ interface Props {
     sha: string,
     branch: string
   ) => void
+  onImportMultipleFiles?: (
+    repo: GitHubRepository,
+    files: { path: string; name: string; content: string; sha: string; branch: string }[]
+  ) => void
   showToast: (msg: string) => void
 }
 
@@ -44,6 +48,7 @@ export default function GitHubSettingsTab({
   onRefreshRepos,
   onSelectRepoForCommit,
   onOpenFileFromRepo,
+  onImportMultipleFiles,
   showToast,
 }: Props) {
   const [search, setSearch] = useState('')
@@ -467,6 +472,11 @@ export default function GitHubSettingsTab({
                         onOpenFileFromRepo(repo, fileData.path, fileData.content, fileData.sha, fileData.branch)
                         showToast(`Opened ${fileData.name} in editor`)
                       }}
+                      onImportMultipleFiles={
+                        onImportMultipleFiles
+                          ? files => onImportMultipleFiles(repo, files)
+                          : undefined
+                      }
                     />
                   </div>
                 )}

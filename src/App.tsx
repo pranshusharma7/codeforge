@@ -232,8 +232,8 @@ export default function App() {
   const monaco = useMonaco()
 
   // editor
-  const [tabs, setTabs]         = useState<Tab[]>([DEFAULT_STARTER_TAB])
-  const [activeTab, setActiveTab] = useState('starter-main-py')
+  const [tabs, setTabs]         = useState<Tab[]>([])
+  const [activeTab, setActiveTab] = useState('')
   const [fontSize, setFontSize]   = useState(14)
   const [wordWrap, setWordWrap]   = useState<'on'|'off'>('off')
   const [showMini, setShowMini]   = useState(false)
@@ -248,7 +248,7 @@ export default function App() {
   const [consTab, setConsTab]       = useState<ConsoleTab>('output')
   const [bottomPanelOpen, setBottomPanelOpen] = useState(false)
   const [newFileOpen, setNewFileOpen] = useState(false)
-  const [newFileName, setNewFileName] = useState('main.py')
+  const [newFileName, setNewFileName] = useState('')
   const [newFolderOpen, setNewFolderOpen] = useState(false)
   const [newFolderName, setNewFolderName] = useState('')
   const [newFileParentFolder, setNewFileParentFolder] = useState('')
@@ -1009,7 +1009,12 @@ export default function App() {
     setFolders(prev => prev.filter(f => f !== folderName && !f.startsWith(folderName + '/')))
     setTabs(prev => {
       const remaining = prev.filter(t => !t.name.startsWith(folderName + '/'))
-      return remaining.length > 0 ? remaining : [{ id: crypto.randomUUID(), name: 'main.py', lang: 'python', code: 'print("Hello, world!")' }]
+      setActiveTab(curr => {
+        const stillExists = remaining.some(t => t.id === curr)
+        if (stillExists) return curr
+        return remaining.length > 0 ? remaining[remaining.length - 1].id : ''
+      })
+      return remaining
     })
     showToast(`Folder "${folderName}" deleted`)
   }
@@ -1475,8 +1480,18 @@ export default function App() {
     })
 
     setFolders(prev => Array.from(new Set([...prev, ...folderSet])))
-    setTabs(prev => [...prev, ...newTabs])
-    setActiveTab(newTabs[0].id)
+    setWorkspaceName(repo.name)
+    setTabs(prev => {
+      if (prev.length === 0 || (prev.length === 1 && prev[0].name === 'untitled.py' && !prev[0].code)) {
+        return newTabs
+      }
+      const existingNames = new Set(prev.map(t => t.name))
+      const toAdd = newTabs.filter(t => !existingNames.has(t.name))
+      return [...prev, ...toAdd]
+    })
+    if (newTabs.length > 0) {
+      setActiveTab(newTabs[0].id)
+    }
     setActiveRepo(repo)
     showToast(`Imported ${newTabs.length} files from ${repo.name} 🚀`)
   }
@@ -1960,7 +1975,7 @@ export default function App() {
 
   const currentFontObj = getEditorFontById(editorFont)
 
-  // Ultra-smooth, responsive Monaco options for fluid typing experience
+  // Ultra-smooth, lag-free Monaco options optimized for high FPS scrolling & typing
   const editorOptions = useMemo(() => ({
     fontSize,
     fontFamily: currentFontObj.fontFamily,
@@ -1970,15 +1985,15 @@ export default function App() {
     minimap: { enabled: showMini, scale: 1 },
     lineNumbers: 'on' as const,
     glyphMargin: true,
-    renderLineHighlight: 'all' as const,
+    renderLineHighlight: 'line' as const,
     renderLineHighlightOnlyWhenFocus: true,
     scrollBeyondLastLine: false,
-    smoothScrolling: true,
-    cursorSmoothCaretAnimation: 'on' as const,
-    cursorBlinking: 'smooth' as const,
+    smoothScrolling: false,
+    cursorSmoothCaretAnimation: 'off' as const,
+    cursorBlinking: 'blink' as const,
     cursorStyle: 'line' as const,
     cursorWidth: 2,
-    cursorSurroundingLines: 3,
+    cursorSurroundingLines: 0,
     cursorSurroundingLinesStyle: 'default' as const,
     bracketPairColorization: { enabled: true, independentColorPoolPerBracketType: true },
     guides: {
@@ -1997,9 +2012,9 @@ export default function App() {
     formatOnType: false,
     tabSize: 2,
     insertSpaces: true,
-    renderWhitespace: 'selection' as const,
+    renderWhitespace: 'none' as const,
     renderControlCharacters: false,
-    stopRenderingLineAfter: -1,
+    stopRenderingLineAfter: 10000,
     acceptSuggestionOnEnter: 'smart' as const,
     tabCompletion: 'on' as const,
     snippetSuggestions: 'top' as const,
@@ -2037,9 +2052,10 @@ export default function App() {
     scrollbar: {
       vertical: 'visible' as const,
       horizontal: 'visible' as const,
-      verticalScrollbarSize: 9,
-      horizontalScrollbarSize: 9,
+      verticalScrollbarSize: 10,
+      horizontalScrollbarSize: 10,
       useShadows: false,
+      alwaysConsumeMouseWheel: false,
     },
     overviewRulerLanes: 2,
     hideCursorInOverviewRuler: false,
@@ -2047,7 +2063,7 @@ export default function App() {
     contextmenu: true,
     mouseWheelZoom: false,
     mouseWheelScrollSensitivity: 1.0,
-    fastScrollSensitivity: 5,
+    fastScrollSensitivity: 4,
     multiCursorModifier: 'ctrlCmd' as const,
     roundedSelection: true,
     accessibilitySupport: 'off' as const,
@@ -4309,6 +4325,7 @@ export default function App() {
         onRefreshRepos={refreshRepositories}
         onSelectRepoForCommit={handleSelectRepoForCommit}
         onOpenFileFromRepo={handleOpenFileFromRepo}
+        onImportMultipleFiles={handleImportMultipleFilesFromRepo}
         showToast={showToast}
       />
 
