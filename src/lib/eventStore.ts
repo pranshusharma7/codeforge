@@ -1,5 +1,5 @@
 /**
- * CodeForge Events & Assessment Platform — Store & Service Layer
+ * CodeForge Events & Assessment Platform - Store & Service Layer
  * Handles persistent state for events, organizers, rounds, question banks, registrations, and live controls.
  */
 
@@ -331,7 +331,7 @@ All submissions are evaluated against server-authoritative hidden test suites in
     rounds: [
       {
         id: 'rnd-showdown-1',
-        name: 'Round 1 — Algorithmic Sprint',
+        name: 'Round 1 - Algorithmic Sprint',
         description: 'Solve 3 escalating problems from array manipulation to target frequency matching.',
         type: 'coding',
         order: 1,
@@ -445,7 +445,7 @@ Featuring 2 rounds: an initial Aptitude + CS Fundamentals screening, followed by
     rounds: [
       {
         id: 'rnd-iitd-1',
-        name: 'Round 1 — CS Core & Aptitude Screening',
+        name: 'Round 1 - CS Core & Aptitude Screening',
         description: '20 Questions covering OS, DBMS, Algorithms analysis, and logic puzzles.',
         type: 'mcq',
         order: 1,
@@ -460,7 +460,7 @@ Featuring 2 rounds: an initial Aptitude + CS Fundamentals screening, followed by
       },
       {
         id: 'rnd-iitd-2',
-        name: 'Round 2 — Algorithmic Championship',
+        name: 'Round 2 - Algorithmic Championship',
         description: '4 Algorithmic problems ranging from graphs to dynamic programming.',
         type: 'coding',
         order: 2,

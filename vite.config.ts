@@ -360,7 +360,7 @@ function codeForgeApiServerPlugin(): Plugin {
   }
 }
 
-// Vite config — https://vitejs.dev/config/
+// Vite config - https://vitejs.dev/config/
 export default defineConfig({
   plugins: [
     react(),

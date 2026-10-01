@@ -1,4 +1,4 @@
-# Welcome to CodeForge — Online Code Compiler & IDE!
+# Welcome to CodeForge - Online Code Compiler & IDE!
 # Multi-language compiler, Monaco editor, LeetCode runner & AI copilot.
 
 def solve():

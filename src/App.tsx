@@ -211,7 +211,7 @@ const DEFAULT_STARTER_TAB: Tab = {
   id: 'starter-main-py',
   name: 'main.py',
   lang: 'python',
-  code: `# Welcome to CodeForge — Online Code Compiler & IDE!
+  code: `# Welcome to CodeForge - Online Code Compiler & IDE!
 # Multi-language compiler, Monaco editor, LeetCode runner & AI copilot.
 
 def solve():
@@ -2197,7 +2197,7 @@ export default function App() {
             {/* Divider */}
             <div style={{ height: 1, background: 'var(--border)', margin: '3px 0' }} />
 
-            {/* Delete — red, only way to delete */}
+            {/* Delete - red, only way to delete */}
             <button
               onClick={() => {
                 deleteWorkspaceFile(contextMenu.fileId)
@@ -4056,7 +4056,7 @@ export default function App() {
                   : <>
                     <div style={{ fontSize: 12, marginBottom: 8 }}>
                       <span style={{ color: status?.color, fontWeight: 600 }}>{status?.label}</span>
-                      <span style={{ color: 'var(--text-muted)' }}> — AI analysis:</span>
+                      <span style={{ color: 'var(--text-muted)' }}> - AI analysis:</span>
                     </div>
                     <div style={{ fontSize: 12, color: 'var(--text-base)', lineHeight: 1.7 }}>
                       {hasErr

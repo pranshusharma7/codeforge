@@ -67,7 +67,7 @@ export const EventCreationWizard: React.FC<EventCreationWizardProps> = ({
   const [rounds, setRounds] = useState<EventRound[]>([
     {
       id: 'rnd_1',
-      name: 'Round 1 — Algorithmic Assessment',
+      name: 'Round 1 - Algorithmic Assessment',
       description: 'Solve programming challenges in isolated test execution sandboxes.',
       type: 'coding',
       order: 1,
@@ -112,7 +112,7 @@ export const EventCreationWizard: React.FC<EventCreationWizardProps> = ({
     const nextNum = rounds.length + 1;
     const newRound: EventRound = {
       id: `rnd_${Date.now().toString(36)}`,
-      name: `Round ${nextNum} — Coding Challenge`,
+      name: `Round ${nextNum} - Coding Challenge`,
       description: `Evaluation round ${nextNum}`,
       type: 'coding',
       order: nextNum,

@@ -1,4 +1,4 @@
-# ⚡ CodeForge — Cloud Code Editor & Compiler
+# ⚡ CodeForge - Cloud Code Editor & Compiler
 
 > Next-generation cloud-based code editor & compiler. Write, compile, debug, and execute code in 40+ programming languages with Monaco Editor, Live Server, Git integration, and an intelligent assistant.
 

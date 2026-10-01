@@ -120,7 +120,7 @@ export default function AIPanel({ code, language, lastResult, onClose }: Props) 
 
   const handleFixBug = async () => {
     if (!lastResult || loading) return
-    addMessage({ id: `u_${Date.now()}`, role: 'user', content: `Fix the bug — error output:\n\`\`\`\n${lastResult.stderr || lastResult.compileOutput}\n\`\`\``, timestamp: new Date() })
+    addMessage({ id: `u_${Date.now()}`, role: 'user', content: `Fix the bug - error output:\n\`\`\`\n${lastResult.stderr || lastResult.compileOutput}\n\`\`\``, timestamp: new Date() })
     setLoading(true)
     try {
       const reply = await fixBug(code, lastResult, language.label)

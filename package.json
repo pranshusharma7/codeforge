@@ -2,7 +2,7 @@
   "name": "codeforge",
   "private": true,
   "version": "1.0.0",
-  "description": "CodeForge — Cloud Code Editor & Compiler with multi-language execution, Monaco editor, and Git integration.",
+  "description": "CodeForge - Cloud Code Editor & Compiler with multi-language execution, Monaco editor, and Git integration.",
   "type": "module",
   "scripts": {
     "dev": "vite",

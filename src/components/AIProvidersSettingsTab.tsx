@@ -222,7 +222,7 @@ export default function AIProvidersSettingsTab({ showToast }: Props) {
               >
                 {pDef.models.map(m => (
                   <option key={m.id} value={m.id}>
-                    {m.name} {m.badge ? `[${m.badge}]` : ''} — {m.description}
+                    {m.name} {m.badge ? `[${m.badge}]` : ''} - {m.description}
                   </option>
                 ))}
               </select>

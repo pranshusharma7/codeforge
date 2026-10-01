@@ -317,7 +317,7 @@ export default function ThemeGalleryTab({
         </div>
 
         <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: '0 0 10px' }}>
-          Instantly transform your code text colors — choose from glowing Cyberpunk neons, retro hacker emerald, luxury gold, or soothing pastels.
+          Instantly transform your code text colors - choose from glowing Cyberpunk neons, retro hacker emerald, luxury gold, or soothing pastels.
         </p>
 
         {/* Font Color Presets Grid */}

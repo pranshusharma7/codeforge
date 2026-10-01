@@ -23,7 +23,7 @@ export const EDITOR_FONTS: EditorFont[] = [
     hasLigatures: true,
     category: 'Popular',
     badge: 'IDE Default',
-    description: 'The world’s most popular developer font. High x-height, clear 0/O and 1/l distinction, tailored for long coding sessions.',
+    description: "The world's most popular developer font. High x-height, clear 0/O and 1/l distinction, tailored for long coding sessions.",
     previewText: 'const total = items.reduce((a, b) => a + b, 0); // != == === =>'
   },
   {
@@ -47,7 +47,7 @@ export const EDITOR_FONTS: EditorFont[] = [
     hasLigatures: true,
     category: 'Modern',
     badge: 'VS Code Official',
-    description: 'Microsoft’s official font designed specifically for Visual Studio Code and Windows Terminal.',
+    description: "Microsoft's official font designed specifically for Visual Studio Code and Windows Terminal.",
     previewText: 'def process(records: list[str]) -> bool: return len(records) > 0'
   },
   {
@@ -59,7 +59,7 @@ export const EDITOR_FONTS: EditorFont[] = [
     hasLigatures: false,
     category: 'Popular',
     badge: 'Adobe Classic',
-    description: 'Adobe’s legendary open-source monospaced typeface designed specifically for coding environments.',
+    description: "Adobe's legendary open-source monospaced typeface designed specifically for coding environments.",
     previewText: 'template <typename T> void swap(T& a, T& b) { T tmp = a; a = b; b = tmp; }'
   },
   {
@@ -83,7 +83,7 @@ export const EDITOR_FONTS: EditorFont[] = [
     hasLigatures: false,
     category: 'Modern',
     badge: 'Engineered',
-    description: 'IBM’s engineered corporate monospace font reflecting the relationship between mankind and machine.',
+    description: "IBM's engineered corporate monospace font reflecting the relationship between mankind and machine.",
     previewText: 'SELECT id, username, created_at FROM users WHERE role = "admin";'
   },
   {

@@ -8,7 +8,7 @@ export const BUILT_IN_EXTENSIONS: Extension[] = [
     name: 'AntiGravity AI Copilot',
     version: '2.4.0',
     author: 'DeepMind / AntiGravity Team',
-    description: 'AI-powered next-line code detection & ghost autocomplete. Predicts what code comes next as you type — press Tab to accept (just like Anti Gravity).',
+    description: 'AI-powered next-line code detection & ghost autocomplete. Predicts what code comes next as you type - press Tab to accept (just like Anti Gravity).',
     icon: '✦',
     category: 'ai',
     enabled: true,

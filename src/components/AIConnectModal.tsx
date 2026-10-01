@@ -187,7 +187,7 @@ export default function AIConnectModal({ isOpen, onClose, showToast, initialProv
                 Connect AI Accounts
               </h3>
               <p style={{ margin: 0, fontSize: 11, color: 'var(--text-muted)' }}>
-                Sign in with Gemini, ChatGPT, Claude or Copilot — Zero API keys required
+                Sign in with Gemini, ChatGPT, Claude or Copilot - Zero API keys required
               </p>
             </div>
           </div>

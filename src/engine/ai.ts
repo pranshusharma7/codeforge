@@ -351,7 +351,7 @@ print(f"10th Fibonacci number: {fibonacci_nth(10)}")
 \`\`\`
 
 #### ⏱ Complexity Analysis:
-- **Time Complexity:** \`O(N)\` — Single linear pass.
+- **Time Complexity:** \`O(N)\` - Single linear pass.
 - **Space Complexity:** \`O(1)\` for \`fibonacci_nth\` (or \`O(N)\` to store the output list).
 - **Edge Cases Handled:** \`n = 0\`, \`n = 1\`, and negative numbers.`
     } else if (isJs) {

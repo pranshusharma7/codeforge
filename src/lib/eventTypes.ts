@@ -1,5 +1,5 @@
 /**
- * CodeForge Events & Assessment Platform — Core Data Architecture
+ * CodeForge Events & Assessment Platform - Core Data Architecture
  * Supports multi-round competitive programming, college tests, hiring challenges, and hackathons.
  */
 
