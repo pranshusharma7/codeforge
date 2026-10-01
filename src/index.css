@@ -628,16 +628,16 @@ html, body, #root {
 .diff-add { background: rgba(63, 185, 80, 0.08); border-left: 2px solid var(--green); }
 .diff-del { background: rgba(248, 81, 73, 0.08); border-left: 2px solid var(--red); }
 
-/* ── Ultra-Smooth Monaco Editor Scrolling & Rendering ────────────────────────── */
+/* ── Ultra-Smooth Monaco Editor Typing & Rendering ────────────────────────── */
 .monaco-editor,
 .monaco-editor .inputarea.ime-input {
-  text-rendering: optimizeSpeed;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-.monaco-editor .overflow-guard {
-  will-change: scroll-position;
+.monaco-editor .cursors-layer .cursor {
+  will-change: transform, top, left;
+  transition: transform 0.05s ease-out;
 }
 
 /* ── CodeForge AI Styling System ──────────────────────────────── */
