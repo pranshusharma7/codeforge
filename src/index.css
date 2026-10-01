@@ -9,6 +9,7 @@
 /* ── Design Tokens ─────────────────────────────────────────────────────────── */
 :root {
   --bg-app:        #0d1117;
+  --bg-main:       var(--bg-app);
   --bg-header:     #161b22;
   --bg-sidebar:    #0d1117;
   --bg-activity:   #161b22;
@@ -22,6 +23,7 @@
   --border-glow:   #30363d;
 
   --text-base:     #e6edf3;
+  --text-main:     var(--text-base);
   --text-muted:    #7d8590;
   --text-dim:      #484f58;
 

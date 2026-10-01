@@ -130,10 +130,10 @@ export default function GitHubAuthModal({ isOpen, onClose, onSuccess, showToast 
           padding: 24,
           textAlign: 'center',
           position: 'relative',
-          background: '#0d1117',
-          border: '1px solid #30363d',
+          background: 'var(--bg-card)',
+          border: '1px solid var(--border)',
           borderRadius: 14,
-          boxShadow: '0 24px 60px rgba(0, 0, 0, 0.8)',
+          boxShadow: '0 24px 60px rgba(0, 0, 0, 0.4)',
         }}
         onClick={e => e.stopPropagation()}
       >
@@ -146,7 +146,7 @@ export default function GitHubAuthModal({ isOpen, onClose, onSuccess, showToast 
             right: 16,
             background: 'none',
             border: 'none',
-            color: '#7d8590',
+            color: 'var(--text-muted)',
             cursor: 'pointer',
             fontSize: 18,
             padding: 4,
@@ -163,13 +163,12 @@ export default function GitHubAuthModal({ isOpen, onClose, onSuccess, showToast 
             width: 48,
             height: 48,
             borderRadius: '50%',
-            background: '#24292f',
-            color: '#ffffff',
+            background: 'var(--bg-hover)',
+            color: 'var(--text-base)',
             display: 'grid',
             placeItems: 'center',
             margin: '0 auto 12px',
-            border: '1px solid #30363d',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
+            border: '1px solid var(--border)',
           }}
         >
           <svg width="26" height="26" viewBox="0 0 16 16" fill="currentColor">
@@ -178,10 +177,10 @@ export default function GitHubAuthModal({ isOpen, onClose, onSuccess, showToast 
         </div>
 
         {/* Modal Header */}
-        <div style={{ fontSize: 19, fontWeight: 700, color: '#f0f6fc', marginBottom: 4 }}>
+        <div style={{ fontSize: 19, fontWeight: 700, color: 'var(--text-base)', marginBottom: 4 }}>
           Connect GitHub Account
         </div>
-        <p style={{ color: '#8b949e', fontSize: 13, lineHeight: 1.5, marginBottom: 16 }}>
+        <p style={{ color: 'var(--text-muted)', fontSize: 13, lineHeight: 1.5, marginBottom: 16 }}>
           Sync repositories, edit files, and commit directly from CodeForge.
         </p>
 
@@ -191,27 +190,27 @@ export default function GitHubAuthModal({ isOpen, onClose, onSuccess, showToast 
               <div>
                 <div
                   style={{
-                    background: '#161b22',
-                    border: '1px solid #30363d',
+                    background: 'var(--bg-app)',
+                    border: '1px solid var(--border)',
                     borderRadius: 8,
                     padding: '12px 14px',
                     textAlign: 'left',
                     marginBottom: 16,
                     fontSize: 12,
-                    color: '#c9d1d9',
+                    color: 'var(--text-base)',
                     lineHeight: 1.6,
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                    <span style={{ color: '#3fb950', fontSize: 14 }}>✓</span>
+                    <span style={{ color: 'var(--green)', fontSize: 14 }}>✓</span>
                     <span>1-Click official GitHub OAuth 2.0 Device Code</span>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                    <span style={{ color: '#3fb950', fontSize: 14 }}>✓</span>
+                    <span style={{ color: 'var(--green)', fontSize: 14 }}>✓</span>
                     <span>Direct branch switching, commit, and repo syncing</span>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ color: '#3fb950', fontSize: 14 }}>✓</span>
+                    <span style={{ color: 'var(--green)', fontSize: 14 }}>✓</span>
                     <span>Automatic authentication without pasting any token</span>
                   </div>
                 </div>
@@ -248,14 +247,14 @@ export default function GitHubAuthModal({ isOpen, onClose, onSuccess, showToast 
             ) : (
               <div
                 style={{
-                  background: '#161b22',
-                  border: '1px solid #30363d',
+                  background: 'var(--bg-app)',
+                  border: '1px solid var(--border)',
                   borderRadius: 10,
                   padding: '18px 16px',
                   textAlign: 'center',
                 }}
               >
-                <div style={{ fontSize: 12, color: '#8b949e', marginBottom: 10 }}>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 10 }}>
                   Enter this verification code on the GitHub authorization page:
                 </div>
 
@@ -265,9 +264,9 @@ export default function GitHubAuthModal({ isOpen, onClose, onSuccess, showToast 
                     fontSize: 26,
                     fontWeight: 700,
                     letterSpacing: '0.14em',
-                    color: '#58a6ff',
-                    background: '#0d1117',
-                    border: '1px solid #30363d',
+                    color: 'var(--accent)',
+                    background: 'var(--bg-card)',
+                    border: '1px solid var(--border)',
                     borderRadius: 8,
                     padding: '10px 18px',
                     display: 'inline-block',
@@ -286,8 +285,8 @@ export default function GitHubAuthModal({ isOpen, onClose, onSuccess, showToast 
                       fontSize: 12,
                       padding: '7px 14px',
                       gap: 6,
-                      border: '1px solid #30363d',
-                      color: copiedCode ? '#3fb950' : '#c9d1d9',
+                      border: '1px solid var(--border)',
+                      color: copiedCode ? 'var(--green)' : 'var(--text-base)',
                     }}
                   >
                     {copiedCode ? <CheckIcon size={14} /> : null}
@@ -316,7 +315,7 @@ export default function GitHubAuthModal({ isOpen, onClose, onSuccess, showToast 
                     alignItems: 'center',
                     justifyContent: 'center',
                     gap: 8,
-                    color: '#8b949e',
+                    color: 'var(--text-muted)',
                     fontSize: 12,
                     marginBottom: 10,
                   }}
@@ -329,7 +328,7 @@ export default function GitHubAuthModal({ isOpen, onClose, onSuccess, showToast 
                   style={{
                     background: 'none',
                     border: 'none',
-                    color: '#7d8590',
+                    color: 'var(--text-muted)',
                     cursor: 'pointer',
                     fontSize: 11,
                     textDecoration: 'underline',
@@ -346,9 +345,9 @@ export default function GitHubAuthModal({ isOpen, onClose, onSuccess, showToast 
         {errorMsg && (
           <div
             style={{
-              background: '#2d1b20',
-              border: '1px solid #6e2a32',
-              color: '#ffa198',
+              background: 'rgba(248, 81, 73, 0.1)',
+              border: '1px solid rgba(248, 81, 73, 0.3)',
+              color: 'var(--red)',
               borderRadius: 8,
               padding: '12px 14px',
               fontSize: 12,
@@ -364,10 +363,10 @@ export default function GitHubAuthModal({ isOpen, onClose, onSuccess, showToast 
               <button
                 onClick={handleStartOAuth}
                 style={{
-                  background: '#30363d',
-                  border: '1px solid #484f58',
+                  background: 'var(--bg-card)',
+                  border: '1px solid var(--border)',
                   borderRadius: 4,
-                  color: '#f0f6fc',
+                  color: 'var(--text-base)',
                   fontSize: 11,
                   padding: '4px 10px',
                   cursor: 'pointer',
@@ -385,12 +384,12 @@ export default function GitHubAuthModal({ isOpen, onClose, onSuccess, showToast 
           style={{
             marginTop: 18,
             paddingTop: 12,
-            borderTop: '1px solid #21262d',
+            borderTop: '1px solid var(--border)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             fontSize: 11,
-            color: '#7d8590',
+            color: 'var(--text-muted)',
           }}
         >
           <span>GitHub OAuth authorization</span>

@@ -150,19 +150,19 @@ export default function GitHubSettingsTab({
             width: 48,
             height: 48,
             borderRadius: '50%',
-            background: '#21262d',
+            background: 'var(--bg-hover)',
             display: 'grid',
             placeItems: 'center',
             margin: '0 auto 14px',
-            color: '#a78bfa',
+            color: 'var(--accent)',
           }}
         >
           <RepoIcon size={24} />
         </div>
-        <div style={{ fontSize: 16, fontWeight: 700, color: '#e6edf3', marginBottom: 6 }}>
+        <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-base)', marginBottom: 6 }}>
           GitHub Repositories
         </div>
-        <p style={{ color: '#7d8590', fontSize: 13, maxWidth: 360, margin: '0 auto 20px', lineHeight: 1.6 }}>
+        <p style={{ color: 'var(--text-muted)', fontSize: 13, maxWidth: 360, margin: '0 auto 20px', lineHeight: 1.6 }}>
           Connect your GitHub account to access all your public and private repositories, explore code files, and commit directly from CodeForge.
         </p>
         <button onClick={onConnectGitHub} className="btn btn-primary" style={{ padding: '8px 22px', fontSize: 13 }}>
@@ -239,7 +239,7 @@ export default function GitHubSettingsTab({
             gap: 12,
           }}
         >
-          <div style={{ fontSize: 12, color: '#e3b341', lineHeight: 1.5 }}>
+          <div style={{ fontSize: 12, color: 'var(--yellow, #d29922)', lineHeight: 1.5 }}>
             <strong>⚠️ Repository Access Needed:</strong> Your current GitHub connection is Read-Only. To create new repositories or commit code, please re-authorize with repository write permissions.
           </div>
           <button
@@ -256,14 +256,14 @@ export default function GitHubSettingsTab({
       {showCreateModal && (
         <div
           style={{
-            background: '#0d1117',
-            border: '1px solid #30363d',
+            background: 'var(--bg-card)',
+            border: '1px solid var(--border)',
             borderRadius: 8,
             padding: 14,
             marginBottom: 14,
           }}
         >
-          <div style={{ fontSize: 13, fontWeight: 700, color: '#e6edf3', marginBottom: 8 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-base)', marginBottom: 8 }}>
             Create New GitHub Repository
           </div>
 
@@ -306,8 +306,8 @@ export default function GitHubSettingsTab({
           />
 
           {newRepoName.trim() && newRepoName.includes(' ') && (
-            <div style={{ fontSize: 11, color: '#8b949e', marginBottom: 8 }}>
-              💡 Will be created as: <code style={{ color: '#a78bfa' }}>{newRepoName.trim().replace(/\s+/g, '-')}</code>
+            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 8 }}>
+              💡 Will be created as: <code style={{ color: 'var(--accent)' }}>{newRepoName.trim().replace(/\s+/g, '-')}</code>
             </div>
           )}
 
@@ -319,7 +319,7 @@ export default function GitHubSettingsTab({
             style={{ width: '100%', marginBottom: 8, fontSize: 12 }}
           />
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#c9d1d9', fontSize: 12, cursor: 'pointer' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-base)', fontSize: 12, cursor: 'pointer' }}>
               <input
                 type="checkbox"
                 checked={newRepoPrivate}
@@ -354,7 +354,7 @@ export default function GitHubSettingsTab({
       {/* ── Repository List ─────────────────────────────────────────── */}
       <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8, paddingRight: 4 }}>
         {filteredRepos.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '30px 10px', color: '#7d8590', fontSize: 13 }}>
+          <div style={{ textAlign: 'center', padding: '30px 10px', color: 'var(--text-muted)', fontSize: 13 }}>
             {repositories.length === 0 ? 'No repositories found.' : 'No repositories match your search.'}
           </div>
         ) : (
@@ -364,32 +364,33 @@ export default function GitHubSettingsTab({
               <div
                 key={repo.id}
                 style={{
-                  background: '#0d1117',
-                  border: '1px solid #21262d',
+                  background: 'var(--bg-card)',
+                  border: '1px solid var(--border)',
                   borderRadius: 8,
                   padding: '12px 14px',
-                  transition: 'border-color 0.15s',
+                  transition: 'border-color 0.15s, background 0.15s',
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
                   <div style={{ minWidth: 0, flex: 1 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                      <span style={{ color: '#58a6ff', fontWeight: 600, fontSize: 13 }}>{repo.name}</span>
+                      <span style={{ color: 'var(--accent)', fontWeight: 600, fontSize: 13 }}>{repo.name}</span>
                       <span
                         style={{
                           fontSize: 9,
                           padding: '1px 6px',
                           borderRadius: 10,
-                          border: '1px solid #30363d',
-                          color: repo.private ? '#d29922' : '#7d8590',
+                          border: '1px solid var(--border)',
+                          color: repo.private ? 'var(--yellow)' : 'var(--text-muted)',
+                          background: repo.private ? 'rgba(210, 153, 34, 0.12)' : 'var(--bg-hover)',
                         }}
                       >
                         {repo.private ? 'Private' : 'Public'}
                       </span>
                       {repo.language && (
-                        <span style={{ fontSize: 10, color: '#a78bfa' }}>• {repo.language}</span>
+                        <span style={{ fontSize: 10, color: 'var(--accent)' }}>• {repo.language}</span>
                       )}
-                      <span style={{ fontSize: 10, color: '#7d8590', display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                      <span style={{ fontSize: 10, color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', gap: 3 }}>
                         <GitBranchIcon size={11} /> {repo.default_branch || 'main'}
                       </span>
                     </div>
@@ -397,7 +398,7 @@ export default function GitHubSettingsTab({
                     {repo.description && (
                       <div
                         style={{
-                          color: '#7d8590',
+                          color: 'var(--text-muted)',
                           fontSize: 11,
                           marginTop: 4,
                           overflow: 'hidden',
@@ -415,7 +416,7 @@ export default function GitHubSettingsTab({
                     target="_blank"
                     rel="noreferrer"
                     title="View on GitHub"
-                    style={{ color: '#7d8590', display: 'flex', alignItems: 'center', padding: 4 }}
+                    style={{ color: 'var(--text-muted)', display: 'flex', alignItems: 'center', padding: 4 }}
                   >
                     <ExternalLinkIcon size={13} />
                   </a>
@@ -430,7 +431,7 @@ export default function GitHubSettingsTab({
                       padding: '4px 9px',
                       fontSize: 11,
                       gap: 5,
-                      background: isExpanded ? '#21262d' : undefined,
+                      background: isExpanded ? 'var(--bg-hover)' : undefined,
                     }}
                   >
                     {isExpanded && treeLoading ? (
@@ -450,7 +451,7 @@ export default function GitHubSettingsTab({
                     ⚡ Commit Code Here
                   </button>
 
-                  <div style={{ marginLeft: 'auto', fontSize: 10, color: '#7d8590' }}>
+                  <div style={{ marginLeft: 'auto', fontSize: 10, color: 'var(--text-muted)' }}>
                     Updated {new Date(repo.updated_at).toLocaleDateString()}
                   </div>
                 </div>

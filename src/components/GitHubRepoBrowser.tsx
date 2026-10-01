@@ -230,13 +230,13 @@ export default function GitHubRepoBrowser({
         height: '100%',
         minHeight: isModal ? 540 : 380,
         maxHeight: isModal ? '85vh' : 580,
-        background: 'var(--bg-main, #0d1117)',
-        color: 'var(--text-main, #c9d1d9)',
+        background: 'var(--bg-app)',
+        color: 'var(--text-base)',
         fontFamily: 'Inter, -apple-system, sans-serif',
         fontSize: 12,
         borderRadius: 8,
         overflow: 'hidden',
-        border: '1px solid var(--border, #30363d)',
+        border: '1px solid var(--border)',
       }}
     >
       {/* ── Top GitHub Header ────────────────────────────────────────── */}
@@ -246,25 +246,26 @@ export default function GitHubRepoBrowser({
           alignItems: 'center',
           justifyContent: 'space-between',
           padding: '10px 14px',
-          background: 'var(--bg-card, #161b22)',
-          borderBottom: '1px solid var(--border, #30363d)',
+          background: 'var(--bg-card)',
+          borderBottom: '1px solid var(--border)',
           gap: 12,
           flexWrap: 'wrap',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
           <span style={{ fontSize: 16 }}>🐙</span>
-          <span style={{ fontWeight: 600, color: 'var(--text-main, #c9d1d9)', fontSize: 13 }}>
-            <span style={{ color: '#7d8590' }}>{owner}/</span>
-            <span style={{ color: 'var(--accent, #58a6ff)' }}>{repoName}</span>
+          <span style={{ fontWeight: 600, color: 'var(--text-base)', fontSize: 13 }}>
+            <span style={{ color: 'var(--text-muted)' }}>{owner}/</span>
+            <span style={{ color: 'var(--accent)' }}>{repoName}</span>
           </span>
           <span
             style={{
               fontSize: 10,
               padding: '1px 6px',
               borderRadius: 10,
-              border: '1px solid var(--border, #30363d)',
-              color: repository.private ? '#d29922' : '#7d8590',
+              border: '1px solid var(--border)',
+              color: repository.private ? 'var(--yellow)' : 'var(--text-muted)',
+              background: repository.private ? 'rgba(210, 153, 34, 0.12)' : 'var(--bg-hover)',
             }}
           >
             {repository.private ? 'Private' : 'Public'}
@@ -278,20 +279,20 @@ export default function GitHubRepoBrowser({
               display: 'flex',
               alignItems: 'center',
               gap: 4,
-              background: 'var(--bg-main, #0d1117)',
-              border: '1px solid var(--border, #30363d)',
+              background: 'var(--bg-input, var(--bg-app))',
+              border: '1px solid var(--border)',
               borderRadius: 6,
               padding: '2px 8px',
             }}
           >
-            <GitBranchIcon size={12} />
+            <GitBranchIcon size={12} style={{ color: 'var(--accent)' }} />
             <select
               value={branch}
               onChange={e => setBranch(e.target.value)}
               style={{
                 background: 'transparent',
                 border: 'none',
-                color: 'var(--text-main, #c9d1d9)',
+                color: 'var(--text-base)',
                 fontSize: 11,
                 fontWeight: 600,
                 outline: 'none',
@@ -299,7 +300,7 @@ export default function GitHubRepoBrowser({
               }}
             >
               {branches.map(b => (
-                <option key={b} value={b} style={{ background: '#161b22', color: '#c9d1d9' }}>
+                <option key={b} value={b} style={{ background: 'var(--bg-card)', color: 'var(--text-base)' }}>
                   {b}
                 </option>
               ))}
@@ -311,9 +312,9 @@ export default function GitHubRepoBrowser({
             title="Refresh repository tree"
             style={{
               background: 'transparent',
-              border: '1px solid var(--border, #30363d)',
+              border: '1px solid var(--border)',
               borderRadius: 6,
-              color: 'var(--text-muted, #7d8590)',
+              color: 'var(--text-muted)',
               padding: '4px 6px',
               cursor: 'pointer',
               display: 'flex',
@@ -329,7 +330,7 @@ export default function GitHubRepoBrowser({
               style={{
                 background: 'transparent',
                 border: 'none',
-                color: '#7d8590',
+                color: 'var(--text-muted)',
                 cursor: 'pointer',
                 padding: 4,
               }}
@@ -347,8 +348,8 @@ export default function GitHubRepoBrowser({
           alignItems: 'center',
           justifyContent: 'space-between',
           padding: '8px 14px',
-          background: 'var(--bg-main, #0d1117)',
-          borderBottom: '1px solid var(--border, #30363d)',
+          background: 'var(--bg-app)',
+          borderBottom: '1px solid var(--border)',
           gap: 10,
           flexWrap: 'wrap',
         }}
@@ -360,7 +361,7 @@ export default function GitHubRepoBrowser({
             style={{
               background: 'none',
               border: 'none',
-              color: currentPath ? '#58a6ff' : 'var(--text-main, #c9d1d9)',
+              color: currentPath ? 'var(--accent)' : 'var(--text-base)',
               fontWeight: currentPath ? 600 : 700,
               cursor: 'pointer',
               padding: '2px 4px',
@@ -374,13 +375,13 @@ export default function GitHubRepoBrowser({
 
           {breadcrumbSegments.map((seg, idx) => (
             <React.Fragment key={idx}>
-              <span style={{ color: '#7d8590' }}>/</span>
+              <span style={{ color: 'var(--text-muted)' }}>/</span>
               <button
                 onClick={() => navigateToBreadcrumb(idx)}
                 style={{
                   background: 'none',
                   border: 'none',
-                  color: idx === breadcrumbSegments.length - 1 ? 'var(--text-main, #c9d1d9)' : '#58a6ff',
+                  color: idx === breadcrumbSegments.length - 1 ? 'var(--text-base)' : 'var(--accent)',
                   fontWeight: idx === breadcrumbSegments.length - 1 ? 700 : 600,
                   cursor: 'pointer',
                   padding: '2px 4px',
@@ -404,12 +405,12 @@ export default function GitHubRepoBrowser({
               value={filterQuery}
               onChange={e => setFilterQuery(e.target.value)}
               style={{
-                background: 'var(--bg-card, #161b22)',
-                border: '1px solid var(--border, #30363d)',
+                background: 'var(--bg-card)',
+                border: '1px solid var(--border)',
                 borderRadius: 6,
                 padding: '4px 8px',
                 fontSize: 11,
-                color: 'var(--text-main, #c9d1d9)',
+                color: 'var(--text-base)',
                 outline: 'none',
                 width: 140,
               }}
@@ -424,7 +425,7 @@ export default function GitHubRepoBrowser({
                   transform: 'translateY(-50%)',
                   background: 'none',
                   border: 'none',
-                  color: '#7d8590',
+                  color: 'var(--text-muted)',
                   cursor: 'pointer',
                   fontSize: 11,
                 }}
@@ -438,11 +439,8 @@ export default function GitHubRepoBrowser({
             <button
               onClick={handleImportCurrentDirectory}
               disabled={importingAll || loading}
+              className="btn btn-primary"
               style={{
-                background: '#238636',
-                color: '#ffffff',
-                border: 'none',
-                borderRadius: 6,
                 padding: '4px 10px',
                 fontSize: 11,
                 fontWeight: 600,
@@ -470,7 +468,7 @@ export default function GitHubRepoBrowser({
               alignItems: 'center',
               justifyContent: 'center',
               padding: 40,
-              color: '#7d8590',
+              color: 'var(--text-muted)',
               gap: 10,
             }}
           >
@@ -482,8 +480,9 @@ export default function GitHubRepoBrowser({
             style={{
               padding: 24,
               textAlign: 'center',
-              color: '#f85149',
-              background: '#f8514910',
+              color: 'var(--red)',
+              background: 'rgba(248, 81, 73, 0.1)',
+              border: '1px solid rgba(248, 81, 73, 0.3)',
               margin: 14,
               borderRadius: 6,
             }}
@@ -493,9 +492,9 @@ export default function GitHubRepoBrowser({
               onClick={fetchTree}
               style={{
                 marginTop: 10,
-                background: '#21262d',
-                border: '1px solid #30363d',
-                color: '#c9d1d9',
+                background: 'var(--bg-card)',
+                border: '1px solid var(--border)',
+                color: 'var(--text-base)',
                 borderRadius: 6,
                 padding: '4px 12px',
                 cursor: 'pointer',
@@ -511,16 +510,16 @@ export default function GitHubRepoBrowser({
             <div
               style={{
                 padding: '6px 14px',
-                background: 'var(--bg-card, #161b22)',
-                borderBottom: '1px solid var(--border, #30363d)',
+                background: 'var(--bg-card)',
+                borderBottom: '1px solid var(--border)',
                 fontSize: 11,
-                color: '#7d8590',
+                color: 'var(--text-muted)',
               }}
             >
               Search results for "{filterQuery}" ({filteredAllFiles.length} matches)
             </div>
             {filteredAllFiles.length === 0 ? (
-              <div style={{ padding: 24, textAlign: 'center', color: '#7d8590' }}>No files match "{filterQuery}".</div>
+              <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-muted)' }}>No files match "{filterQuery}".</div>
             ) : (
               filteredAllFiles.map(file => (
                 <div
@@ -531,25 +530,25 @@ export default function GitHubRepoBrowser({
                     alignItems: 'center',
                     justifyContent: 'space-between',
                     padding: '8px 14px',
-                    borderBottom: '1px solid var(--border, #21262d)',
+                    borderBottom: '1px solid var(--border)',
                     cursor: 'pointer',
                     transition: 'background 0.1s',
                   }}
-                  onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-card, #161b22)')}
+                  onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-hover)')}
                   onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
                     <FileIcon fileName={file.path} size={15} />
-                    <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 11, color: '#c9d1d9' }}>
+                    <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 11, color: 'var(--text-base)' }}>
                       {file.path}
                     </span>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <span style={{ fontSize: 10, color: '#7d8590' }}>{formatBytes(file.size)}</span>
+                    <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>{formatBytes(file.size)}</span>
                     {loadingPath === file.path ? (
                       <SpinnerIcon size={12} />
                     ) : (
-                      <span style={{ fontSize: 10, color: '#a78bfa', fontWeight: 600 }}>Open ↗</span>
+                      <span style={{ fontSize: 10, color: 'var(--accent)', fontWeight: 600, background: 'var(--accent-subtle)', padding: '2px 6px', borderRadius: 4 }}>Open ↗</span>
                     )}
                   </div>
                 </div>
@@ -568,14 +567,14 @@ export default function GitHubRepoBrowser({
                   alignItems: 'center',
                   gap: 8,
                   padding: '8px 14px',
-                  borderBottom: '1px solid var(--border, #21262d)',
+                  borderBottom: '1px solid var(--border)',
                   cursor: 'pointer',
-                  color: '#58a6ff',
+                  color: 'var(--accent)',
                   fontWeight: 600,
                   fontSize: 11,
-                  background: 'var(--bg-main, #0d1117)',
+                  background: 'var(--bg-app)',
                 }}
-                onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-card, #161b22)')}
+                onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-hover)')}
                 onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
               >
                 <FolderIcon size={15} />
@@ -593,32 +592,32 @@ export default function GitHubRepoBrowser({
                   alignItems: 'center',
                   justifyContent: 'space-between',
                   padding: '7px 14px',
-                  borderBottom: '1px solid var(--border, #21262d)',
+                  borderBottom: '1px solid var(--border)',
                   cursor: 'pointer',
                   transition: 'background 0.1s',
                 }}
-                onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-card, #161b22)')}
+                onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-hover)')}
                 onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ color: '#58a6ff', display: 'flex', alignItems: 'center' }}>
+                  <span style={{ color: 'var(--accent)', display: 'flex', alignItems: 'center' }}>
                     <FolderIcon size={15} />
                   </span>
-                  <span style={{ color: '#58a6ff', fontWeight: 600, fontSize: 11 }}>{folder.name}/</span>
+                  <span style={{ color: 'var(--accent)', fontWeight: 600, fontSize: 11 }}>{folder.name}/</span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span
                     style={{
                       fontSize: 10,
-                      color: '#7d8590',
-                      background: 'var(--bg-card, #161b22)',
+                      color: 'var(--text-muted)',
+                      background: 'var(--bg-hover)',
                       padding: '1px 6px',
                       borderRadius: 4,
                     }}
                   >
                     {folder.count} {folder.count === 1 ? 'item' : 'items'}
                   </span>
-                  <span style={{ fontSize: 10, color: '#7d8590' }}>➔</span>
+                  <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>➔</span>
                 </div>
               </div>
             ))}
@@ -635,11 +634,11 @@ export default function GitHubRepoBrowser({
                     alignItems: 'center',
                     justifyContent: 'space-between',
                     padding: '7px 14px',
-                    borderBottom: '1px solid var(--border, #21262d)',
+                    borderBottom: '1px solid var(--border)',
                     cursor: 'pointer',
                     transition: 'background 0.1s',
                   }}
-                  onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-card, #161b22)')}
+                  onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-hover)')}
                   onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -648,7 +647,7 @@ export default function GitHubRepoBrowser({
                       style={{
                         fontFamily: 'JetBrains Mono, monospace',
                         fontSize: 11,
-                        color: 'var(--text-main, #c9d1d9)',
+                        color: 'var(--text-base)',
                       }}
                     >
                       {fileName}
@@ -656,16 +655,16 @@ export default function GitHubRepoBrowser({
                   </div>
 
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <span style={{ fontSize: 10, color: '#7d8590' }}>{formatBytes(file.size)}</span>
+                    <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>{formatBytes(file.size)}</span>
                     {loadingPath === file.path ? (
                       <SpinnerIcon size={12} />
                     ) : (
                       <span
                         style={{
                           fontSize: 10,
-                          color: '#a78bfa',
+                          color: 'var(--accent)',
                           fontWeight: 600,
-                          background: '#7c3aed15',
+                          background: 'var(--accent-subtle)',
                           padding: '2px 6px',
                           borderRadius: 4,
                         }}
@@ -679,7 +678,7 @@ export default function GitHubRepoBrowser({
             })}
 
             {currentFolders.length === 0 && currentFiles.length === 0 && (
-              <div style={{ padding: 24, textAlign: 'center', color: '#7d8590' }}>
+              <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-muted)' }}>
                 This directory is empty on branch {branch}.
               </div>
             )}
@@ -694,10 +693,10 @@ export default function GitHubRepoBrowser({
           alignItems: 'center',
           justifyContent: 'space-between',
           padding: '6px 14px',
-          background: 'var(--bg-card, #161b22)',
-          borderTop: '1px solid var(--border, #30363d)',
+          background: 'var(--bg-card)',
+          borderTop: '1px solid var(--border)',
           fontSize: 10,
-          color: '#7d8590',
+          color: 'var(--text-muted)',
         }}
       >
         <span>
@@ -708,7 +707,7 @@ export default function GitHubRepoBrowser({
           href={`${repository.html_url}/tree/${branch}${currentPath ? `/${currentPath}` : ''}`}
           target="_blank"
           rel="noreferrer"
-          style={{ color: '#58a6ff', textDecoration: 'none' }}
+          style={{ color: 'var(--accent)', textDecoration: 'none' }}
           onMouseEnter={e => (e.currentTarget.style.textDecoration = 'underline')}
           onMouseLeave={e => (e.currentTarget.style.textDecoration = 'none')}
         >

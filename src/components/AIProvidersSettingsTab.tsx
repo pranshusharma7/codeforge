@@ -162,12 +162,12 @@ export default function AIProvidersSettingsTab({ showToast }: Props) {
       </div>
 
       {/* Selected Provider Details Box */}
-      <div style={{ background: '#0d1117', border: '1px solid #21262d', borderRadius: 10, padding: 16, display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 10, padding: 16, display: 'flex', flexDirection: 'column', gap: 14 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{ fontSize: 20 }}>{pDef.icon}</span>
-            <span style={{ fontSize: 15, fontWeight: 700, color: '#f0f6fc' }}>{pDef.name}</span>
-            <span style={{ fontSize: 11, color: '#8b949e' }}>by {pDef.company}</span>
+            <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-base)' }}>{pDef.name}</span>
+            <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>by {pDef.company}</span>
           </div>
           {pDef.keyDocUrl && (
             <a
@@ -181,14 +181,14 @@ export default function AIProvidersSettingsTab({ showToast }: Props) {
           )}
         </div>
 
-        <p style={{ fontSize: 11, color: '#8b949e', margin: 0, lineHeight: 1.5 }}>
+        <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: 0, lineHeight: 1.5 }}>
           {pDef.description}
         </p>
 
         {selectedProviderId !== 'builtin' && (
           <>
             <div>
-              <label style={{ fontSize: 12, color: '#c9d1d9', fontWeight: 600, display: 'block', marginBottom: 4 }}>
+              <label style={{ fontSize: 12, color: 'var(--text-base)', fontWeight: 600, display: 'block', marginBottom: 4 }}>
                 {selectedProviderId === 'copilot' ? 'GitHub Personal Access Token (PAT) / Copilot Token' : `${pDef.name} API Key`}
               </label>
               <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
@@ -203,7 +203,7 @@ export default function AIProvidersSettingsTab({ showToast }: Props) {
                 <button
                   type="button"
                   onClick={() => setShowKey(p => !p)}
-                  style={{ position: 'absolute', right: 8, background: 'none', border: 'none', color: '#8b949e', fontSize: 11, cursor: 'pointer' }}
+                  style={{ position: 'absolute', right: 8, background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 11, cursor: 'pointer' }}
                 >
                   {showKey ? 'Hide' : 'Show'}
                 </button>

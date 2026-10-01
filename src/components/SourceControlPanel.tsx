@@ -337,8 +337,8 @@ export default function SourceControlPanel({
       <div style={{ padding: '16px 12px', flex: 1, overflowY: 'auto' }}>
         <div
           style={{
-            background: 'linear-gradient(180deg, #1c2128 0%, #161b22 100%)',
-            border: '1px solid #30363d',
+            background: 'var(--bg-card)',
+            border: '1px solid var(--border)',
             borderRadius: 8,
             padding: '16px 14px',
             textAlign: 'center',
@@ -349,8 +349,8 @@ export default function SourceControlPanel({
               width: 36,
               height: 36,
               borderRadius: '50%',
-              background: '#21262d',
-              color: '#e6edf3',
+              background: 'var(--bg-hover)',
+              color: 'var(--accent)',
               display: 'grid',
               placeItems: 'center',
               margin: '0 auto 10px',
@@ -358,10 +358,10 @@ export default function SourceControlPanel({
           >
             <GitCommitIcon size={20} />
           </div>
-          <div style={{ color: '#e6edf3', fontWeight: 600, fontSize: 13, marginBottom: 4 }}>
+          <div style={{ color: 'var(--text-base)', fontWeight: 600, fontSize: 13, marginBottom: 4 }}>
             Source Control & GitHub
           </div>
-          <p style={{ color: '#7d8590', fontSize: 11, lineHeight: 1.5, marginBottom: 14 }}>
+          <p style={{ color: 'var(--text-muted)', fontSize: 11, lineHeight: 1.5, marginBottom: 14 }}>
             Sign in with GitHub to view your repositories, edit repository code, and commit changes just like in VS Code.
           </p>
           <button
@@ -384,14 +384,14 @@ export default function SourceControlPanel({
       {/* ── Active Repository Selector ─────────────────────────────────── */}
       <div style={{ marginBottom: 12 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 5 }}>
-          <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', color: '#7d8590' }}>
+          <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', color: 'var(--text-muted)' }}>
             REPOSITORY
           </span>
           <div style={{ display: 'flex', gap: 6 }}>
             <button
               onClick={onRefreshRepos}
               title="Refresh repositories"
-              style={{ background: 'none', border: 'none', color: '#7d8590', cursor: 'pointer', padding: 2 }}
+              style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 2 }}
             >
               <RefreshIcon size={12} />
             </button>
@@ -401,7 +401,7 @@ export default function SourceControlPanel({
                 target="_blank"
                 rel="noreferrer"
                 title="Open on GitHub"
-                style={{ color: '#7d8590', display: 'flex', alignItems: 'center' }}
+                style={{ color: 'var(--text-muted)', display: 'flex', alignItems: 'center' }}
               >
                 <ExternalLinkIcon size={12} />
               </a>
@@ -437,23 +437,23 @@ export default function SourceControlPanel({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              background: '#0d1117',
-              border: '1px solid #21262d',
+              background: 'var(--bg-card)',
+              border: '1px solid var(--border)',
               borderRadius: 6,
               padding: '6px 8px',
               marginBottom: 10,
               fontSize: 11,
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#c9d1d9', minWidth: 0 }}>
-              <GitBranchIcon size={13} style={{ color: '#a78bfa', flexShrink: 0 }} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-base)', minWidth: 0 }}>
+              <GitBranchIcon size={13} style={{ color: 'var(--accent)', flexShrink: 0 }} />
               <select
                 value={targetBranch}
                 onChange={e => setTargetBranch(e.target.value)}
                 style={{
                   background: 'transparent',
                   border: 'none',
-                  color: '#e6edf3',
+                  color: 'var(--text-base)',
                   fontSize: 11,
                   fontFamily: 'JetBrains Mono',
                   cursor: 'pointer',
@@ -462,7 +462,7 @@ export default function SourceControlPanel({
                 }}
               >
                 {branches.map(b => (
-                  <option key={b} value={b} style={{ background: '#161b22' }}>
+                  <option key={b} value={b} style={{ background: 'var(--bg-card)', color: 'var(--text-base)' }}>
                     {b}
                   </option>
                 ))}
@@ -473,10 +473,10 @@ export default function SourceControlPanel({
               <button
                 onClick={() => setShowFileTree(prev => !prev)}
                 style={{
-                  background: showFileTree ? '#21262d' : 'transparent',
-                  border: '1px solid #30363d',
+                  background: showFileTree ? 'var(--bg-hover)' : 'transparent',
+                  border: '1px solid var(--border)',
                   borderRadius: 4,
-                  color: showFileTree ? '#58a6ff' : '#c9d1d9',
+                  color: showFileTree ? 'var(--accent)' : 'var(--text-base)',
                   fontSize: 10,
                   padding: '3px 7px',
                   cursor: 'pointer',
@@ -889,7 +889,7 @@ export default function SourceControlPanel({
           )}
 
           {/* ── Recent Commits Accordion ───────────────────────────────── */}
-          <div style={{ borderTop: '1px solid #21262d', paddingTop: 10 }}>
+          <div style={{ borderTop: '1px solid var(--border)', paddingTop: 10 }}>
             <div
               onClick={() => {
                 if (!showCommits) loadCommits()
@@ -903,28 +903,28 @@ export default function SourceControlPanel({
                 padding: '4px 0',
               }}
             >
-              <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', color: '#7d8590' }}>
+              <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', color: 'var(--text-muted)' }}>
                 RECENT COMMITS ({commits.length})
               </span>
-              <span style={{ fontSize: 10, color: '#7d8590' }}>{showCommits ? '▲' : '▼'}</span>
+              <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>{showCommits ? '▲' : '▼'}</span>
             </div>
 
             {showCommits && (
               <div style={{ marginTop: 6 }}>
                 {commitsLoading ? (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#7d8590', fontSize: 11, padding: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-muted)', fontSize: 11, padding: 8 }}>
                     <SpinnerIcon size={12} /> Loading commits...
                   </div>
                 ) : commits.length === 0 ? (
-                  <div style={{ color: '#484f58', fontSize: 11, padding: '4px 0' }}>No commits found.</div>
+                  <div style={{ color: 'var(--text-dim)', fontSize: 11, padding: '4px 0' }}>No commits found.</div>
                 ) : (
                   commits.map(c => (
                     <div
                       key={c.fullSha}
                       style={{
                         padding: '6px 8px',
-                        background: '#0d1117',
-                        border: '1px solid #21262d',
+                        background: 'var(--bg-card)',
+                        border: '1px solid var(--border)',
                         borderRadius: 5,
                         marginBottom: 4,
                         fontSize: 11,
@@ -932,7 +932,7 @@ export default function SourceControlPanel({
                     >
                       <div
                         style={{
-                          color: '#e6edf3',
+                          color: 'var(--text-base)',
                           fontWeight: 500,
                           fontSize: 11,
                           overflow: 'hidden',
@@ -947,7 +947,7 @@ export default function SourceControlPanel({
                           display: 'flex',
                           justifyContent: 'space-between',
                           alignItems: 'center',
-                          color: '#7d8590',
+                          color: 'var(--text-muted)',
                           fontSize: 9,
                           marginTop: 3,
                         }}
@@ -957,7 +957,7 @@ export default function SourceControlPanel({
                           href={c.html_url}
                           target="_blank"
                           rel="noreferrer"
-                          style={{ color: '#7c3aed', fontFamily: 'JetBrains Mono', textDecoration: 'none' }}
+                          style={{ color: 'var(--accent)', fontFamily: 'JetBrains Mono', textDecoration: 'none' }}
                         >
                           {c.sha}
                         </a>

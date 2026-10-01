@@ -274,9 +274,9 @@ export default function FileIcon({ fileName, name, size = 16, className, style }
   // Default clean document file icon
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" style={style} className={className}>
-      <path d="M6 3h8l5 5v13a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z" fill="#1e293b" stroke="#64748b" strokeWidth="1.4"/>
-      <path d="M14 3v5h5" stroke="#64748b" strokeWidth="1.4"/>
-      <path d="M9 13h6M9 17h4" stroke="#64748b" strokeWidth="1.2" strokeLinecap="round"/>
+      <path d="M6 3h8l5 5v13a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z" fill="var(--bg-card, #1e293b)" stroke="var(--text-muted, #64748b)" strokeWidth="1.4"/>
+      <path d="M14 3v5h5" stroke="var(--text-muted, #64748b)" strokeWidth="1.4"/>
+      <path d="M9 13h6M9 17h4" stroke="var(--text-muted, #64748b)" strokeWidth="1.2" strokeLinecap="round"/>
     </svg>
   )
 }

@@ -170,8 +170,8 @@ export default function SettingsModal({
                 padding: '8px 12px',
                 borderRadius: 6,
                 border: 'none',
-                background: activeTabName === 'editor' ? '#21262d' : 'transparent',
-                color: activeTabName === 'editor' ? '#e6edf3' : '#7d8590',
+                background: activeTabName === 'editor' ? 'var(--bg-hover)' : 'transparent',
+                color: activeTabName === 'editor' ? 'var(--text-base)' : 'var(--text-muted)',
                 fontWeight: activeTabName === 'editor' ? 600 : 400,
                 fontSize: 12,
                 cursor: 'pointer',
@@ -191,8 +191,8 @@ export default function SettingsModal({
                 padding: '8px 12px',
                 borderRadius: 6,
                 border: 'none',
-                background: activeTabName === 'themes' ? '#21262d' : 'transparent',
-                color: activeTabName === 'themes' ? '#e6edf3' : '#7d8590',
+                background: activeTabName === 'themes' ? 'var(--bg-hover)' : 'transparent',
+                color: activeTabName === 'themes' ? 'var(--text-base)' : 'var(--text-muted)',
                 fontWeight: activeTabName === 'themes' ? 600 : 400,
                 fontSize: 12,
                 cursor: 'pointer',
@@ -204,8 +204,8 @@ export default function SettingsModal({
               <span
                 style={{
                   marginLeft: 'auto',
-                  background: '#7c3aed25',
-                  color: '#a78bfa',
+                  background: 'var(--accent-subtle)',
+                  color: 'var(--accent)',
                   fontSize: 10,
                   padding: '1px 6px',
                   borderRadius: 10,
@@ -225,8 +225,8 @@ export default function SettingsModal({
                 padding: '8px 12px',
                 borderRadius: 6,
                 border: 'none',
-                background: activeTabName === 'repos' ? '#21262d' : 'transparent',
-                color: activeTabName === 'repos' ? '#e6edf3' : '#7d8590',
+                background: activeTabName === 'repos' ? 'var(--bg-hover)' : 'transparent',
+                color: activeTabName === 'repos' ? 'var(--text-base)' : 'var(--text-muted)',
                 fontWeight: activeTabName === 'repos' ? 600 : 400,
                 fontSize: 12,
                 cursor: 'pointer',
@@ -239,8 +239,8 @@ export default function SettingsModal({
                 <span
                   style={{
                     marginLeft: 'auto',
-                    background: '#7c3aed30',
-                    color: '#a78bfa',
+                    background: 'var(--accent-subtle)',
+                    color: 'var(--accent)',
                     fontSize: 10,
                     padding: '1px 5px',
                     borderRadius: 10,
@@ -252,8 +252,6 @@ export default function SettingsModal({
               )}
             </button>
 
-
-
             <button
               onClick={() => setActiveTabName('profile')}
               style={{
@@ -263,8 +261,8 @@ export default function SettingsModal({
                 padding: '8px 12px',
                 borderRadius: 6,
                 border: 'none',
-                background: activeTabName === 'profile' ? '#21262d' : 'transparent',
-                color: activeTabName === 'profile' ? '#e6edf3' : '#7d8590',
+                background: activeTabName === 'profile' ? 'var(--bg-hover)' : 'transparent',
+                color: activeTabName === 'profile' ? 'var(--text-base)' : 'var(--text-muted)',
                 fontWeight: activeTabName === 'profile' ? 600 : 400,
                 fontSize: 12,
                 cursor: 'pointer',
@@ -414,12 +412,12 @@ export default function SettingsModal({
                       value={fontSearch}
                       onChange={e => setFontSearch(e.target.value)}
                       style={{
-                        background: '#0d1117',
-                        border: '1px solid #30363d',
+                        background: 'var(--bg-input, var(--bg-card))',
+                        border: '1px solid var(--border)',
                         borderRadius: 6,
                         padding: '4px 8px',
                         fontSize: 11,
-                        color: '#c9d1d9',
+                        color: 'var(--text-base)',
                         outline: 'none',
                         width: 120
                       }}
