@@ -4,18 +4,21 @@ const STORAGE_KEY = 'cf_installed_extensions_v1'
 
 export const BUILT_IN_EXTENSIONS: Extension[] = [
   {
-    id: 'antigravity-ai-copilot',
-    name: 'AntiGravity AI Copilot',
-    version: '2.4.0',
-    author: 'DeepMind / AntiGravity Team',
-    description: 'AI-powered next-line code detection & ghost autocomplete. Predicts what code comes next as you type - press Tab to accept (just like Anti Gravity).',
-    icon: '✦',
+    id: 'codeforge-ai-helper',
+    name: 'CodeForge AI Helper',
+    displayName: 'CodeForge AI Helper & Next-Code Predictor',
+    version: '3.0.0',
+    author: 'CodeForge AI Team',
+    description: 'AI-powered next-line code detection & ghost autocomplete. Predicts what code comes next as you type in real-time — press Tab to accept.',
+    icon: '✨',
     category: 'ai',
     enabled: true,
     isBuiltIn: true,
-    downloads: 142000,
-    rating: 4.9,
-    tags: ['ai', 'copilot', 'autocomplete', 'tab-complete', 'ghost-text']
+    isVSCodeOfficial: false,
+    verified: true,
+    downloads: 184000,
+    rating: 4.95,
+    tags: ['ai', 'codeforge', 'autocomplete', 'tab-complete', 'ghost-text']
   },
   {
     id: 'smart-autocorrect',
@@ -94,7 +97,23 @@ export function getInstalledExtensions(): Extension[] {
       saveInstalledExtensions(BUILT_IN_EXTENSIONS)
       return BUILT_IN_EXTENSIONS
     }
-    const parsed: Extension[] = JSON.parse(raw)
+    let parsed: Extension[] = JSON.parse(raw)
+
+    // Migration: If user had 'antigravity-ai-copilot', smoothly migrate to 'codeforge-ai-helper'
+    parsed = parsed.map(ext => {
+      if (ext.id === 'antigravity-ai-copilot') {
+        return {
+          ...ext,
+          id: 'codeforge-ai-helper',
+          name: 'CodeForge AI Helper',
+          displayName: 'CodeForge AI Helper & Next-Code Predictor',
+          author: 'CodeForge AI Team',
+          icon: '✨'
+        }
+      }
+      return ext
+    })
+
     // Merge any newly introduced built-in extensions
     const existingIds = new Set(parsed.map(e => e.id))
     let updated = [...parsed]
@@ -103,6 +122,7 @@ export function getInstalledExtensions(): Extension[] {
         updated.push(b)
       }
     }
+    saveInstalledExtensions(updated)
     return updated
   } catch (e) {
     console.error('Failed to load extensions from storage:', e)
@@ -152,6 +172,21 @@ export function addCustomExtension(extensionData: Partial<Extension>): Extension
   // Replace if exists or append
   const exists = current.some(e => e.id === id)
   const updated = exists ? current.map(e => e.id === id ? newExt : e) : [newExt, ...current]
+  saveInstalledExtensions(updated)
+  return updated
+}
+
+export function installExtension(extension: Extension): Extension[] {
+  const current = getInstalledExtensions()
+  const exists = current.some(e => e.id === extension.id)
+  const prepared: Extension = {
+    ...extension,
+    enabled: true,
+    installedAt: Date.now()
+  }
+  const updated = exists
+    ? current.map(e => e.id === extension.id ? prepared : e)
+    : [prepared, ...current]
   saveInstalledExtensions(updated)
   return updated
 }

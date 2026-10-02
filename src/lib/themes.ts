@@ -5,6 +5,8 @@ export interface ThemeDefinition {
   author: string
   description: string
   previewColors: [string, string, string, string] // [bg, accent, text, secondary]
+  isExtensionTheme?: boolean
+  extensionId?: string
   monacoTheme: {
     base: 'vs-dark' | 'vs'
     inherit: boolean
@@ -1670,49 +1672,222 @@ export const EDITOR_FONT_COLORS: FontColorOption[] = [
   { id: 'retro-cream', name: '☕ Gruvbox Vintage Cream', color: '#ebdbb2', category: 'Warm', description: 'Warm nostalgic retro parchment' },
 ]
 
-export function getThemeById(themeId: string): ThemeDefinition {
-  return VSCODE_THEMES.find(t => t.id === themeId) || VSCODE_THEMES[0]
+export function getInstalledExtensionThemes(): ThemeDefinition[] {
+  try {
+    const raw = typeof localStorage !== 'undefined' ? localStorage.getItem('cf_installed_extensions_v1') : null
+    if (!raw) return []
+    const exts = JSON.parse(raw)
+    const themes: ThemeDefinition[] = []
+
+    for (const ext of exts) {
+      if (!ext.enabled) continue
+
+      // 1. Direct theme data in extension (e.g. from VSIX or marketplace)
+      if (ext.themeData) {
+        themes.push({
+          id: ext.id,
+          name: `${ext.displayName || ext.name} (Extension)`,
+          category: ext.themeData.base === 'vs' ? 'light' : 'dark',
+          author: ext.publisher || ext.author || 'VS Code Extension',
+          description: ext.description || 'Theme provided by installed VS Code extension',
+          isExtensionTheme: true,
+          extensionId: ext.id,
+          previewColors: [
+            ext.themeData.colors?.['editor.background'] || '#282a36',
+            ext.themeData.colors?.['editor.selectionBackground'] || '#bd93f9',
+            ext.themeData.colors?.['editor.foreground'] || '#f8f8f2',
+            ext.themeData.rules?.find((r: any) => r.token === 'keyword')?.foreground
+              ? `#${ext.themeData.rules.find((r: any) => r.token === 'keyword').foreground}`
+              : '#ff79c6'
+          ],
+          monacoTheme: ext.themeData
+        })
+      }
+
+      // 2. Known official themes alias (e.g. dracula-theme.theme-dracula or github.github-vscode-theme)
+      if (ext.id === 'dracula-theme.theme-dracula') {
+        const builtinDracula = VSCODE_THEMES.find(t => t.id === 'dracula')
+        if (builtinDracula && !themes.some(t => t.id === ext.id)) {
+          themes.push({
+            ...builtinDracula,
+            id: ext.id,
+            name: 'Dracula Official (VS Code Extension)',
+            isExtensionTheme: true,
+            extensionId: ext.id
+          })
+        }
+      }
+
+      if (ext.id === 'github.github-vscode-theme') {
+        const builtinGithub = VSCODE_THEMES.find(t => t.id === 'github-dark')
+        if (builtinGithub && !themes.some(t => t.id === ext.id)) {
+          themes.push({
+            ...builtinGithub,
+            id: ext.id,
+            name: 'GitHub Dark (VS Code Extension)',
+            isExtensionTheme: true,
+            extensionId: ext.id
+          })
+        }
+      }
+    }
+
+    return themes
+  } catch (e) {
+    console.warn('Error reading installed extension themes:', e)
+    return []
+  }
 }
 
-export function registerMonacoThemes(monacoInstance: any, customFontColor?: string) {
+export function getAllThemes(): ThemeDefinition[] {
+  const extensionThemes = getInstalledExtensionThemes()
+  if (extensionThemes.length === 0) return VSCODE_THEMES
+
+  const existingIds = new Set(VSCODE_THEMES.map(t => t.id))
+  const merged = [...VSCODE_THEMES]
+  for (const extTheme of extensionThemes) {
+    if (!existingIds.has(extTheme.id)) {
+      merged.push(extTheme)
+      existingIds.add(extTheme.id)
+    }
+  }
+  return merged
+}
+
+export function getThemeById(themeId: string): ThemeDefinition {
+  const all = getAllThemes()
+  return all.find(t => t.id === themeId) || VSCODE_THEMES[0]
+}
+
+/**
+ * Normalizes ANY valid CSS color (Hex 3/6/8-digit, RGB, RGBA, HSL, HSLA, or named colors like red, cyan, lime, gold, etc.)
+ * into a standard 6-digit hex string `#rrggbb`. Returns null if input is not a valid color.
+ */
+export function parseAnyColorToHex(input: string): string | null {
+  if (!input || typeof input !== 'string') return null
+  const str = input.trim()
+  if (!str) return null
+
+  // 1. Direct hex checks (with or without '#')
+  const hexNoHash = str.startsWith('#') ? str.slice(1) : str
+  if (/^[0-9A-Fa-f]{3}$/.test(hexNoHash)) {
+    return `#${hexNoHash[0]}${hexNoHash[0]}${hexNoHash[1]}${hexNoHash[1]}${hexNoHash[2]}${hexNoHash[2]}`.toLowerCase()
+  }
+  if (/^[0-9A-Fa-f]{6}$/.test(hexNoHash)) {
+    return `#${hexNoHash}`.toLowerCase()
+  }
+  if (/^[0-9A-Fa-f]{8}$/.test(hexNoHash)) {
+    return `#${hexNoHash.slice(0, 6)}`.toLowerCase()
+  }
+
+  // 2. Browser DOM canvas resolution for rgb(), rgba(), hsl(), hsla(), or named colors
+  if (typeof document !== 'undefined') {
+    try {
+      const canvas = document.createElement('canvas')
+      canvas.width = 1
+      canvas.height = 1
+      const ctx = canvas.getContext('2d')
+      if (ctx) {
+        // Set sentinel value to test if input modifies it
+        ctx.fillStyle = '#010203'
+        ctx.fillStyle = str
+        const computed = ctx.fillStyle
+        if (computed.startsWith('#') && computed.length === 7) {
+          return computed.toLowerCase()
+        }
+        const rgbMatch = computed.match(/\d+/g)
+        if (rgbMatch && rgbMatch.length >= 3) {
+          const r = parseInt(rgbMatch[0], 10).toString(16).padStart(2, '0')
+          const g = parseInt(rgbMatch[1], 10).toString(16).padStart(2, '0')
+          const b = parseInt(rgbMatch[2], 10).toString(16).padStart(2, '0')
+          return `#${r}${g}${b}`.toLowerCase()
+        }
+      }
+    } catch {
+      // Fallback if canvas context fails
+    }
+  }
+
+  return null
+}
+
+export function getActiveMonacoThemeId(themeId: string, customFontColor?: string, customCommentColor?: string): string {
+  const hasCustomFont = customFontColor && customFontColor !== 'default'
+  const hasCustomComment = customCommentColor && customCommentColor !== 'default'
+  if (!hasCustomFont && !hasCustomComment) return themeId
+
+  let suffix = ''
+  if (hasCustomFont) {
+    suffix += `-fc-${customFontColor.replace(/[^a-zA-Z0-9]/g, '')}`
+  }
+  if (hasCustomComment) {
+    suffix += `-cc-${customCommentColor.replace(/[^a-zA-Z0-9]/g, '')}`
+  }
+  return `${themeId}${suffix}`
+}
+
+export function registerMonacoThemes(
+  monacoInstance: any,
+  customFontColor?: string,
+  customCommentColor?: string
+) {
   if (!monacoInstance?.editor?.defineTheme) return
-  for (const theme of VSCODE_THEMES) {
+  const allThemes = getAllThemes()
+  for (const theme of allThemes) {
     try {
       // 1. Register baseline theme
       monacoInstance.editor.defineTheme(theme.id, theme.monacoTheme as any)
 
-      // 2. If customFontColor is selected, register dynamic theme ID that forces Monaco re-render
-      if (customFontColor && customFontColor !== 'default') {
-        const cleanColor = customFontColor.replace(/[^a-zA-Z0-9]/g, '')
-        const customThemeId = `${theme.id}-fc-${cleanColor}`
+      // 2. If customFontColor or customCommentColor is selected, register dynamic theme ID
+      const hasCustomFont = customFontColor && customFontColor !== 'default'
+      const hasCustomComment = customCommentColor && customCommentColor !== 'default'
 
+      if (hasCustomFont || hasCustomComment) {
+        const customThemeId = getActiveMonacoThemeId(theme.id, customFontColor, customCommentColor)
         const clonedTheme = JSON.parse(JSON.stringify(theme.monacoTheme))
-        const cleanHex = customFontColor.startsWith('#') ? customFontColor.slice(1) : customFontColor
 
-        clonedTheme.colors['editor.foreground'] = customFontColor
-        clonedTheme.colors['editorCursor.foreground'] = customFontColor
-        clonedTheme.colors['editorLineNumber.activeForeground'] = customFontColor
+        if (hasCustomFont) {
+          const cleanHex = customFontColor.startsWith('#') ? customFontColor.slice(1) : customFontColor
 
-        // Update default token rule
-        const defaultRule = clonedTheme.rules.find((r: any) => r.token === '')
-        if (defaultRule) {
-          defaultRule.foreground = cleanHex
-        } else {
-          clonedTheme.rules.unshift({ token: '', foreground: cleanHex })
-        }
+          clonedTheme.colors['editor.foreground'] = customFontColor
+          clonedTheme.colors['editorCursor.foreground'] = customFontColor
+          clonedTheme.colors['editorLineNumber.activeForeground'] = customFontColor
 
-        // Apply custom color to primary code tokens
-        const tokensToColor = ['identifier', 'variable', 'variable.predefined', 'delimiter', 'type', 'type.identifier', 'operator']
-        for (const t of tokensToColor) {
-          const existing = clonedTheme.rules.find((r: any) => r.token === t)
-          if (existing) {
-            existing.foreground = cleanHex
+          // Update default token rule
+          const defaultRule = clonedTheme.rules.find((r: any) => r.token === '')
+          if (defaultRule) {
+            defaultRule.foreground = cleanHex
           } else {
-            clonedTheme.rules.unshift({ token: t, foreground: cleanHex })
+            clonedTheme.rules.unshift({ token: '', foreground: cleanHex })
+          }
+
+          // Apply custom color to primary code tokens
+          const tokensToColor = ['identifier', 'variable', 'variable.predefined', 'delimiter', 'type', 'type.identifier', 'operator']
+          for (const t of tokensToColor) {
+            const existing = clonedTheme.rules.find((r: any) => r.token === t)
+            if (existing) {
+              existing.foreground = cleanHex
+            } else {
+              clonedTheme.rules.unshift({ token: t, foreground: cleanHex })
+            }
           }
         }
 
-        // Register the dynamic font color theme
+        if (hasCustomComment) {
+          const cleanCommentHex = customCommentColor.startsWith('#') ? customCommentColor.slice(1) : customCommentColor
+          const commentTokens = ['comment', 'comment.line', 'comment.block', 'comment.doc']
+          for (const token of commentTokens) {
+            const existing = clonedTheme.rules.find((r: any) => r.token === token)
+            if (existing) {
+              existing.foreground = cleanCommentHex
+              if (!existing.fontStyle) existing.fontStyle = 'italic'
+            } else {
+              clonedTheme.rules.push({ token, foreground: cleanCommentHex, fontStyle: 'italic' })
+            }
+          }
+        }
+
+        // Register the dynamic theme
         monacoInstance.editor.defineTheme(customThemeId, clonedTheme as any)
       }
     } catch (e) {
@@ -1722,10 +1897,41 @@ export function registerMonacoThemes(monacoInstance: any, customFontColor?: stri
 }
 
 export function getThemeUIColors(themeId: string): UIThemeColors {
-  return THEME_UI_PALETTES[themeId] || THEME_UI_PALETTES['github-dark']
+  if (THEME_UI_PALETTES[themeId]) return THEME_UI_PALETTES[themeId]
+  const theme = getThemeById(themeId)
+  const isLight = theme.category === 'light'
+  const bg = theme.previewColors[0] || (isLight ? '#ffffff' : '#1e1e1e')
+  const fg = theme.previewColors[2] || (isLight ? '#333333' : '#d4d4d4')
+  const accent = theme.previewColors[1] || (isLight ? '#007acc' : '#7c3aed')
+
+  return {
+    id: themeId,
+    name: theme.name,
+    category: theme.category,
+    bgApp: bg,
+    bgHeader: isLight ? '#f3f4f6' : '#181824',
+    bgSidebar: isLight ? '#f9fafb' : '#14141e',
+    bgActivity: isLight ? '#e5e7eb' : '#0f0f17',
+    bgPanel: bg,
+    bgCard: isLight ? '#ffffff' : '#1f1f2e',
+    bgInput: isLight ? '#f3f4f6' : '#161622',
+    bgHover: isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.06)',
+    border: isLight ? '#e5e7eb' : '#2d2d3f',
+    borderSubtle: isLight ? '#f3f4f6' : '#232332',
+    textBase: fg,
+    textMuted: isLight ? '#6b7280' : '#9ca3af',
+    textDim: isLight ? '#9ca3af' : '#6b7280',
+    accent,
+    accentHover: accent,
+    accentSubtle: `${accent}22`,
+    accentBorder: `${accent}55`,
+    red: '#ef4444',
+    green: '#22c55e',
+    yellow: '#eab308'
+  }
 }
 
-export function applyThemeToDocument(themeId: string, customFontColor?: string) {
+export function applyThemeToDocument(themeId: string, customFontColor?: string, customCommentColor?: string) {
   const theme = getThemeById(themeId)
   const colors = getThemeUIColors(themeId)
   const root = document.documentElement
@@ -1741,6 +1947,12 @@ export function applyThemeToDocument(themeId: string, customFontColor?: string) 
     root.style.setProperty('--editor-custom-font-color', customFontColor)
   } else {
     root.style.removeProperty('--editor-custom-font-color')
+  }
+
+  if (customCommentColor && customCommentColor !== 'default') {
+    root.style.setProperty('--editor-custom-comment-color', customCommentColor)
+  } else {
+    root.style.removeProperty('--editor-custom-comment-color')
   }
 
   root.style.setProperty('--bg-app', colors.bgApp)

@@ -14,8 +14,10 @@
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",
     "@types/jszip": "^3.4.0",
+    "@vscode/codicons": "^0.0.46-24",
     "jszip": "^3.10.2",
     "monaco-editor": "^0.56.0",
+    "peerjs": "^1.5.5",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },

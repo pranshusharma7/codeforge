@@ -4,17 +4,21 @@ import type { GitHubRepository } from '../lib/github'
 import type { TabWithRepo } from './SourceControlPanel'
 import GitHubSettingsTab from './GitHubSettingsTab'
 import ThemeGalleryTab from './ThemeGalleryTab'
+import ExtensionsPanel from './ExtensionsPanel'
+import type { Extension } from '../extensions/types'
 import { SettingsIcon, RepoIcon, GithubIcon, PaletteIcon } from './icons'
 import { EDITOR_FONTS, getEditorFontById } from '../lib/fonts'
 
 interface Props {
   isOpen: boolean
   onClose: () => void
-  initialTab?: 'editor' | 'themes' | 'repos' | 'profile'
+  initialTab?: 'editor' | 'extensions' | 'themes' | 'repos' | 'profile'
   currentThemeId: string
   onThemeChange: (themeId: string) => void
   currentFontColor?: string
   onFontColorChange?: (color: string) => void
+  currentCommentColor?: string
+  onCommentColorChange?: (color: string) => void
   currentFontId: string
   onFontChange: (fontId: string) => void
   fontLigatures?: boolean
@@ -45,6 +49,8 @@ interface Props {
     repo: GitHubRepository,
     files: { path: string; name: string; content: string; sha: string; branch: string }[]
   ) => void
+  extensions?: Extension[]
+  onExtensionsChange?: (exts: Extension[]) => void
   showToast: (msg: string) => void
 }
 
@@ -56,6 +62,8 @@ export default function SettingsModal({
   onThemeChange,
   currentFontColor,
   onFontColorChange,
+  currentCommentColor,
+  onCommentColorChange,
   currentFontId,
   onFontChange,
   fontLigatures = true,
@@ -77,9 +85,11 @@ export default function SettingsModal({
   onSelectRepoForCommit,
   onOpenFileFromRepo,
   onImportMultipleFiles,
+  extensions = [],
+  onExtensionsChange = () => {},
   showToast,
 }: Props) {
-  const [activeTabName, setActiveTabName] = useState<'editor' | 'themes' | 'repos' | 'profile'>('editor')
+  const [activeTabName, setActiveTabName] = useState<'editor' | 'extensions' | 'themes' | 'repos' | 'profile'>(initialTab || 'editor')
   const [fontCategory, setFontCategory] = useState<'All' | 'Popular' | 'Ligatures' | 'Modern' | 'Classic'>('All')
   const [fontSearch, setFontSearch] = useState('')
 
@@ -185,6 +195,42 @@ export default function SettingsModal({
             >
               <SettingsIcon size={14} />
               Editor
+            </button>
+
+            {/* ── Nav: Extensions (Under Editor) ── */}
+            <button
+              onClick={() => setActiveTabName('extensions')}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                padding: '8px 12px',
+                borderRadius: 6,
+                border: 'none',
+                background: activeTabName === 'extensions' ? 'var(--bg-hover)' : 'transparent',
+                color: activeTabName === 'extensions' ? 'var(--text-base)' : 'var(--text-muted)',
+                fontWeight: activeTabName === 'extensions' ? 600 : 400,
+                fontSize: 12,
+                cursor: 'pointer',
+                textAlign: 'left',
+              }}
+            >
+              <span style={{ fontSize: 13 }}>🧩</span>
+              Extensions
+              <span
+                style={{
+                  marginLeft: 'auto',
+                  background: 'rgba(168, 85, 247, 0.15)',
+                  color: '#c084fc',
+                  border: '1px solid rgba(168, 85, 247, 0.3)',
+                  fontSize: 9,
+                  padding: '1px 6px',
+                  borderRadius: 10,
+                  fontWeight: 700,
+                }}
+              >
+                AI
+              </span>
             </button>
 
             <button
@@ -553,6 +599,17 @@ export default function SettingsModal({
               </div>
             )}
 
+            {/* ── Tab: Extensions (Requested Feature) ── */}
+            {activeTabName === 'extensions' && (
+              <div style={{ height: '100%', overflow: 'hidden' }}>
+                <ExtensionsPanel
+                  extensions={extensions}
+                  onExtensionsChange={onExtensionsChange}
+                  showToast={showToast}
+                />
+              </div>
+            )}
+
             {/* ── Tab 2: VS Code Themes (Requested Feature) ── */}
             {activeTabName === 'themes' && (
               <ThemeGalleryTab
@@ -560,6 +617,8 @@ export default function SettingsModal({
                 onSelectTheme={onThemeChange}
                 currentFontColor={currentFontColor}
                 onSelectFontColor={onFontColorChange}
+                currentCommentColor={currentCommentColor}
+                onSelectCommentColor={onCommentColorChange}
                 showToast={showToast}
               />
             )}

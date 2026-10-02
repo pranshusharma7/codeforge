@@ -31,7 +31,7 @@ import { EventsLandingPage } from './components/events/EventsLandingPage'
 import { PreContestCheckModal } from './components/contest/PreContestCheckModal'
 import { ContestArena } from './components/contest/ContestArena'
 import type { Contest, ContestProblem } from './lib/contestTypes'
-import { registerMonacoThemes, DEFAULT_THEME_ID, getThemeById, applyThemeToDocument, getThemeUIColors } from './lib/themes'
+import { registerMonacoThemes, DEFAULT_THEME_ID, getThemeById, applyThemeToDocument, getThemeUIColors, getActiveMonacoThemeId } from './lib/themes'
 import {
   getSavedCodeHistory, saveCodeSnapshot, deleteSavedCode, getSnippets, saveSnippet, deleteSnippet,
   encodeShare, decodeShare, downloadCode, downloadProjectZip, getAuthUser, setAuthUser, clearAuthUser,
@@ -43,6 +43,9 @@ import FloatingDebugBar from './components/FloatingDebugBar'
 import DebugConsole, { type DebugConsoleLog } from './components/DebugConsole'
 import { generateExecutionTrace, evaluateWatchExpression, type DebugStep, type WatchItem } from './engine/debugger'
 import type { ExecutionResult } from './lib/judge0'
+import { getInstalledExtensions, isExtensionEnabled } from './extensions/registry'
+import { getAINextCodeSuggestion } from './extensions/aiHelper'
+import type { Extension } from './extensions/types'
 import { getEditorFontById, DEFAULT_FONT_ID } from './lib/fonts'
 import logoImg from './assets/logo.png'
 import LeetCodeRunner from './components/LeetCodeRunner'
@@ -289,7 +292,7 @@ export default function App() {
   const [openMenuOpen, setOpenMenuOpen]   = useState(false)
   const openMenuRef                       = useRef<HTMLDivElement>(null)
   const [showSettings, setShowSettings]   = useState(false)
-  const [settingsTab, setSettingsTab]     = useState<'editor' | 'themes' | 'repos' | 'profile'>('editor')
+  const [settingsTab, setSettingsTab]     = useState<'editor' | 'extensions' | 'themes' | 'repos' | 'profile'>('editor')
   const [editorTheme, setEditorTheme]     = useState<string>(() => {
     try { return localStorage.getItem('cf_editor_theme') || DEFAULT_THEME_ID } catch { return DEFAULT_THEME_ID }
   })
@@ -299,6 +302,12 @@ export default function App() {
   const [editorFontColor, setEditorFontColor] = useState<string>(() => {
     try { return localStorage.getItem('cf_editor_font_color') || 'default' } catch { return 'default' }
   })
+  const [editorCommentColor, setEditorCommentColor] = useState<string>(() => {
+    try { return localStorage.getItem('cf_editor_comment_color') || 'default' } catch { return 'default' }
+  })
+  const [extensions, setExtensions]       = useState<Extension[]>(() => getInstalledExtensions())
+  const isAiHelperEnabled = useMemo(() => isExtensionEnabled('codeforge-ai-helper', extensions) || isExtensionEnabled('antigravity-ai-copilot', extensions), [extensions])
+  const customCompletions = useMemo(() => extensions.filter(e => e.enabled).flatMap(e => e.completions || []), [extensions])
   const [fontLigatures, setFontLigatures] = useState<boolean>(() => {
     try {
       const saved = localStorage.getItem('cf_editor_ligatures')
@@ -470,7 +479,7 @@ export default function App() {
 
   // ── Init ────────────────────────────────────────────────────────────────
   useEffect(() => {
-    applyThemeToDocument(editorTheme, editorFontColor)
+    applyThemeToDocument(editorTheme, editorFontColor, editorCommentColor)
     setSavedCodes(getSavedCodeHistory())
     const savedUser = getAuthUser()
     setAuthUserState(savedUser)
@@ -506,22 +515,73 @@ export default function App() {
     }
   }, [])
 
-  // ── Dynamic Theme & Custom Font Color Theme Name ────────────────────────
+  // ── Dynamic Theme & Custom Font/Comment Color Theme Name ────────────────────────
   const activeMonacoTheme = useMemo(() => {
-    if (!editorFontColor || editorFontColor === 'default') {
-      return editorTheme
-    }
-    const cleanColor = editorFontColor.replace(/[^a-zA-Z0-9]/g, '')
-    return `${editorTheme}-fc-${cleanColor}`
-  }, [editorTheme, editorFontColor])
+    return getActiveMonacoThemeId(editorTheme, editorFontColor, editorCommentColor)
+  }, [editorTheme, editorFontColor, editorCommentColor])
 
   // ── Theme ───────────────────────────────────────────────────────────────
   useEffect(() => {
-    applyThemeToDocument(editorTheme, editorFontColor)
+    applyThemeToDocument(editorTheme, editorFontColor, editorCommentColor)
     if (!monaco) return
-    registerMonacoThemes(monaco, editorFontColor)
+    registerMonacoThemes(monaco, editorFontColor, editorCommentColor)
     monaco.editor.setTheme(activeMonacoTheme)
-  }, [monaco, editorTheme, editorFontColor, activeMonacoTheme])
+  }, [monaco, editorTheme, editorFontColor, editorCommentColor, activeMonacoTheme])
+
+  // ── AntiGravity AI Copilot: Next-Line Ghost Text Completions (Tab to Accept) ──
+  const inlineProviderRef = useRef<any>(null)
+
+  useEffect(() => {
+    if (!monaco) return
+    if (inlineProviderRef.current) {
+      try { inlineProviderRef.current.dispose() } catch {}
+      inlineProviderRef.current = null
+    }
+
+    if (!isAiHelperEnabled) return
+
+    try {
+      inlineProviderRef.current = monaco.languages.registerInlineCompletionsProvider('*', {
+        provideInlineCompletions: async (model: any, position: any) => {
+          if (!isAiHelperEnabled) return { items: [] }
+          const code = model.getValue()
+          const langId = model.getLanguageId()
+          const suggestion = getAINextCodeSuggestion(
+            code,
+            position.lineNumber,
+            position.column,
+            langId,
+            customCompletions
+          )
+          if (!suggestion) return { items: [] }
+
+          return {
+            items: [
+              {
+                insertText: suggestion.insertText,
+                range: new monaco.Range(
+                  position.lineNumber,
+                  position.column,
+                  position.lineNumber,
+                  position.column
+                ),
+              },
+            ],
+          }
+        },
+        disposeInlineCompletions: () => {},
+      })
+    } catch (e) {
+      console.warn('Failed to register inline completions provider:', e)
+    }
+
+    return () => {
+      if (inlineProviderRef.current) {
+        try { inlineProviderRef.current.dispose() } catch {}
+        inlineProviderRef.current = null
+      }
+    }
+  }, [monaco, isAiHelperEnabled, customCompletions])
 
   // ── Breakpoints & Active Debug Line in Monaco ─────────────────────────────
   const toggleBreakpoint = useCallback((line: number) => {
@@ -1539,27 +1599,31 @@ export default function App() {
 
   const handleThemeChange = (themeId: string) => {
     setEditorTheme(themeId)
-    applyThemeToDocument(themeId, editorFontColor)
+    applyThemeToDocument(themeId, editorFontColor, editorCommentColor)
     try { localStorage.setItem('cf_editor_theme', themeId) } catch {}
     if (monaco) {
-      registerMonacoThemes(monaco, editorFontColor)
-      const targetTheme = editorFontColor && editorFontColor !== 'default'
-        ? `${themeId}-fc-${editorFontColor.replace(/[^a-zA-Z0-9]/g, '')}`
-        : themeId
-      monaco.editor.setTheme(targetTheme)
+      registerMonacoThemes(monaco, editorFontColor, editorCommentColor)
+      monaco.editor.setTheme(getActiveMonacoThemeId(themeId, editorFontColor, editorCommentColor))
     }
   }
 
   const handleFontColorChange = (color: string) => {
     setEditorFontColor(color)
-    applyThemeToDocument(editorTheme, color)
+    applyThemeToDocument(editorTheme, color, editorCommentColor)
     try { localStorage.setItem('cf_editor_font_color', color) } catch {}
     if (monaco) {
-      registerMonacoThemes(monaco, color)
-      const targetTheme = color && color !== 'default'
-        ? `${editorTheme}-fc-${color.replace(/[^a-zA-Z0-9]/g, '')}`
-        : editorTheme
-      monaco.editor.setTheme(targetTheme)
+      registerMonacoThemes(monaco, color, editorCommentColor)
+      monaco.editor.setTheme(getActiveMonacoThemeId(editorTheme, color, editorCommentColor))
+    }
+  }
+
+  const handleCommentColorChange = (color: string) => {
+    setEditorCommentColor(color)
+    applyThemeToDocument(editorTheme, editorFontColor, color)
+    try { localStorage.setItem('cf_editor_comment_color', color) } catch {}
+    if (monaco) {
+      registerMonacoThemes(monaco, editorFontColor, color)
+      monaco.editor.setTheme(getActiveMonacoThemeId(editorTheme, editorFontColor, color))
     }
   }
 
@@ -2017,6 +2081,10 @@ export default function App() {
     stopRenderingLineAfter: 10000,
     acceptSuggestionOnEnter: 'smart' as const,
     tabCompletion: 'on' as const,
+    inlineSuggest: {
+      enabled: isAiHelperEnabled,
+      mode: 'subwordSmart' as const,
+    },
     snippetSuggestions: 'top' as const,
     suggest: {
       showKeywords: true,
@@ -4177,6 +4245,26 @@ export default function App() {
         <div id="editor-cursor-pos-status" className="status-item" style={{ fontFamily: 'JetBrains Mono, monospace', opacity: 0.8 }}>
           Ln 1, Col 1
         </div>
+        <div
+          className="status-item"
+          onClick={() => {
+            setSettingsTab('extensions')
+            setShowSettings(true)
+          }}
+          title={isAiHelperEnabled ? "CodeForge AI Helper active (Press Tab to accept ghost text). Click to manage extensions." : "CodeForge AI Helper disabled. Click to configure."}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 4,
+            cursor: 'pointer',
+            color: isAiHelperEnabled ? '#c084fc' : 'var(--text-dim)',
+            fontWeight: isAiHelperEnabled ? 600 : 400,
+            borderLeft: '1px solid rgba(255,255,255,0.15)',
+          }}
+        >
+          <span style={{ fontSize: 11 }}>✨</span>
+          <span>{isAiHelperEnabled ? 'CodeForge AI: Tab to Accept' : 'AI Helper: Off'}</span>
+        </div>
         <div className="status-item" style={{ opacity: 0.7 }}>UTF-8</div>
         <div className="status-item" onClick={() => openSettings('themes')} title="Change Theme" style={{ display: 'flex', alignItems: 'center', gap: 4, borderLeft: '1px solid rgba(255,255,255,0.15)' }}>
           <PaletteIcon size={11} /> {getThemeById(editorTheme).name.split(' (')[0]}
@@ -4302,6 +4390,8 @@ export default function App() {
         onThemeChange={handleThemeChange}
         currentFontColor={editorFontColor}
         onFontColorChange={handleFontColorChange}
+        currentCommentColor={editorCommentColor}
+        onCommentColorChange={handleCommentColorChange}
         currentFontId={editorFont}
         onFontChange={handleFontChange}
         fontLigatures={fontLigatures}
@@ -4326,6 +4416,8 @@ export default function App() {
         onSelectRepoForCommit={handleSelectRepoForCommit}
         onOpenFileFromRepo={handleOpenFileFromRepo}
         onImportMultipleFiles={handleImportMultipleFilesFromRepo}
+        extensions={extensions}
+        onExtensionsChange={setExtensions}
         showToast={showToast}
       />
 

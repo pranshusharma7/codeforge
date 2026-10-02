@@ -1,5 +1,12 @@
 import { useState } from 'react'
-import { VSCODE_THEMES, EDITOR_FONT_COLORS, type ThemeDefinition, type FontColorOption } from '../lib/themes'
+import {
+  getAllThemes,
+  VSCODE_THEMES,
+  EDITOR_FONT_COLORS,
+  type ThemeDefinition,
+  type FontColorOption,
+  parseAnyColorToHex,
+} from '../lib/themes'
 import { CheckIcon } from './icons'
 
 interface Props {
@@ -7,6 +14,8 @@ interface Props {
   onSelectTheme: (themeId: string) => void
   currentFontColor?: string
   onSelectFontColor?: (color: string) => void
+  currentCommentColor?: string
+  onSelectCommentColor?: (color: string) => void
   showToast: (msg: string) => void
 }
 
@@ -15,21 +24,32 @@ export default function ThemeGalleryTab({
   onSelectTheme,
   currentFontColor = 'default',
   onSelectFontColor,
+  currentCommentColor = 'default',
+  onSelectCommentColor,
   showToast,
 }: Props) {
   const [search, setSearch] = useState('')
-  const [filterCategory, setFilterCategory] = useState<'all' | 'dark' | 'light'>('all')
+  const [filterCategory, setFilterCategory] = useState<'all' | 'dark' | 'light' | 'extensions'>('all')
   const [customHex, setCustomHex] = useState(currentFontColor.startsWith('#') ? currentFontColor : '#00f0ff')
+  const [customCommentHex, setCustomCommentHex] = useState(
+    currentCommentColor.startsWith('#') ? currentCommentColor : '#6a9955'
+  )
 
-  const totalThemes = VSCODE_THEMES.length
-  const darkThemesCount = VSCODE_THEMES.filter(t => t.category === 'dark').length
-  const lightThemesCount = VSCODE_THEMES.filter(t => t.category === 'light').length
+  const allThemes = getAllThemes()
+  const totalThemes = allThemes.length
+  const darkThemesCount = allThemes.filter(t => t.category === 'dark').length
+  const lightThemesCount = allThemes.filter(t => t.category === 'light').length
+  const extensionThemesCount = allThemes.filter(t => t.isExtensionTheme).length
 
-  const filteredThemes = VSCODE_THEMES.filter(theme => {
+  const filteredThemes = allThemes.filter(theme => {
     const matchesSearch =
       theme.name.toLowerCase().includes(search.toLowerCase()) ||
       theme.author.toLowerCase().includes(search.toLowerCase()) ||
       theme.description.toLowerCase().includes(search.toLowerCase())
+
+    if (filterCategory === 'extensions') {
+      return matchesSearch && theme.isExtensionTheme
+    }
     const matchesCategory =
       filterCategory === 'all' ? true : theme.category === filterCategory
     return matchesSearch && matchesCategory
@@ -43,15 +63,28 @@ export default function ThemeGalleryTab({
   const handlePickFontColor = (option: FontColorOption) => {
     if (onSelectFontColor) {
       onSelectFontColor(option.color)
+      if (option.color.startsWith('#')) {
+        setCustomHex(option.color)
+      }
       showToast(`🎨 Font Color: ${option.name}`)
     }
   }
 
-  const handleApplyCustomHex = (hex: string) => {
-    setCustomHex(hex)
-    if (onSelectFontColor && /^#[0-9A-Fa-f]{6}$/.test(hex)) {
-      onSelectFontColor(hex)
-      showToast(`🎨 Custom Font Color: ${hex}`)
+  const handleApplyCustomHex = (rawColor: string) => {
+    setCustomHex(rawColor)
+    const validHex = parseAnyColorToHex(rawColor)
+    if (validHex && onSelectFontColor) {
+      onSelectFontColor(validHex)
+      showToast(`🎨 Font Color: ${validHex}`)
+    }
+  }
+
+  const handleApplyCustomCommentHex = (rawColor: string) => {
+    setCustomCommentHex(rawColor)
+    const validHex = parseAnyColorToHex(rawColor)
+    if (validHex && onSelectCommentColor) {
+      onSelectCommentColor(validHex)
+      showToast(`💬 Comment Color: ${validHex}`)
     }
   }
 
@@ -60,6 +93,13 @@ export default function ThemeGalleryTab({
     currentFontColor === 'default'
       ? activeTheme.previewColors[2]
       : currentFontColor
+
+  const defaultCommentForeground = activeTheme.monacoTheme.rules.find(r => r.token === 'comment')?.foreground
+  const activeThemeCommentColor = defaultCommentForeground ? `#${defaultCommentForeground}` : '#6a9955'
+  const previewCommentColor =
+    currentCommentColor === 'default' || !currentCommentColor
+      ? activeThemeCommentColor
+      : currentCommentColor
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflowY: 'auto', paddingRight: 4 }}>
@@ -95,7 +135,7 @@ export default function ThemeGalleryTab({
             padding: 2,
           }}
         >
-          {(['all', 'dark', 'light'] as const).map(cat => (
+          {(['all', 'dark', 'light', 'extensions'] as const).map(cat => (
             <button
               key={cat}
               onClick={() => setFilterCategory(cat)}
@@ -103,19 +143,22 @@ export default function ThemeGalleryTab({
                 border: 'none',
                 background: filterCategory === cat ? 'var(--bg-hover)' : 'transparent',
                 color: filterCategory === cat ? 'var(--text-base)' : 'var(--text-muted)',
-                padding: '4px 10px',
+                padding: '4px 9px',
                 borderRadius: 4,
                 fontSize: 11,
                 cursor: 'pointer',
                 fontWeight: filterCategory === cat ? 600 : 400,
                 textTransform: 'capitalize',
+                whiteSpace: 'nowrap',
               }}
             >
               {cat === 'all'
                 ? `All (${totalThemes})`
                 : cat === 'dark'
                 ? `Dark (${darkThemesCount})`
-                : `Light (${lightThemesCount})`}
+                : cat === 'light'
+                ? `Light (${lightThemesCount})`
+                : `Extensions 🧩 (${extensionThemesCount})`}
             </button>
           ))}
         </div>
@@ -163,8 +206,25 @@ export default function ThemeGalleryTab({
                 {/* Title and Active Badge */}
                 <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 6 }}>
                   <div>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-base)' }}>
-                      {theme.name}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-base)' }}>
+                        {theme.name}
+                      </span>
+                      {theme.isExtensionTheme && (
+                        <span
+                          style={{
+                            fontSize: 8.5,
+                            fontWeight: 700,
+                            background: 'rgba(59, 130, 246, 0.15)',
+                            color: '#38bdf8',
+                            border: '1px solid rgba(59, 130, 246, 0.35)',
+                            padding: '1px 5px',
+                            borderRadius: 4,
+                          }}
+                        >
+                          🧩 Extension
+                        </span>
+                      )}
                     </div>
                     <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 1 }}>
                       by {theme.author}
@@ -408,7 +468,7 @@ export default function ThemeGalleryTab({
         >
           <input
             type="color"
-            value={customHex.startsWith('#') ? customHex : '#00f0ff'}
+            value={parseAnyColorToHex(customHex) || '#00f0ff'}
             onChange={e => handleApplyCustomHex(e.target.value)}
             style={{
               width: 32,
@@ -423,19 +483,19 @@ export default function ThemeGalleryTab({
           />
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-base)' }}>
-              Custom Hex Color
+              Custom Code Color (All Formats Supported)
             </div>
             <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>
-              Pick any custom color for your code editor
+              Hex (#00f0ff), RGB (rgb(0,240,255)), HSL, ya Name (cyan, gold, lime) daalein
             </div>
           </div>
           <input
             type="text"
             value={customHex}
             onChange={e => handleApplyCustomHex(e.target.value)}
-            placeholder="#00f0ff"
+            placeholder="#00f0ff / cyan / rgb(...)"
             style={{
-              width: 90,
+              width: 140,
               padding: '5px 8px',
               fontSize: 11,
               fontFamily: 'JetBrains Mono',
@@ -446,6 +506,148 @@ export default function ThemeGalleryTab({
               outline: 'none',
             }}
           />
+        </div>
+
+        {/* ── Section: Comment Words Color (Requested Feature) ─────────── */}
+        <div
+          style={{
+            borderTop: '1px solid var(--border)',
+            paddingTop: 18,
+            marginTop: 6,
+            marginBottom: 18,
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-base)' }}>
+                💬 Comment Words & Syntax Color
+              </span>
+              <span
+                style={{
+                  fontSize: 10,
+                  background: 'rgba(106, 153, 85, 0.2)',
+                  color: '#6a9955',
+                  border: '1px solid rgba(106, 153, 85, 0.4)',
+                  padding: '2px 8px',
+                  borderRadius: 12,
+                  fontWeight: 600,
+                }}
+              >
+                Comments Override
+              </span>
+            </div>
+          </div>
+
+          <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: '0 0 12px' }}>
+            Comments (<code>//</code>, <code>/* */</code>, <code>#</code>) ke words ka colour By Default theme color rakhein ya custom colour code enter karke badlein.
+          </p>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
+            {/* 1. By Default Option */}
+            <button
+              type="button"
+              onClick={() => {
+                if (onSelectCommentColor) onSelectCommentColor('default')
+                setCustomCommentHex('#6a9955')
+                showToast('💬 Comments: By Default Theme Color')
+              }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '10px 14px',
+                background: (!currentCommentColor || currentCommentColor === 'default') ? 'var(--bg-hover)' : 'var(--bg-card)',
+                border: '1px solid',
+                borderColor: (!currentCommentColor || currentCommentColor === 'default') ? 'var(--accent)' : 'var(--border)',
+                borderRadius: 8,
+                cursor: 'pointer',
+                textAlign: 'left',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div
+                  style={{
+                    width: 16,
+                    height: 16,
+                    borderRadius: '50%',
+                    background: defaultCommentForeground ? `#${defaultCommentForeground}` : '#6a9955',
+                    border: '1px solid rgba(0,0,0,0.25)',
+                    flexShrink: 0,
+                  }}
+                />
+                <div>
+                  <div style={{ fontSize: 12, fontWeight: (!currentCommentColor || currentCommentColor === 'default') ? 700 : 500, color: 'var(--text-base)' }}>
+                    By Default (Theme Color)
+                  </div>
+                  <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 1 }}>
+                    Active theme ka default comment color ({activeTheme.name})
+                  </div>
+                </div>
+              </div>
+              {(!currentCommentColor || currentCommentColor === 'default') && (
+                <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700, color: 'var(--accent)' }}>
+                  <CheckIcon size={12} /> Active
+                </span>
+              )}
+            </button>
+
+            {/* 2. Colour Code Dalke Change Karne Ka Option */}
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
+                background: (currentCommentColor && currentCommentColor !== 'default') ? 'var(--bg-hover)' : 'var(--bg-card)',
+                border: '1px solid',
+                borderColor: (currentCommentColor && currentCommentColor !== 'default') ? 'var(--accent)' : 'var(--border)',
+                borderRadius: 8,
+                padding: '10px 14px',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              <input
+                type="color"
+                value={parseAnyColorToHex(customCommentHex) || '#6a9955'}
+                onChange={e => handleApplyCustomCommentHex(e.target.value)}
+                style={{
+                  width: 34,
+                  height: 34,
+                  padding: 0,
+                  border: 'none',
+                  borderRadius: 6,
+                  cursor: 'pointer',
+                  background: 'transparent',
+                }}
+                title="Choose comment color"
+              />
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 12, fontWeight: (currentCommentColor && currentCommentColor !== 'default') ? 700 : 500, color: 'var(--text-base)' }}>
+                  Colour Code Dalkar Change Karein (All Formats)
+                </div>
+                <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>
+                  Hex (#6a9955), RGB (rgb(0,255,100)), HSL, ya Name (lime, cyan, coral) daalein
+                </div>
+              </div>
+              <input
+                type="text"
+                value={customCommentHex}
+                onChange={e => handleApplyCustomCommentHex(e.target.value)}
+                placeholder="#6a9955 / lime / rgb(...)"
+                style={{
+                  width: 140,
+                  padding: '6px 10px',
+                  fontSize: 11,
+                  fontFamily: 'JetBrains Mono',
+                  borderRadius: 6,
+                  border: '1px solid var(--border)',
+                  background: 'var(--bg-input)',
+                  color: 'var(--text-base)',
+                  outline: 'none',
+                }}
+              />
+            </div>
+          </div>
         </div>
 
         {/* Live Code Preview Box */}
@@ -468,20 +670,33 @@ export default function ThemeGalleryTab({
               marginBottom: 8,
               borderBottom: '1px solid rgba(255,255,255,0.08)',
               paddingBottom: 6,
+              flexWrap: 'wrap',
+              gap: 8,
             }}
           >
             <span style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 600 }}>
               LIVE PREVIEW: {activeTheme.name}
             </span>
-            <span
-              style={{
-                fontSize: 10,
-                color: previewTextColor,
-                fontWeight: 600,
-              }}
-            >
-              Font Color: {currentFontColor === 'default' ? 'Theme Default' : currentFontColor}
-            </span>
+            <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+              <span
+                style={{
+                  fontSize: 10,
+                  color: previewTextColor,
+                  fontWeight: 600,
+                }}
+              >
+                Code Font: {currentFontColor === 'default' ? 'Theme Default' : currentFontColor}
+              </span>
+              <span
+                style={{
+                  fontSize: 10,
+                  color: previewCommentColor,
+                  fontWeight: 600,
+                }}
+              >
+                Comments: {currentCommentColor === 'default' || !currentCommentColor ? 'Theme Default' : currentCommentColor}
+              </span>
+            </div>
           </div>
           <div>
             <span style={{ color: activeTheme.previewColors[1], fontWeight: 600 }}>function</span>{' '}
@@ -493,8 +708,8 @@ export default function ThemeGalleryTab({
             <span style={{ color: previewTextColor }}>) {'{'}</span>
           </div>
           <div style={{ paddingLeft: 18 }}>
-            <span style={{ color: activeTheme.previewColors[3], fontStyle: 'italic' }}>
-              // Real-time custom font color preview
+            <span style={{ color: previewCommentColor, fontStyle: 'italic' }}>
+              // Real-time custom comment color: {previewCommentColor}
             </span>
           </div>
           <div style={{ paddingLeft: 18 }}>
