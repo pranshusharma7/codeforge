@@ -368,6 +368,9 @@ export default function App() {
   const codeTimerRef  = useRef<any>(null)
   const activeCodeRef = useRef<string>(tabs[0]?.code ?? '')
   const handleRunRef  = useRef<() => void>(() => {})
+  const runAbortControllerRef = useRef<AbortController | null>(null)
+  const [runStartTime, setRunStartTime] = useState<number | null>(null)
+  const [runElapsedSec, setRunElapsedSec] = useState<number>(0)
   const saveRef       = useRef<() => void>(() => {})
   const handleOpenDiskFileRef = useRef<() => void>(() => {})
   const handleSaveAsDiskRef   = useRef<() => void>(() => {})
@@ -1326,6 +1329,36 @@ export default function App() {
     showToast(`Deleted ${target?.name || 'file'}`)
   }
 
+  // ── Stop Execution ──────────────────────────────────────────────────────
+  const handleStop = useCallback(() => {
+    if (runAbortControllerRef.current) {
+      runAbortControllerRef.current.abort()
+      runAbortControllerRef.current = null
+    }
+    setRunning(false)
+    setRunStartTime(null)
+    setResult({
+      stdout: null,
+      stderr: '⏹ Execution stopped by user.',
+      compile_output: null,
+      status: { id: 13, description: 'Cancelled' },
+      time: '0.000',
+      memory: null,
+      exit_code: 130,
+      engine: 'Stopped by User',
+    })
+    showToast('⏹ Execution stopped')
+  }, [showToast])
+
+  // Track elapsed run time for instant visual feedback
+  useEffect(() => {
+    if (!running || !runStartTime) return
+    const interval = setInterval(() => {
+      setRunElapsedSec(Number(((Date.now() - runStartTime) / 1000).toFixed(1)))
+    }, 100)
+    return () => clearInterval(interval)
+  }, [running, runStartTime])
+
   // ── Run ──────────────────────────────────────────────────────────────────
   const handleRun = useCallback(async () => {
     if (running) return
@@ -1373,7 +1406,19 @@ export default function App() {
     }
 
     // For all other languages (Python, Java, JS, C++, Rust, Go, etc.), output appears in the bottom terminal
+    const controller = new AbortController()
+    runAbortControllerRef.current = controller
     setRunning(true); setResult(null); setConsTab('output'); setBottomPanelOpen(true)
+    setRunStartTime(Date.now())
+    setRunElapsedSec(0)
+
+    // Safety timeout: auto-abort if execution somehow takes > 15s to guarantee it NEVER hangs
+    const safetyTimeout = setTimeout(() => {
+      if (runAbortControllerRef.current === controller) {
+        controller.abort()
+      }
+    }, 15000)
+
     try {
       let langToRun = getLangById(activeTabToUse.lang)
       let targetJudge0Id = langToRun.judge0Id
@@ -1389,6 +1434,7 @@ export default function App() {
               time: '0.001',
               memory: 1024,
               exit_code: 0,
+              engine: '⚡ In-Browser JSON Engine',
             })
           } catch (jsonErr: any) {
             setResult({
@@ -1399,6 +1445,7 @@ export default function App() {
               time: '0.001',
               memory: 1024,
               exit_code: 1,
+              engine: '⚡ In-Browser JSON Engine',
             })
           }
           return
@@ -1413,9 +1460,40 @@ export default function App() {
         languageId: targetJudge0Id,
         lang: langToRun.id,
         stdin,
+        signal: controller.signal,
       })
       setResult(res)
-    } finally { setRunning(false) }
+    } catch (err: any) {
+      if (controller.signal.aborted) {
+        setResult({
+          stdout: null,
+          stderr: '⏹ Execution stopped by user.',
+          compile_output: null,
+          status: { id: 13, description: 'Cancelled' },
+          time: '0.000',
+          memory: null,
+          exit_code: 130,
+          engine: 'Stopped by User',
+        })
+      } else {
+        setResult({
+          stdout: null,
+          stderr: `Execution error: ${err.message || err}`,
+          compile_output: null,
+          status: { id: 13, description: 'Error' },
+          time: '0.000',
+          memory: null,
+          exit_code: 1,
+        })
+      }
+    } finally {
+      clearTimeout(safetyTimeout)
+      if (runAbortControllerRef.current === controller) {
+        runAbortControllerRef.current = null
+      }
+      setRunning(false)
+      setRunStartTime(null)
+    }
   }, [running, hasOpenTab, curTab, getActiveCode, stdin])
   handleRunRef.current = handleRun
 
@@ -3040,12 +3118,32 @@ export default function App() {
             🐛 {isDebugging ? 'Debugging…' : 'Debug'}
           </button>
 
-          {/* Run Button */}
-          <button onClick={handleRun} disabled={running} className="btn btn-primary" style={{ padding: '4px 16px', fontSize: 12, fontWeight: 600, gap: 6 }}>
-            {running
-              ? <><div className="spin" style={{ width: 10, height: 10, borderRadius: '50%', border: '2px solid rgba(255,255,255,.3)', borderTopColor: '#fff' }} />Running…</>
-              : <><svg width="7" height="9" viewBox="0 0 7 9" fill="white"><polygon points="0,0 7,4.5 0,9"/></svg> Run</>}
-          </button>
+          {/* Run / Stop Button */}
+          {running ? (
+            <button
+              onClick={handleStop}
+              className="btn"
+              style={{
+                padding: '4px 14px',
+                fontSize: 12,
+                fontWeight: 700,
+                gap: 6,
+                background: 'linear-gradient(135deg, #ef4444, #dc2626)',
+                color: '#fff',
+                border: '1px solid #b91c1c',
+                boxShadow: '0 0 12px rgba(239, 68, 68, 0.45)',
+                cursor: 'pointer',
+              }}
+              title="Stop execution (Click to cancel immediately)"
+            >
+              <div style={{ width: 8, height: 8, background: '#fff', borderRadius: 2 }} />
+              Stop ({runElapsedSec}s)
+            </button>
+          ) : (
+            <button onClick={handleRun} disabled={running} className="btn btn-primary" style={{ padding: '4px 16px', fontSize: 12, fontWeight: 600, gap: 6 }}>
+              <svg width="7" height="9" viewBox="0 0 7 9" fill="white"><polygon points="0,0 7,4.5 0,9"/></svg> Run
+            </button>
+          )}
         </div>
       </header>
 
@@ -4074,50 +4172,105 @@ export default function App() {
             {/* Output */}
             {consTab === 'output' && (
               <div style={{ flex: 1, overflowY: 'auto', padding: '10px 14px', fontFamily: 'JetBrains Mono', fontSize: 12, lineHeight: 1.8, color: 'var(--output-font-color)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, paddingBottom: 6, borderBottom: '1px solid var(--border)' }}>
-                  <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.05em', color: 'var(--text-muted)' }}>STANDARD EXECUTION OUTPUT</span>
-                  <button
-                    onClick={() => setConsTab('dsa')}
-                    style={{
-                      background: 'rgba(16, 185, 129, 0.12)',
-                      border: '1px solid #10b981',
-                      color: '#10b981',
-                      fontSize: 10,
-                      fontWeight: 700,
-                      padding: '2px 8px',
-                      borderRadius: 4,
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 4,
-                    }}
-                  >
-                    ⚡ Open LeetCode DSA Testcases
-                  </button>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, paddingBottom: 6, borderBottom: '1px solid var(--border)', flexWrap: 'wrap', gap: 6 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.05em', color: 'var(--text-muted)' }}>STANDARD EXECUTION OUTPUT</span>
+                    {result?.engine && (
+                      <span style={{ fontSize: 10, background: 'rgba(56, 189, 248, 0.12)', border: '1px solid rgba(56, 189, 248, 0.3)', color: '#38bdf8', padding: '1px 7px', borderRadius: 4, fontWeight: 600 }}>
+                        {result.engine}
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    {result && (
+                      <span style={{ fontSize: 10, color: statusLabel(result).color, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <span>●</span> {statusLabel(result).label} {result.time ? `(${result.time}s)` : ''}
+                      </span>
+                    )}
+                    <button
+                      onClick={() => setConsTab('dsa')}
+                      style={{
+                        background: 'rgba(16, 185, 129, 0.12)',
+                        border: '1px solid #10b981',
+                        color: '#10b981',
+                        fontSize: 10,
+                        fontWeight: 700,
+                        padding: '2px 8px',
+                        borderRadius: 4,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 4,
+                      }}
+                    >
+                      ⚡ Open LeetCode DSA Testcases
+                    </button>
+                  </div>
                 </div>
-                {!result && !running && <div style={{ color: 'var(--output-font-color)', opacity: 0.75, display: 'flex', alignItems: 'center', gap: 8 }}><svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor"><polygon points="0,0 10,5 0,10"/></svg>Press <span style={{ color: 'var(--output-font-color)', fontWeight: 700, margin: '0 4px' }}>Run</span> (⌃↵) to execute.</div>}
-                {running && <div style={{ color: 'var(--output-font-color)' }}><span style={{ color: 'var(--accent)' }}>▶ </span>Executing {curLang.label}…</div>}
+
+                {!result && !running && (
+                  <div style={{ color: 'var(--output-font-color)', opacity: 0.75, display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor"><polygon points="0,0 10,5 0,10"/></svg>
+                    Press <span style={{ color: 'var(--output-font-color)', fontWeight: 700, margin: '0 4px' }}>Run</span> (⌃↵) to execute.
+                  </div>
+                )}
+
+                {running && (
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: 'rgba(56, 189, 248, 0.08)', borderRadius: 8, border: '1px solid rgba(56, 189, 248, 0.25)', marginBottom: 12 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: 'var(--output-font-color)' }}>
+                      <div className="spin" style={{ width: 14, height: 14, borderRadius: '50%', border: '2px solid var(--accent)', borderTopColor: 'transparent' }} />
+                      <span style={{ fontWeight: 600 }}>Executing {curLang.label}…</span>
+                      <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>({runElapsedSec}s elapsed)</span>
+                    </div>
+                    <button
+                      onClick={handleStop}
+                      style={{
+                        background: '#ef4444',
+                        border: 'none',
+                        color: '#fff',
+                        padding: '4px 12px',
+                        borderRadius: 4,
+                        fontSize: 11,
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        boxShadow: '0 2px 6px rgba(239, 68, 68, 0.35)',
+                      }}
+                      title="Stop execution immediately"
+                    >
+                      <span style={{ display: 'inline-block', width: 6, height: 6, background: '#fff', borderRadius: 1 }} />
+                      Stop Execution
+                    </button>
+                  </div>
+                )}
+
                 {result && (
                   <>
                     {result.compile_output && (
-                      <div style={{ marginBottom: 8 }}>
-                        <div style={{ color: '#d29922', fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', marginBottom: 3 }}>COMPILE OUTPUT</div>
-                        <pre style={{ color: 'var(--red)', whiteSpace: 'pre-wrap', margin: 0 }}>{result.compile_output}</pre>
+                      <div style={{ marginBottom: 10 }}>
+                        <div style={{ color: '#d29922', fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', marginBottom: 4 }}>COMPILE OUTPUT</div>
+                        <pre style={{ color: 'var(--red)', whiteSpace: 'pre-wrap', margin: 0, background: 'rgba(239, 68, 68, 0.05)', padding: '8px 10px', borderRadius: 6, border: '1px solid rgba(239, 68, 68, 0.2)' }}>{result.compile_output}</pre>
                       </div>
                     )}
                     {result.stderr && (
-                      <div style={{ marginBottom: 8 }}>
-                        <div style={{ color: 'var(--red)', fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', marginBottom: 3 }}>STDERR</div>
-                        <pre style={{ color: 'var(--red)', whiteSpace: 'pre-wrap', margin: 0 }}>{result.stderr}</pre>
+                      <div style={{ marginBottom: 10 }}>
+                        <div style={{ color: 'var(--red)', fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', marginBottom: 4 }}>STDERR</div>
+                        <pre style={{ color: 'var(--red)', whiteSpace: 'pre-wrap', margin: 0, background: 'rgba(239, 68, 68, 0.05)', padding: '8px 10px', borderRadius: 6, border: '1px solid rgba(239, 68, 68, 0.2)' }}>{result.stderr}</pre>
                       </div>
                     )}
                     {result.stdout && (
                       <div>
-                        <div style={{ color: 'var(--green)', fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', marginBottom: 3 }}>STDOUT</div>
+                        <div style={{ color: 'var(--green)', fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', marginBottom: 4 }}>STDOUT</div>
                         <pre style={{ color: 'var(--output-font-color)', whiteSpace: 'pre-wrap', margin: 0, fontWeight: 500 }}>{result.stdout}</pre>
                       </div>
                     )}
-                    {!result.stdout && !result.stderr && !result.compile_output && <div style={{ color: 'var(--green)' }}>✓ Program exited with code 0 (no output)</div>}
+                    {!result.stdout && !result.stderr && !result.compile_output && (
+                      <div style={{ color: 'var(--green)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span>✓</span> Program exited with code {result.exit_code ?? 0} (no output)
+                      </div>
+                    )}
                   </>
                 )}
               </div>
