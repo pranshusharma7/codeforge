@@ -61,6 +61,11 @@ interface Props {
   onConnectGitHub: () => void
   onRefreshRepos: () => void
   showToast: (msg: string) => void
+  autoSyncEnabled?: boolean
+  setAutoSyncEnabled?: (val: boolean) => void
+  autoSyncStatus?: 'idle' | 'syncing' | 'synced' | 'error'
+  lastSyncResult?: { sha: string; url: string; file: string } | null
+  onOpenAutoSyncModal?: () => void
 }
 
 export default function SourceControlPanel({
@@ -76,6 +81,11 @@ export default function SourceControlPanel({
   onConnectGitHub,
   onRefreshRepos,
   showToast,
+  autoSyncEnabled,
+  setAutoSyncEnabled,
+  autoSyncStatus,
+  lastSyncResult,
+  onOpenAutoSyncModal,
 }: Props) {
   // Commit form state
   const [commitMessage, setCommitMessage] = useState('')
@@ -431,6 +441,95 @@ export default function SourceControlPanel({
 
       {activeRepo && (
         <>
+          {/* ── Auto-Update / Auto-Sync to GitHub Card ─────────────────────────── */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              background: autoSyncEnabled ? 'rgba(16, 185, 129, 0.09)' : 'var(--bg-card)',
+              border: `1px solid ${autoSyncEnabled ? 'rgba(16, 185, 129, 0.35)' : 'var(--border)'}`,
+              borderRadius: 6,
+              padding: '8px 10px',
+              marginBottom: 10,
+              fontSize: 11,
+              transition: 'all 0.2s ease',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 13 }}>☁️</span>
+              <div>
+                <div style={{ fontWeight: 700, color: 'var(--text-base)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  Auto-Update to GitHub
+                  {autoSyncStatus === 'syncing' && (
+                    <span style={{ color: '#38bdf8', fontSize: 10, fontWeight: 600 }}>Syncing…</span>
+                  )}
+                  {autoSyncStatus === 'synced' && (
+                    <span style={{ color: '#10b981', fontSize: 10, fontWeight: 600 }}>✓ Synced</span>
+                  )}
+                </div>
+                <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>
+                  {autoSyncEnabled ? 'Pushes live code updates automatically' : 'Enable to push live edits to GitHub'}
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              {onOpenAutoSyncModal && (
+                <button
+                  onClick={onOpenAutoSyncModal}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: 'var(--accent)',
+                    cursor: 'pointer',
+                    fontSize: 10,
+                    textDecoration: 'underline',
+                    padding: '2px 4px',
+                  }}
+                  title="Configure sync delays & target"
+                >
+                  Configure
+                </button>
+              )}
+              {setAutoSyncEnabled && (
+                <button
+                  onClick={() => {
+                    const next = !autoSyncEnabled
+                    setAutoSyncEnabled(next)
+                    localStorage.setItem('cf_github_autosync', String(next))
+                    showToast(next ? '🟢 GitHub Auto-Update Enabled!' : '⚪ GitHub Auto-Update Disabled')
+                  }}
+                  style={{
+                    width: 38,
+                    height: 20,
+                    borderRadius: 999,
+                    background: autoSyncEnabled ? '#10b981' : '#334155',
+                    border: 'none',
+                    cursor: 'pointer',
+                    position: 'relative',
+                    transition: 'background 0.2s ease',
+                    flexShrink: 0,
+                  }}
+                  aria-label="Toggle Auto-Sync"
+                >
+                  <div
+                    style={{
+                      width: 14,
+                      height: 14,
+                      borderRadius: '50%',
+                      background: '#ffffff',
+                      position: 'absolute',
+                      top: 3,
+                      left: autoSyncEnabled ? 21 : 3,
+                      transition: 'left 0.2s ease',
+                    }}
+                  />
+                </button>
+              )}
+            </div>
+          </div>
+
           {/* ── Branch and File Tree Quick Bar ──────────────────────────── */}
           <div
             style={{

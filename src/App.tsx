@@ -4,10 +4,11 @@ import { LANGUAGES, getLangById } from './lib/languages'
 import { executeCode, statusLabel } from './lib/judge0'
 import { generateAIResponse, type AIMessage, type AIAction } from './lib/aiResponses'
 import { aiProviderLabel, isLiveAI } from './engine/ai'
-import { createGitHubRepository, getGitHubRepositories, getGitHubUser, type GitHubRepository, SAMPLE_DEV_REPOSITORIES } from './lib/github'
+import { createGitHubRepository, getGitHubRepositories, getGitHubUser, commitOrUpdateRepoFile, type GitHubRepository, SAMPLE_DEV_REPOSITORIES } from './lib/github'
 import SourceControlPanel, { type TabWithRepo } from './components/SourceControlPanel'
 import SettingsModal from './components/SettingsModal'
 import GitHubAuthModal from './components/GitHubAuthModal'
+import GitHubAutoSyncModal from './components/GitHubAutoSyncModal'
 import UpgradeProModal from './components/UpgradeProModal'
 import FileIcon from './components/FileIcon'
 import AIAppPanel from './components/AIAppPanel'
@@ -408,6 +409,41 @@ export default function App() {
   })
   const [showUpgradeModal, setShowUpgradeModal] = useState<boolean>(false)
   const [aiConfigVersion, setAiConfigVersion] = useState<number>(0)
+
+  // GitHub Auto-Sync states
+  const [autoSyncEnabled, setAutoSyncEnabled] = useState<boolean>(() => {
+    try { return localStorage.getItem('cf_github_autosync') === 'true' } catch { return false }
+  })
+  const [autoSyncDelaySec, setAutoSyncDelaySec] = useState<number>(() => {
+    try { return parseInt(localStorage.getItem('cf_github_autosync_delay') || '3', 10) } catch { return 3 }
+  })
+  const [autoSyncStatus, setAutoSyncStatus] = useState<'idle' | 'syncing' | 'synced' | 'error'>('idle')
+  const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null)
+  const [lastSyncResult, setLastSyncResult] = useState<{ sha: string; url: string; file: string } | null>(null)
+  const [showAutoSyncModal, setShowAutoSyncModal] = useState<boolean>(false)
+  const autoSyncTimerRef = useRef<any>(null)
+  const lastSyncedCodeMapRef = useRef<Record<string, string>>({})
+  const isSyncingRef = useRef<boolean>(false)
+  const triggerGitHubSyncRef = useRef<(targetTabId?: string, explicit?: boolean) => Promise<void>>(() => Promise.resolve())
+
+  const handleToggleAutoSync = (enabled: boolean) => {
+    setAutoSyncEnabled(enabled)
+    try {
+      localStorage.setItem('cf_github_autosync', enabled ? 'true' : 'false')
+    } catch {}
+    if (enabled) {
+      showToast('⚡ GitHub Auto-Sync enabled! Code updates will auto-commit.')
+    } else {
+      showToast('GitHub Auto-Sync turned off.')
+    }
+  }
+
+  const handleSetAutoSyncDelay = (sec: number) => {
+    setAutoSyncDelaySec(sec)
+    try {
+      localStorage.setItem('cf_github_autosync_delay', sec.toString())
+    } catch {}
+  }
 
   useEffect(() => {
     const handleAIConfigChange = () => setAiConfigVersion(v => v + 1)
@@ -940,7 +976,17 @@ export default function App() {
         return p
       })
     }, 280)
-  }, [activeTab])
+
+    // Debounced GitHub Auto-Sync
+    if (autoSyncEnabled && authUser?.accessToken) {
+      if (autoSyncTimerRef.current) {
+        clearTimeout(autoSyncTimerRef.current)
+      }
+      autoSyncTimerRef.current = setTimeout(() => {
+        triggerGitHubSyncRef.current?.(activeTab, false)
+      }, autoSyncDelaySec * 1000)
+    }
+  }, [activeTab, autoSyncEnabled, authUser?.accessToken, autoSyncDelaySec])
 
   const switchActiveTab = useCallback((tabId: string) => {
     if (tabId === activeTab) return
@@ -1730,8 +1776,112 @@ export default function App() {
     setSnips([])
     setRepositories([])
     setActiveRepo(null)
+    setAutoSyncStatus('idle')
     showToast('Signed out from GitHub')
   }
+
+  const triggerGitHubSync = useCallback(async (targetTabId?: string, explicit = false) => {
+    const tabId = targetTabId || activeTab
+    if (!tabId) return
+
+    const tab = tabs.find(t => t.id === tabId)
+    if (!tab) return
+
+    const codeToSync = (tab.id === activeTab && activeCodeRef.current !== undefined)
+      ? activeCodeRef.current
+      : tab.code
+
+    if (!explicit && lastSyncedCodeMapRef.current[tab.id] === codeToSync) {
+      return
+    }
+
+    if (!authUser?.accessToken) {
+      if (explicit) {
+        showToast('⚠️ Please connect your GitHub account to auto-sync code.')
+        setShowAuth(true)
+      }
+      return
+    }
+
+    const targetRepo = activeRepo || (tab.repoName ? repositories.find(r => r.name.toLowerCase() === tab.repoName?.toLowerCase()) : null) || repositories[0]
+    if (!targetRepo && !tab.repoName) {
+      if (explicit) {
+        showToast('⚠️ Please select or link a GitHub repository to sync with.')
+        setShowAutoSyncModal(true)
+      }
+      return
+    }
+
+    const owner = tab.repoOwner || targetRepo?.owner?.login || authUser.login || authUser.name
+    const repo = tab.repoName || targetRepo?.name
+    if (!owner || !repo) {
+      if (explicit) showToast('⚠️ GitHub repository owner or name not found.')
+      return
+    }
+
+    const path = tab.repoPath || tab.name || 'untitled.py'
+    const branch = tab.repoBranch || targetRepo?.default_branch || 'main'
+
+    if (isSyncingRef.current) return
+    isSyncingRef.current = true
+    setAutoSyncStatus('syncing')
+
+    try {
+      const commitMsg = `auto-sync: update ${path} via CodeForge`
+      const result = await commitOrUpdateRepoFile(
+        authUser.accessToken,
+        owner,
+        repo,
+        path,
+        codeToSync,
+        commitMsg,
+        branch,
+        tab.repoSha
+      )
+
+      lastSyncedCodeMapRef.current[tab.id] = codeToSync
+      setAutoSyncStatus('synced')
+      setLastSyncTime(new Date())
+      setLastSyncResult({
+        sha: result.commitSha,
+        url: result.commitUrl,
+        file: path,
+      })
+
+      setTabs(prev => prev.map(t => {
+        if (t.id === tab.id) {
+          return {
+            ...t,
+            modified: false,
+            repoSha: result.fileSha || t.repoSha,
+            repoOwner: owner,
+            repoName: repo,
+            repoPath: path,
+            repoBranch: branch,
+          }
+        }
+        return t
+      }))
+
+      if (explicit) {
+        showToast(`✅ Synced "${path}" to GitHub (${repo}/${branch})!`)
+      }
+
+      setTimeout(() => {
+        setAutoSyncStatus(prev => prev === 'synced' ? 'idle' : prev)
+      }, 3500)
+    } catch (err: any) {
+      console.error('GitHub auto-sync error:', err)
+      setAutoSyncStatus('error')
+      if (explicit) {
+        showToast(`❌ Auto-sync failed: ${err.message || 'GitHub error'}`)
+      }
+    } finally {
+      isSyncingRef.current = false
+    }
+  }, [activeTab, tabs, authUser, activeRepo, repositories, showToast])
+
+  triggerGitHubSyncRef.current = triggerGitHubSync
 
   const saveCurrentFile = async () => {
     if (!hasOpenTab) {
@@ -1749,6 +1899,10 @@ export default function App() {
         setSavedCodes(previous => [snapshot, ...previous].slice(0, 50))
         setTabs(previous => previous.map(tab => tab.id === activeTab ? { ...tab, code: currentCode, modified: false } : tab))
         showToast(`Saved to "${curTab.name}" on your computer disk! 💾`)
+
+        if (autoSyncEnabled && authUser?.accessToken) {
+          triggerGitHubSync(activeTab, false)
+        }
         return
       } catch (err: any) {
         console.warn('Direct disk save failed:', err)
@@ -1775,6 +1929,10 @@ export default function App() {
           localPath: newName,
         } : tab))
         showToast(`Saved to "${newName}" on your computer disk! 💾`)
+
+        if (autoSyncEnabled && authUser?.accessToken) {
+          triggerGitHubSync(activeTab, false)
+        }
         return
       } catch (err: any) {
         if (err.name === 'AbortError') return
@@ -1787,6 +1945,10 @@ export default function App() {
     setSavedCodes(previous => [snapshot, ...previous].slice(0, 50))
     setTabs(previous => previous.map(tab => tab.id === activeTab ? { ...tab, code: currentCode, modified: false } : tab))
     showToast(`${curTab.name} saved locally`)
+
+    if (autoSyncEnabled && authUser?.accessToken) {
+      triggerGitHubSync(activeTab, false)
+    }
   }
   saveRef.current = saveCurrentFile
 
@@ -3108,6 +3270,69 @@ export default function App() {
             CodeForge AI {aiOpen ? 'On' : 'Off'}
           </button>
 
+          {/* GitHub Auto-Sync Button */}
+          <button
+            onClick={() => setShowAutoSyncModal(true)}
+            title={autoSyncEnabled ? `Auto-Sync to GitHub is ON (${autoSyncStatus}) - Click to configure` : 'Enable GitHub Auto-Sync (Instant real-time push)'}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              background: autoSyncEnabled
+                ? (autoSyncStatus === 'syncing' ? 'rgba(59, 130, 246, 0.15)' : 'rgba(34, 197, 94, 0.12)')
+                : 'transparent',
+              border: '1px solid',
+              borderColor: autoSyncEnabled
+                ? (autoSyncStatus === 'syncing' ? 'rgba(59, 130, 246, 0.4)' : 'rgba(34, 197, 94, 0.35)')
+                : 'var(--border)',
+              borderRadius: 6,
+              padding: '4px 10px',
+              cursor: 'pointer',
+              fontSize: 11,
+              fontWeight: 500,
+              color: autoSyncEnabled
+                ? (autoSyncStatus === 'syncing' ? '#60a5fa' : '#4ade80')
+                : 'var(--text-muted)',
+              transition: 'all .15s ease'
+            }}
+          >
+            <GithubIcon size={13} />
+            <span>GitHub Sync</span>
+            {autoSyncEnabled ? (
+              <span style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 4,
+                fontSize: 9,
+                fontWeight: 700,
+                padding: '1px 5px',
+                borderRadius: 999,
+                background: autoSyncStatus === 'syncing' ? 'rgba(59, 130, 246, 0.25)' : 'rgba(34, 197, 94, 0.22)',
+                color: autoSyncStatus === 'syncing' ? '#93c5fd' : '#86efac',
+                textTransform: 'uppercase',
+                letterSpacing: '0.04em'
+              }}>
+                <span style={{
+                  width: 5,
+                  height: 5,
+                  borderRadius: '50%',
+                  background: autoSyncStatus === 'syncing' ? '#60a5fa' : (autoSyncStatus === 'error' ? '#ef4444' : '#22c55e')
+                }} />
+                {autoSyncStatus === 'syncing' ? 'Syncing…' : 'ON'}
+              </span>
+            ) : (
+              <span style={{
+                fontSize: 9,
+                fontWeight: 600,
+                padding: '1px 5px',
+                borderRadius: 999,
+                background: 'rgba(255, 255, 255, 0.06)',
+                color: 'var(--text-dim)',
+                textTransform: 'uppercase'
+              }}>
+                Off
+              </span>
+            )}
+          </button>
+
           {/* Debugger */}
           <button
             onClick={() => { if (isDebugging) { stopDebugging() } else { startDebugging() } }}
@@ -3597,6 +3822,11 @@ export default function App() {
                   onConnectGitHub={() => setShowAuth(true)}
                   onRefreshRepos={refreshRepositories}
                   showToast={showToast}
+                  autoSyncEnabled={autoSyncEnabled}
+                  setAutoSyncEnabled={handleToggleAutoSync}
+                  autoSyncStatus={autoSyncStatus}
+                  lastSyncResult={lastSyncResult}
+                  onOpenAutoSyncModal={() => setShowAutoSyncModal(true)}
                 />
               )}
 
@@ -4365,6 +4595,26 @@ export default function App() {
             <GitBranchIcon size={12} /> {activeRepo.name}
           </div>
         )}
+        {/* GitHub Auto-Sync status */}
+        <div
+          className="status-item"
+          onClick={() => setShowAutoSyncModal(true)}
+          style={{
+            borderRight: '1px solid rgba(255,255,255,0.15)',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 5,
+            color: autoSyncEnabled
+              ? (autoSyncStatus === 'syncing' ? '#93c5fd' : autoSyncStatus === 'error' ? '#fca5a5' : '#86efac')
+              : 'rgba(255,255,255,0.6)',
+            fontWeight: autoSyncEnabled ? 500 : 400,
+          }}
+          title={autoSyncEnabled ? `GitHub Auto-Sync is ON (${autoSyncStatus}) - Click to configure` : 'GitHub Auto-Sync is Off - Click to configure'}
+        >
+          <GithubIcon size={11} />
+          <span>Auto-Sync: {autoSyncEnabled ? (autoSyncStatus === 'syncing' ? 'Syncing…' : autoSyncStatus === 'synced' ? 'Synced' : 'Active') : 'Off'}</span>
+        </div>
         {/* Toggle Output & Terminal button right next to Github.md / activeRepo */}
         <div
           className="status-item"
@@ -4463,6 +4713,32 @@ export default function App() {
         isOpen={showAuth}
         onClose={() => setShowAuth(false)}
         onSuccess={handleAuthSuccess}
+        showToast={showToast}
+      />
+
+      {/* GitHub Auto-Sync Modal */}
+      <GitHubAutoSyncModal
+        isOpen={showAutoSyncModal}
+        onClose={() => setShowAutoSyncModal(false)}
+        authUser={authUser}
+        repositories={repositories}
+        activeRepo={activeRepo}
+        setActiveRepo={setActiveRepo}
+        activeTab={curTab}
+        autoSyncEnabled={autoSyncEnabled}
+        setAutoSyncEnabled={handleToggleAutoSync}
+        autoSyncDelaySec={autoSyncDelaySec}
+        setAutoSyncDelaySec={handleSetAutoSyncDelay}
+        autoSyncStatus={autoSyncStatus}
+        lastSyncTime={lastSyncTime}
+        lastCommitResult={lastSyncResult}
+        onTriggerSyncNow={async () => {
+          await triggerGitHubSync(activeTab, true)
+        }}
+        onConnectGitHub={() => {
+          setShowAutoSyncModal(false)
+          setShowAuth(true)
+        }}
         showToast={showToast}
       />
 
