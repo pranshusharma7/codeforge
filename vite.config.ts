@@ -162,6 +162,7 @@ function codeForgeApiServerPlugin(): Plugin {
     // Compiler Execution API endpoint
     if (url.startsWith("/api/compile")) {
       try {
+        // @ts-ignore
         const { handleCompileApi } = await import("./api/compile/handler.js")
         if (await handleCompileApi(req, res)) {
           return
@@ -182,6 +183,7 @@ function codeForgeApiServerPlugin(): Plugin {
     if (url.startsWith("/api/contest/")) {
       try {
         // Dynamically require or import handler
+        // @ts-ignore
         const { handleContestApi } = await import("./api/contest/handler.js")
         if (handleContestApi(req, res)) {
           return
