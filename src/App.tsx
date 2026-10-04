@@ -1495,12 +1495,12 @@ export default function App() {
     setRunStartTime(Date.now())
     setRunElapsedSec(0)
 
-    // Safety timeout: auto-abort if execution somehow takes > 15s to guarantee it NEVER hangs
+    // Safety timeout: auto-abort if execution somehow takes > 5.5s to guarantee it NEVER hangs
     const safetyTimeout = setTimeout(() => {
       if (runAbortControllerRef.current === controller) {
         controller.abort()
       }
-    }, 15000)
+    }, 5500)
 
     try {
       let langToRun = getLangById(activeTabToUse.lang)

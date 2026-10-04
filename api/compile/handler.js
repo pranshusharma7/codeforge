@@ -64,7 +64,7 @@ function checkBinaryExists(bin) {
 /**
  * Spawns a child process with timeout, stdin, and output buffer protection
  */
-function runProcess(command, args, { stdin = "", timeout = 7000, cwd } = {}) {
+function runProcess(command, args, { stdin = "", timeout = 3500, cwd } = {}) {
   return new Promise((resolve) => {
     let stdout = ""
     let stderr = ""
@@ -87,7 +87,7 @@ function runProcess(command, args, { stdin = "", timeout = 7000, cwd } = {}) {
           stdout,
           stderr:
             (stderr ? stderr + "\n" : "") +
-            "⏱ Execution timed out (process exceeded 7s limit)",
+            "⏱ Execution timed out (3.5s limit reached).\n💡 Tip: Check for infinite loops (e.g. while True). If your code asks for input (input() / cin), enter values in the 'Standard Input (stdin)' tab before clicking Run.",
           exitCode: 124,
           timedOut: true,
         })
@@ -131,9 +131,15 @@ function runProcess(command, args, { stdin = "", timeout = 7000, cwd } = {}) {
       child.on("close", (code) => {
         if (timer) clearTimeout(timer)
         if (killed) return
+
+        let finalStderr = stderr
+        if (finalStderr && (finalStderr.includes("EOFError") || finalStderr.includes("EOF when reading a line"))) {
+          finalStderr += "\n\n💡 Tip: Your code called input() but the 'Standard Input (stdin)' tab was empty. Enter input before running!"
+        }
+
         resolve({
           stdout,
-          stderr,
+          stderr: finalStderr,
           exitCode: code ?? 0,
           timedOut: false,
         })
@@ -472,6 +478,122 @@ async function executeLocally(code, lang, stdin = "", timeoutMs = 7000) {
     }
   }
 
+  // 7. Ruby
+  if (norm === "ruby" || norm === "rb") {
+    const rubyCmd = checkBinaryExists("ruby") ? "ruby" : null
+    if (rubyCmd) {
+      const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "cf_rb_"))
+      const rbPath = path.join(tmpDir, "script.rb")
+      try {
+        fs.writeFileSync(rbPath, code, "utf-8")
+        const exec = await runProcess(rubyCmd, [rbPath], { stdin, timeout: timeoutMs, cwd: tmpDir })
+        const elapsed = ((Date.now() - startTime) / 1000).toFixed(3)
+        return {
+          stdout: exec.stdout || null,
+          stderr: exec.stderr || null,
+          compile_output: null,
+          status: {
+            id: exec.timedOut ? 5 : exec.exitCode === 0 ? 3 : 11,
+            description: exec.timedOut ? "Time Limit Exceeded" : exec.exitCode === 0 ? "Accepted" : "Runtime Error",
+          },
+          time: elapsed,
+          memory: 4096,
+          exit_code: exec.exitCode,
+          engine: "⚡ Local Ruby Server",
+        }
+      } finally {
+        try { fs.rmSync(tmpDir, { recursive: true, force: true }) } catch {}
+      }
+    }
+  }
+
+  // 8. Swift
+  if (norm === "swift") {
+    const swiftCmd = checkBinaryExists("swift") ? "swift" : null
+    if (swiftCmd) {
+      const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "cf_swift_"))
+      const swiftPath = path.join(tmpDir, "main.swift")
+      try {
+        fs.writeFileSync(swiftPath, code, "utf-8")
+        const exec = await runProcess(swiftCmd, [swiftPath], { stdin, timeout: timeoutMs, cwd: tmpDir })
+        const elapsed = ((Date.now() - startTime) / 1000).toFixed(3)
+        return {
+          stdout: exec.stdout || null,
+          stderr: exec.stderr || null,
+          compile_output: null,
+          status: {
+            id: exec.timedOut ? 5 : exec.exitCode === 0 ? 3 : 11,
+            description: exec.timedOut ? "Time Limit Exceeded" : exec.exitCode === 0 ? "Accepted" : "Runtime Error",
+          },
+          time: elapsed,
+          memory: 8192,
+          exit_code: exec.exitCode,
+          engine: "⚡ Local Swift Server",
+        }
+      } finally {
+        try { fs.rmSync(tmpDir, { recursive: true, force: true }) } catch {}
+      }
+    }
+  }
+
+  // 9. Perl
+  if (norm === "perl" || norm === "pl") {
+    const perlCmd = checkBinaryExists("perl") ? "perl" : null
+    if (perlCmd) {
+      const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "cf_pl_"))
+      const plPath = path.join(tmpDir, "script.pl")
+      try {
+        fs.writeFileSync(plPath, code, "utf-8")
+        const exec = await runProcess(perlCmd, [plPath], { stdin, timeout: timeoutMs, cwd: tmpDir })
+        const elapsed = ((Date.now() - startTime) / 1000).toFixed(3)
+        return {
+          stdout: exec.stdout || null,
+          stderr: exec.stderr || null,
+          compile_output: null,
+          status: {
+            id: exec.timedOut ? 5 : exec.exitCode === 0 ? 3 : 11,
+            description: exec.timedOut ? "Time Limit Exceeded" : exec.exitCode === 0 ? "Accepted" : "Runtime Error",
+          },
+          time: elapsed,
+          memory: 2048,
+          exit_code: exec.exitCode,
+          engine: "⚡ Local Perl Server",
+        }
+      } finally {
+        try { fs.rmSync(tmpDir, { recursive: true, force: true }) } catch {}
+      }
+    }
+  }
+
+  // 10. SQL (SQLite3)
+  if (norm === "sql" || norm === "sqlite") {
+    const sqlCmd = checkBinaryExists("sqlite3") ? "sqlite3" : null
+    if (sqlCmd) {
+      const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "cf_sql_"))
+      const sqlPath = path.join(tmpDir, "query.sql")
+      try {
+        fs.writeFileSync(sqlPath, code, "utf-8")
+        const exec = await runProcess(sqlCmd, [":memory:", "-header", "-column"], { stdin: code, timeout: timeoutMs, cwd: tmpDir })
+        const elapsed = ((Date.now() - startTime) / 1000).toFixed(3)
+        return {
+          stdout: exec.stdout || (exec.exitCode === 0 ? "Query executed successfully (0 rows returned).\n" : null),
+          stderr: exec.stderr || null,
+          compile_output: null,
+          status: {
+            id: exec.timedOut ? 5 : exec.exitCode === 0 ? 3 : 11,
+            description: exec.timedOut ? "Time Limit Exceeded" : exec.exitCode === 0 ? "Accepted" : "Runtime Error",
+          },
+          time: elapsed,
+          memory: 2048,
+          exit_code: exec.exitCode,
+          engine: "⚡ Local SQLite Engine",
+        }
+      } finally {
+        try { fs.rmSync(tmpDir, { recursive: true, force: true }) } catch {}
+      }
+    }
+  }
+
   return null // Local execution not available or unsupported for this language
 }
 
@@ -482,7 +604,7 @@ async function executeJudge0Cloud(
   code,
   languageId,
   stdin = "",
-  timeoutMs = 9000,
+  timeoutMs = 4000,
 ) {
   const startTime = Date.now()
   const controller = new AbortController()
@@ -520,11 +642,11 @@ async function executeJudge0Cloud(
 
     let data = await res.json()
 
-    // If still in queue/processing, poll up to 5 times (1s interval)
+    // If still in queue/processing, fast-poll up to 2 times (500ms interval)
     if (data.status?.id <= 2 && data.token) {
-      for (let i = 0; i < 5; i++) {
+      for (let i = 0; i < 2; i++) {
         if (controller.signal.aborted) break
-        await new Promise((r) => setTimeout(r, 1000))
+        await new Promise((r) => setTimeout(r, 500))
         const pollRes = await fetch(
           `https://ce.judge0.com/submissions/${data.token}?base64_encoded=true`,
           {

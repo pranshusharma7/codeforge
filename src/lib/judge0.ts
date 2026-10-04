@@ -256,7 +256,7 @@ export async function executeCode(
   // If running in development (Vite dev server) or preview server, this executes natively in 20ms - 300ms!
   try {
     const localController = new AbortController();
-    const localTimeout = setTimeout(() => localController.abort(), 8000);
+    const localTimeout = setTimeout(() => localController.abort(), 4500);
 
     const onUserAbort = () => localController.abort();
     if (userSignal) userSignal.addEventListener('abort', onUserAbort, { once: true });
@@ -277,7 +277,7 @@ export async function executeCode(
 
     if (localRes.ok) {
       const data = await localRes.json();
-      if (data && (data.stdout !== undefined || data.stderr !== undefined || data.compile_output !== undefined)) {
+      if (data && (data.stdout !== undefined || data.stderr !== undefined || data.compile_output !== undefined || data.status)) {
         return {
           stdout: data.stdout ?? null,
           stderr: data.stderr ?? null,
@@ -303,14 +303,28 @@ export async function executeCode(
         engine: 'Aborted',
       };
     }
-    // Continue to cloud fallback
+
+    // If local execution timed out, return Time Limit Exceeded immediately without waiting on cloud
+    if (localErr?.name === 'AbortError') {
+      return {
+        stdout: null,
+        stderr: '⏱ Execution timed out (3.5s limit reached).\n💡 Tip: Check for infinite loops (e.g. while True). If your code asks for input (input() / cin), provide values in the "Standard Input (stdin)" tab before clicking Run.',
+        compile_output: null,
+        status: { id: 5, description: 'Time Limit Exceeded' },
+        time: '3.500',
+        memory: 4096,
+        exit_code: 124,
+        engine: '⚡ Local Server Timeout Guard',
+      };
+    }
+    // Only continue to cloud fallback if endpoint failed with network error or 404
   }
 
   // ── Tier 2: Judge0 CE Cloud Execution ───────────────────────────────────────
   // Public high-speed Judge0 instance supporting 60+ programming languages
   try {
     const cloudController = new AbortController();
-    const cloudTimeout = setTimeout(() => cloudController.abort(), 9500);
+    const cloudTimeout = setTimeout(() => cloudController.abort(), 4000);
 
     const onUserAbort = () => cloudController.abort();
     if (userSignal) userSignal.addEventListener('abort', onUserAbort, { once: true });
@@ -342,11 +356,11 @@ export async function executeCode(
     if (submitRes.ok) {
       let data = await submitRes.json();
 
-      // If queued / processing, poll up to 5 times (1s interval)
+      // If queued / processing, fast-poll up to 2 times (500ms interval)
       if (data.status?.id <= 2 && data.token) {
-        for (let i = 0; i < 5; i++) {
+        for (let i = 0; i < 2; i++) {
           if (cloudController.signal.aborted || userSignal?.aborted) break;
-          await new Promise(r => setTimeout(r, 1000));
+          await new Promise(r => setTimeout(r, 500));
           const pollRes = await fetch(`${j0Url}/submissions/${data.token}?base64_encoded=true`, {
             headers,
             signal: cloudController.signal,
@@ -399,7 +413,7 @@ export async function executeCode(
   if (wandboxConfig) {
     try {
       const wandboxController = new AbortController();
-      const wandboxTimeout = setTimeout(() => wandboxController.abort(), 8000);
+      const wandboxTimeout = setTimeout(() => wandboxController.abort(), 3500);
 
       const onUserAbort = () => wandboxController.abort();
       if (userSignal) userSignal.addEventListener('abort', onUserAbort, { once: true });
