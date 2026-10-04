@@ -17,9 +17,18 @@ interface Props {
   showToast: (msg: string) => void
 }
 
+type AuthTab = 'token' | 'username' | 'device'
+
 export default function GitHubAuthModal({ isOpen, onClose, onSuccess, showToast }: Props) {
+  const [activeTab, setActiveTab] = useState<AuthTab>('token')
   const [busy, setBusy] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
+
+  // PAT Token state
+  const [tokenInput, setTokenInput] = useState('')
+
+  // Public Username Explorer state
+  const [usernameInput, setUsernameInput] = useState('pranshusharma7')
 
   // Device Code Flow State
   const [deviceData, setDeviceData] = useState<DeviceCodeResponse | null>(null)
@@ -42,7 +51,82 @@ export default function GitHubAuthModal({ isOpen, onClose, onSuccess, showToast 
 
   if (!isOpen) return null
 
-  // ── 1. GitHub OAuth Device Flow ───────────────────────────────────────────
+  // ── 1. Personal Access Token (PAT) ─────────────────────────────────────────
+  const handleConnectWithToken = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault()
+    const clean = tokenInput.trim()
+    if (!clean) {
+      setErrorMsg('Please enter a GitHub Personal Access Token (PAT).')
+      return
+    }
+
+    setBusy(true)
+    setErrorMsg('')
+    try {
+      const profile = await getGitHubUser(clean)
+      const repos = await getGitHubRepositories(clean, profile.login).catch(() => [])
+
+      const authUser: AuthUser = {
+        id: `github-${profile.id}`,
+        name: profile.name ?? profile.login,
+        email: profile.email ?? '',
+        initials: profile.login.slice(0, 2).toUpperCase(),
+        provider: 'github',
+        login: profile.login,
+        avatarUrl: profile.avatar_url,
+        accessToken: clean,
+        scopes: profile.scopes || ['repo'],
+      }
+
+      showToast(`✓ Welcome @${profile.login}! Found ${repos.length} repositories.`)
+      onSuccess(authUser, repos)
+      onClose()
+    } catch (err: any) {
+      setErrorMsg(
+        err?.message ||
+          'Failed to verify token. Please ensure your Personal Access Token is active and has "repo" scope.'
+      )
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  // ── 2. Public Username Explorer ────────────────────────────────────────────
+  const handleConnectWithUsername = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault()
+    const clean = usernameInput.trim()
+    if (!clean) {
+      setErrorMsg('Please enter a valid GitHub username.')
+      return
+    }
+
+    setBusy(true)
+    setErrorMsg('')
+    try {
+      const repos = await getGitHubRepositories(undefined, clean)
+      const authUser: AuthUser = {
+        id: `github-user-${clean}`,
+        name: clean,
+        email: '',
+        initials: clean.slice(0, 2).toUpperCase(),
+        provider: 'github',
+        login: clean,
+        avatarUrl: `https://github.com/${clean}.png`,
+        accessToken: '',
+        scopes: ['public_repo'],
+      }
+
+      showToast(`✓ Loaded ${repos.length} repositories for @${clean}!`)
+      onSuccess(authUser, repos)
+      onClose()
+    } catch (err: any) {
+      setErrorMsg(err?.message || `Could not fetch public repositories for @${clean}.`)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  // ── 3. GitHub OAuth Device Flow ───────────────────────────────────────────
   const handleStartOAuth = async () => {
     abortControllerRef.current = false
     setBusy(true)
@@ -56,18 +140,16 @@ export default function GitHubAuthModal({ isOpen, onClose, onSuccess, showToast 
       setDeviceData(device)
       setPollStatus('Waiting for authorization on GitHub...')
 
-      // Attempt to open the verification page automatically in a new tab
       try {
         window.open(device.verification_uri, '_blank', 'noopener,noreferrer')
       } catch {}
 
-      // Wait for user to authorize code on GitHub
       const accessToken = await waitForGitHubToken(device)
       if (abortControllerRef.current) return
 
       setPollStatus('Fetching your GitHub profile...')
       const profile = await getGitHubUser(accessToken)
-      const repos = await getGitHubRepositories(accessToken).catch(() => [])
+      const repos = await getGitHubRepositories(accessToken, profile.login).catch(() => [])
 
       const authUser: AuthUser = {
         id: `github-${profile.id}`,
@@ -88,13 +170,11 @@ export default function GitHubAuthModal({ isOpen, onClose, onSuccess, showToast 
       if (abortControllerRef.current) return
       const raw = err?.message || ''
       if (raw.toLowerCase().includes('device_flow_disabled')) {
-        setErrorMsg('GitHub Device Flow is not enabled for this OAuth App. Enable it in the GitHub OAuth App settings and try again.')
+        setErrorMsg('GitHub Device Flow is not enabled for this OAuth App. Please use a Personal Access Token (PAT) or Username instead.')
       } else if (raw.toLowerCase().includes('timed out')) {
         setErrorMsg(raw)
-      } else if (raw.toLowerCase().includes('failed to fetch')) {
-        setErrorMsg('Could not reach the GitHub OAuth API. Check that the latest Vercel deployment includes the API routes, then retry.')
       } else {
-        setErrorMsg(raw || 'GitHub authorization failed or timed out. Please try again.')
+        setErrorMsg(raw || 'GitHub authorization failed or timed out. Please try Token or Username method.')
       }
       setDeviceData(null)
     } finally {
@@ -125,7 +205,7 @@ export default function GitHubAuthModal({ isOpen, onClose, onSuccess, showToast 
       <div
         className="modal-box auth-modal"
         style={{
-          width: 480,
+          width: 500,
           maxWidth: '92vw',
           padding: 24,
           textAlign: 'center',
@@ -178,14 +258,172 @@ export default function GitHubAuthModal({ isOpen, onClose, onSuccess, showToast 
 
         {/* Modal Header */}
         <div style={{ fontSize: 19, fontWeight: 700, color: 'var(--text-base)', marginBottom: 4 }}>
-          Connect GitHub Account
+          Connect GitHub Repositories
         </div>
         <p style={{ color: 'var(--text-muted)', fontSize: 13, lineHeight: 1.5, marginBottom: 16 }}>
-          Sync repositories, edit files, and commit directly from CodeForge.
+          Sync repositories, live auto-update code, and commit directly from CodeForge.
         </p>
 
-        {/* ── TAB 1: OAuth Device Code Flow ──────────────────────────── */}
-        <div>
+        {/* Auth Method Navigation Tabs */}
+        <div
+          style={{
+            display: 'flex',
+            gap: 6,
+            background: 'var(--bg-app)',
+            padding: 4,
+            borderRadius: 8,
+            border: '1px solid var(--border)',
+            marginBottom: 16,
+          }}
+        >
+          <button
+            onClick={() => { setActiveTab('token'); setErrorMsg('') }}
+            style={{
+              flex: 1,
+              padding: '6px 10px',
+              fontSize: 12,
+              fontWeight: activeTab === 'token' ? 600 : 400,
+              background: activeTab === 'token' ? 'var(--bg-card)' : 'transparent',
+              color: activeTab === 'token' ? 'var(--accent)' : 'var(--text-muted)',
+              border: activeTab === 'token' ? '1px solid var(--border)' : 'none',
+              borderRadius: 6,
+              cursor: 'pointer',
+              transition: 'all 0.15s ease',
+            }}
+          >
+            Personal Access Token
+          </button>
+          <button
+            onClick={() => { setActiveTab('username'); setErrorMsg('') }}
+            style={{
+              flex: 1,
+              padding: '6px 10px',
+              fontSize: 12,
+              fontWeight: activeTab === 'username' ? 600 : 400,
+              background: activeTab === 'username' ? 'var(--bg-card)' : 'transparent',
+              color: activeTab === 'username' ? 'var(--accent)' : 'var(--text-muted)',
+              border: activeTab === 'username' ? '1px solid var(--border)' : 'none',
+              borderRadius: 6,
+              cursor: 'pointer',
+              transition: 'all 0.15s ease',
+            }}
+          >
+            Public Username
+          </button>
+          <button
+            onClick={() => { setActiveTab('device'); setErrorMsg('') }}
+            style={{
+              flex: 1,
+              padding: '6px 10px',
+              fontSize: 12,
+              fontWeight: activeTab === 'device' ? 600 : 400,
+              background: activeTab === 'device' ? 'var(--bg-card)' : 'transparent',
+              color: activeTab === 'device' ? 'var(--accent)' : 'var(--text-muted)',
+              border: activeTab === 'device' ? '1px solid var(--border)' : 'none',
+              borderRadius: 6,
+              cursor: 'pointer',
+              transition: 'all 0.15s ease',
+            }}
+          >
+            OAuth Device Code
+          </button>
+        </div>
+
+        {/* ── TAB 1: Personal Access Token (PAT) ─────────────────────────── */}
+        {activeTab === 'token' && (
+          <form onSubmit={handleConnectWithToken} style={{ textAlign: 'left' }}>
+            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8, lineHeight: 1.5 }}>
+              Enter a GitHub Personal Access Token (classic or fine-grained) with <code>repo</code> permissions:
+            </div>
+            <input
+              type="password"
+              className="ide-input"
+              value={tokenInput}
+              onChange={e => setTokenInput(e.target.value)}
+              placeholder="ghp_xxxxxxxxxxxxxxxxxxxx or github_pat_..."
+              style={{
+                width: '100%',
+                padding: '9px 12px',
+                fontSize: 13,
+                fontFamily: 'JetBrains Mono, monospace',
+                marginBottom: 12,
+                borderRadius: 6,
+              }}
+              autoFocus
+            />
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+              <a
+                href="https://github.com/settings/tokens/new?scopes=repo,read:user,user:email&description=CodeForge+Editor"
+                target="_blank"
+                rel="noreferrer"
+                style={{ fontSize: 11, color: 'var(--accent)', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4 }}
+              >
+                Generate Token on GitHub <ExternalLinkIcon size={11} />
+              </a>
+              <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Required scope: <strong>repo</strong></span>
+            </div>
+            <button
+              type="submit"
+              disabled={busy || !tokenInput.trim()}
+              className="btn btn-primary"
+              style={{
+                width: '100%',
+                justifyContent: 'center',
+                padding: '10px 16px',
+                fontSize: 13,
+                fontWeight: 600,
+                background: 'linear-gradient(135deg, #238636 0%, #2ea043 100%)',
+              }}
+            >
+              {busy ? <SpinnerIcon size={14} /> : null}
+              {busy ? 'Validating Token & Loading Repos...' : 'Connect & Load Repositories'}
+            </button>
+          </form>
+        )}
+
+        {/* ── TAB 2: Public Username Explorer ───────────────────────────── */}
+        {activeTab === 'username' && (
+          <form onSubmit={handleConnectWithUsername} style={{ textAlign: 'left' }}>
+            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8, lineHeight: 1.5 }}>
+              Browse and load public repositories without logging in:
+            </div>
+            <input
+              type="text"
+              className="ide-input"
+              value={usernameInput}
+              onChange={e => setUsernameInput(e.target.value)}
+              placeholder="e.g. pranshusharma7"
+              style={{
+                width: '100%',
+                padding: '9px 12px',
+                fontSize: 13,
+                marginBottom: 14,
+                borderRadius: 6,
+              }}
+              autoFocus
+            />
+            <button
+              type="submit"
+              disabled={busy || !usernameInput.trim()}
+              className="btn btn-primary"
+              style={{
+                width: '100%',
+                justifyContent: 'center',
+                padding: '10px 16px',
+                fontSize: 13,
+                fontWeight: 600,
+                background: 'linear-gradient(135deg, #238636 0%, #2ea043 100%)',
+              }}
+            >
+              {busy ? <SpinnerIcon size={14} /> : null}
+              {busy ? 'Loading Repositories...' : `Explore @${usernameInput || 'user'} Repositories`}
+            </button>
+          </form>
+        )}
+
+        {/* ── TAB 3: Device Code Flow ───────────────────────────────────── */}
+        {activeTab === 'device' && (
+          <div>
             {!deviceData ? (
               <div>
                 <div
@@ -339,9 +577,10 @@ export default function GitHubAuthModal({ isOpen, onClose, onSuccess, showToast 
                 </button>
               </div>
             )}
-        </div>
+          </div>
+        )}
 
-        {/* OAuth error and retry action */}
+        {/* Error notification */}
         {errorMsg && (
           <div
             style={{
@@ -356,30 +595,12 @@ export default function GitHubAuthModal({ isOpen, onClose, onSuccess, showToast 
               textAlign: 'left',
             }}
           >
-            <div style={{ fontWeight: 600, marginBottom: 4 }}>Connection Notice:</div>
+            <div style={{ fontWeight: 600, marginBottom: 4 }}>Notice:</div>
             <div>{errorMsg}</div>
-
-            <div style={{ marginTop: 10, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <button
-                onClick={handleStartOAuth}
-                style={{
-                  background: 'var(--bg-card)',
-                  border: '1px solid var(--border)',
-                  borderRadius: 4,
-                  color: 'var(--text-base)',
-                  fontSize: 11,
-                  padding: '4px 10px',
-                  cursor: 'pointer',
-                  fontWeight: 600,
-                }}
-              >
-                Try Again
-              </button>
-            </div>
           </div>
         )}
 
-        {/* OAuth security note */}
+        {/* Footer note */}
         <div
           style={{
             marginTop: 18,
@@ -392,7 +613,7 @@ export default function GitHubAuthModal({ isOpen, onClose, onSuccess, showToast 
             color: 'var(--text-muted)',
           }}
         >
-          <span>GitHub OAuth authorization</span>
+          <span>Direct GitHub REST API & OAuth Integration</span>
         </div>
       </div>
     </div>

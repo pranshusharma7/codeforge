@@ -342,7 +342,7 @@ export default function SourceControlPanel({
     }
   }
 
-  if (!authUser) {
+  if (!authUser && repositories.length === 0) {
     return (
       <div style={{ padding: '16px 12px', flex: 1, overflowY: 'auto' }}>
         <div
@@ -372,14 +372,14 @@ export default function SourceControlPanel({
             Source Control & GitHub
           </div>
           <p style={{ color: 'var(--text-muted)', fontSize: 11, lineHeight: 1.5, marginBottom: 14 }}>
-            Sign in with GitHub to view your repositories, edit repository code, and commit changes just like in VS Code.
+            Connect with Personal Access Token, Username, or OAuth to view your repositories, edit code, and sync to GitHub.
           </p>
           <button
             onClick={onConnectGitHub}
             className="btn btn-primary"
             style={{ width: '100%', justifyContent: 'center', fontSize: 12, padding: '7px 12px' }}
           >
-            Connect GitHub
+            Connect GitHub / Browse Repos
           </button>
         </div>
       </div>
@@ -391,6 +391,39 @@ export default function SourceControlPanel({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflowY: 'auto', padding: '10px 12px' }}>
+      {!authUser && (
+        <div
+          style={{
+            background: 'rgba(56, 189, 248, 0.08)',
+            border: '1px solid rgba(56, 189, 248, 0.25)',
+            borderRadius: 6,
+            padding: '8px 10px',
+            marginBottom: 10,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            fontSize: 11,
+          }}
+        >
+          <span style={{ color: 'var(--accent)', fontWeight: 500 }}>GitHub Public Viewer</span>
+          <button
+            onClick={onConnectGitHub}
+            style={{
+              background: 'linear-gradient(135deg, #238636 0%, #2ea043 100%)',
+              color: '#fff',
+              border: 'none',
+              borderRadius: 4,
+              padding: '3px 8px',
+              fontSize: 10,
+              fontWeight: 600,
+              cursor: 'pointer',
+            }}
+          >
+            Sign in to Commit
+          </button>
+        </div>
+      )}
+
       {/* ── Active Repository Selector ─────────────────────────────────── */}
       <div style={{ marginBottom: 12 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 5 }}>

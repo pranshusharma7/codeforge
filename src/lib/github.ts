@@ -107,11 +107,16 @@ function getTokenUrl(): string {
   return '/api/github-token'
 }
 
-export const githubHeaders = (token: string) => ({
-  Accept: 'application/vnd.github+json',
-  Authorization: `Bearer ${token.trim()}`,
-  'X-GitHub-Api-Version': '2022-11-28',
-})
+export const githubHeaders = (token?: string) => {
+  const headers: Record<string, string> = {
+    Accept: 'application/vnd.github+json',
+    'X-GitHub-Api-Version': '2022-11-28',
+  }
+  if (token && typeof token === 'string' && token.trim().length > 0) {
+    headers.Authorization = `Bearer ${token.trim()}`
+  }
+  return headers
+}
 
 export function isGitHubConfigured(): boolean {
   return Boolean(CLIENT_ID)
@@ -323,12 +328,50 @@ export async function getGitHubUser(token: string): Promise<GitHubUser & { scope
   return { ...profile, scopes }
 }
 
-export async function getGitHubRepositories(token: string): Promise<GitHubRepository[]> {
-  const response = await fetch(`${API_URL}/user/repos?sort=updated&per_page=100&affiliation=owner,collaborator`, {
-    headers: githubHeaders(token),
-  })
-  if (!response.ok) throw new Error('Could not load your GitHub repositories.')
-  return response.json() as Promise<GitHubRepository[]>
+export async function getGitHubRepositories(
+  token?: string,
+  username?: string
+): Promise<GitHubRepository[]> {
+  const cleanToken = token?.trim()
+  const cleanUsername = username?.trim() || 'pranshusharma7'
+
+  // 1. Try authenticated user repos if token is present
+  if (cleanToken) {
+    try {
+      const response = await fetch(
+        `${API_URL}/user/repos?sort=updated&per_page=100&affiliation=owner,collaborator,organization_member`,
+        { headers: githubHeaders(cleanToken) }
+      )
+      if (response.ok) {
+        const repos = (await response.json()) as GitHubRepository[]
+        if (Array.isArray(repos) && repos.length > 0) {
+          return repos
+        }
+      }
+    } catch {
+      // Continue to public username fallback
+    }
+  }
+
+  // 2. Fetch public repos for the given username or default 'pranshusharma7'
+  if (cleanUsername) {
+    try {
+      const pubRes = await fetch(
+        `${API_URL}/users/${encodeURIComponent(cleanUsername)}/repos?sort=updated&per_page=100`,
+        { headers: githubHeaders(cleanToken) }
+      )
+      if (pubRes.ok) {
+        const repos = (await pubRes.json()) as GitHubRepository[]
+        if (Array.isArray(repos) && repos.length > 0) {
+          return repos
+        }
+      }
+    } catch {
+      // Continue to sample repos fallback
+    }
+  }
+
+  return SAMPLE_DEV_REPOSITORIES
 }
 
 export async function createGitHubRepository(
@@ -392,7 +435,7 @@ export async function createGitHubRepository(
   return data as GitHubRepository
 }
 
-export async function getRepoBranches(token: string, owner: string, repo: string): Promise<string[]> {
+export async function getRepoBranches(token: string | undefined, owner: string, repo: string): Promise<string[]> {
   try {
     const response = await fetch(`${API_URL}/repos/${owner}/${repo}/branches?per_page=100`, {
       headers: githubHeaders(token),
@@ -407,7 +450,7 @@ export async function getRepoBranches(token: string, owner: string, repo: string
 }
 
 export async function getRepoTree(
-  token: string,
+  token: string | undefined,
   owner: string,
   repo: string,
   branch = 'main'
@@ -441,7 +484,7 @@ export async function getRepoTree(
 }
 
 export async function getRepoFileContent(
-  token: string,
+  token: string | undefined,
   owner: string,
   repo: string,
   path: string,

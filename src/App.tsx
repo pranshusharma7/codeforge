@@ -56,6 +56,12 @@ import {
   saveToLocalDisk,
   saveAsLocalDisk,
 } from './lib/fileSystemAccess'
+import {
+  executeToggleLineComment,
+  executeToggleBlockComment,
+  registerAllLanguageCommentConfigs,
+} from './lib/commentHelper'
+
 
 // ── Types ──────────────────────────────────────────────────────────────────
 type Tab = TabWithRepo
@@ -523,8 +529,12 @@ export default function App() {
     const savedUser = getAuthUser()
     setAuthUserState(savedUser)
     setSnips(getSnippets(savedUser?.id ?? 'guest'))
-    if (savedUser?.accessToken) {
-      getGitHubUser(savedUser.accessToken)
+
+    const userToLoad = savedUser?.login || 'pranshusharma7'
+    const tokenToLoad = savedUser?.accessToken
+
+    if (tokenToLoad) {
+      getGitHubUser(tokenToLoad)
         .then(profile => {
           if (profile.scopes) {
             const updated = { ...savedUser, scopes: profile.scopes }
@@ -533,17 +543,22 @@ export default function App() {
           }
         })
         .catch(() => {})
-
-      getGitHubRepositories(savedUser.accessToken)
-        .then(repos => {
-          setRepositories(repos)
-          if (repos.length > 0) setActiveRepo(repos[0])
-        })
-        .catch(() => {})
-    } else if (savedUser?.provider === 'guest' || (!savedUser?.accessToken && savedUser)) {
-      setRepositories(SAMPLE_DEV_REPOSITORIES)
-      setActiveRepo(SAMPLE_DEV_REPOSITORIES[0])
     }
+
+    getGitHubRepositories(tokenToLoad, userToLoad)
+      .then(repos => {
+        if (repos && repos.length > 0) {
+          setRepositories(repos)
+          if (!activeRepo) setActiveRepo(repos[0])
+        } else {
+          setRepositories(SAMPLE_DEV_REPOSITORIES)
+          if (!activeRepo) setActiveRepo(SAMPLE_DEV_REPOSITORIES[0])
+        }
+      })
+      .catch(() => {
+        setRepositories(SAMPLE_DEV_REPOSITORIES)
+        if (!activeRepo) setActiveRepo(SAMPLE_DEV_REPOSITORIES[0])
+      })
     const shared = decodeShare()
     if (shared) {
       const lang = getLangById(shared.lang)
@@ -559,11 +574,12 @@ export default function App() {
     return getActiveMonacoThemeId(editorTheme, editorFontColor, editorCommentColor)
   }, [editorTheme, editorFontColor, editorCommentColor])
 
-  // ── Theme ───────────────────────────────────────────────────────────────
+  // ── Theme & Language Comment Configuration ──────────────────────────────
   useEffect(() => {
     applyThemeToDocument(editorTheme, editorFontColor, editorCommentColor)
     if (!monaco) return
     registerMonacoThemes(monaco, editorFontColor, editorCommentColor)
+    registerAllLanguageCommentConfigs(monaco)
     monaco.editor.setTheme(activeMonacoTheme)
   }, [monaco, editorTheme, editorFontColor, editorCommentColor, activeMonacoTheme])
 
@@ -890,6 +906,27 @@ export default function App() {
         e.preventDefault()
         handleOpenDiskFileRef.current()
       }
+
+      // Comment out shortcuts (Cmd + / on Mac, Ctrl + / on Windows/Linux)
+      const isSlash = e.key === '/' || e.code === 'Slash' || e.keyCode === 191
+      if (mod && isSlash) {
+        const target = e.target as HTMLElement | null
+        const isMonaco = target?.closest?.('.monaco-editor')
+        const isExternalInput = (target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA') && !isMonaco
+        if (!isExternalInput) {
+          e.preventDefault()
+          e.stopPropagation()
+          if (editorRef.current) {
+            editorRef.current.focus()
+            if (e.shiftKey) {
+              executeToggleBlockComment(editorRef.current, curLang.id)
+            } else {
+              executeToggleLineComment(editorRef.current, curLang.id)
+            }
+          }
+        }
+      }
+
       if (e.key === 'Escape') {
         setShowSettings(false); setShowKeys(false); setShowSnipModal(false); setShowShare(false); setShowCommands(false)
         setInlineItem(null); setInlineName(''); setFileMenuOpen(false); setDownloadMenuOpen(false); setMoreActionsOpen(false); setBlankContextMenu(null); setFolderContextMenu(null)
@@ -1703,19 +1740,23 @@ export default function App() {
   }
 
   const refreshRepositories = async () => {
-    if (!authUser?.accessToken) return
     try {
+      const userToLoad = authUser?.login || 'pranshusharma7'
+      const token = authUser?.accessToken
       const [profile, repos] = await Promise.all([
-        getGitHubUser(authUser.accessToken).catch(() => null),
-        getGitHubRepositories(authUser.accessToken),
+        token ? getGitHubUser(token).catch(() => null) : null,
+        getGitHubRepositories(token, userToLoad),
       ])
-      if (profile?.scopes) {
+      if (profile?.scopes && authUser) {
         const updated = { ...authUser, scopes: profile.scopes }
         setAuthUserState(updated)
         setAuthUser(updated)
       }
       setRepositories(repos)
-      showToast(`Synced ${repos.length} repositories from GitHub`)
+      if (!activeRepo && repos.length > 0) {
+        setActiveRepo(repos[0])
+      }
+      showToast(`Synced ${repos.length} repositories from GitHub (@${userToLoad})`)
     } catch (err: any) {
       showToast(err.message || 'Failed to refresh repositories')
     }
@@ -2128,6 +2169,12 @@ export default function App() {
     ed.addCommand(monacoInstance.KeyMod.Shift | monacoInstance.KeyMod.Alt | monacoInstance.KeyCode.KeyF, () => {
       formatCode()
     })
+    ed.addCommand(monacoInstance.KeyMod.CtrlCmd | monacoInstance.KeyCode.Slash, () => {
+      executeToggleLineComment(ed, curLang.id)
+    })
+    ed.addCommand(monacoInstance.KeyMod.CtrlCmd | monacoInstance.KeyMod.Shift | monacoInstance.KeyCode.Slash, () => {
+      executeToggleBlockComment(ed, curLang.id)
+    })
     ed.addCommand(monacoInstance.KeyCode.F5, () => {
       if (isDebugging) {
         continueExecution()
@@ -2205,6 +2252,22 @@ export default function App() {
       contextMenuGroupId: '2_edit',
       contextMenuOrder: 3,
       run: (edInstance: any) => { edInstance.setSelection(edInstance.getModel()?.getFullModelRange()) }
+    })
+    ed.addAction({
+      id: 'codeforge.togglecomment',
+      label: '💬  Toggle Line Comment  (⌘/)',
+      keybindings: [],
+      contextMenuGroupId: '2_edit',
+      contextMenuOrder: 4,
+      run: (edInstance: any) => { executeToggleLineComment(edInstance, curLang.id) }
+    })
+    ed.addAction({
+      id: 'codeforge.toggleblockcomment',
+      label: '💭  Toggle Block Comment  (⇧⌥A)',
+      keybindings: [],
+      contextMenuGroupId: '2_edit',
+      contextMenuOrder: 5,
+      run: (edInstance: any) => { executeToggleBlockComment(edInstance, curLang.id) }
     })
     // Group 3: Navigate
     ed.addAction({
