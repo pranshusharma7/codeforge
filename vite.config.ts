@@ -125,49 +125,17 @@ function codeForgeLiveServerPlugin(): Plugin {
           return
         }
 
+        if (req.url === "/__live_html__") {
+          res.writeHead(200, {
+            "Content-Type": "text/html; charset=utf-8",
+            "Access-Control-Allow-Origin": "*",
+          })
+          res.end(currentHtml)
+          return
+        }
+
         next()
       })
-
-      // Start internal preview server on port 5500
-      try {
-        const liveServer = http.createServer((req, res) => {
-          res.setHeader("Access-Control-Allow-Origin", "*")
-          res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS")
-
-          if (req.url === "/__live_version__") {
-            res.writeHead(200, { "Content-Type": "text/plain" })
-            res.end(String(version))
-            return
-          }
-
-          res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" })
-          res.end(getInjectedHtml(currentHtml))
-        })
-
-        liveServer.on("error", (err: any) => {
-          if (err.code === "EADDRINUSE") {
-            console.log("📡 Port 5500 already active")
-          } else {
-            console.warn("📡 Live Server notice:", err.message)
-          }
-        })
-
-        liveServer.listen(5500, "127.0.0.1", () => {
-          serverInstance = liveServer
-          console.log(
-            "📡 CodeForge Live Server ready at http://127.0.0.1:5500/",
-          )
-        })
-      } catch (e) {
-        console.warn("Failed to bind Live Server port 5500:", e)
-      }
-    },
-    closeBundle() {
-      if (serverInstance) {
-        try {
-          serverInstance.close()
-        } catch {}
-      }
     },
   }
 }

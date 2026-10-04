@@ -20,7 +20,10 @@ export default function LiveServerModal({
   const [key, setKey] = useState(0)
   const [copiedUrl, setCopiedUrl] = useState(false)
 
-  const serverUrl = `http://127.0.0.1:5500/${activeFileName.endsWith('.html') ? activeFileName : 'index.html'}`
+  const serverUrl =
+    typeof window !== 'undefined'
+      ? `${window.location.origin}/preview.html`
+      : '/preview.html'
 
   if (!isOpen) return null
 
@@ -120,7 +123,7 @@ export default function LiveServerModal({
               }}
             >
               <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#34d399' }} />
-              <span>LIVE SERVER : 5500</span>
+              <span>LIVE PREVIEW</span>
             </div>
           </div>
 
