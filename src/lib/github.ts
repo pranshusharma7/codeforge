@@ -141,64 +141,6 @@ export function base64ToUtf8(b64: string): string {
   return new TextDecoder().decode(bytes)
 }
 
-export async function verifyAndLoadGitHubUser(token: string): Promise<GitHubUser> {
-  const clean = token.trim()
-  if (!clean) throw new Error('Please enter a GitHub Personal Access Token.')
-  const response = await fetch(`${API_URL}/user`, { headers: githubHeaders(clean) })
-  if (!response.ok) {
-    if (response.status === 401) {
-      throw new Error('Invalid GitHub token. Please verify your token and scopes (need "repo", "read:user").')
-    }
-    const err = await response.json().catch(() => ({}))
-    throw new Error(err.message || 'Could not connect to GitHub API.')
-  }
-  return response.json()
-}
-
-/**
- * 100% Reliable direct Token Authentication (Works on Local, Vercel & Render without proxy)
- */
-export async function authenticateWithToken(token: string): Promise<{
-  user: import('./storage').AuthUser
-  repos: GitHubRepository[]
-}> {
-  const clean = token.trim()
-  if (!clean) throw new Error('Please enter a GitHub Personal Access Token.')
-  const profile = await getGitHubUser(clean)
-  const repos = await getGitHubRepositories(clean).catch(() => [])
-
-  const user: import('./storage').AuthUser = {
-    id: `github-${profile.id}`,
-    name: profile.name ?? profile.login,
-    email: profile.email ?? '',
-    initials: profile.login.slice(0, 2).toUpperCase(),
-    provider: 'github',
-    login: profile.login,
-    avatarUrl: profile.avatar_url,
-    accessToken: clean,
-    scopes: profile.scopes,
-  }
-
-  return { user, repos }
-}
-
-/**
- * 1-Click Guest Developer profile (Zero credentials, never errors, works 100% anywhere)
- */
-export function createGuestDevUser(name = 'Developer'): import('./storage').AuthUser {
-  const cleanName = name.trim() || 'Developer'
-  const handle = cleanName.toLowerCase().replace(/[^a-z0-9_-]/g, '_')
-  return {
-    id: `dev-${Date.now().toString(36)}`,
-    name: cleanName,
-    email: `${handle}@codeforge.local`,
-    initials: cleanName.slice(0, 2).toUpperCase(),
-    provider: 'guest',
-    login: handle,
-    avatarUrl: `https://api.dicebear.com/7.x/bottts/svg?seed=${handle}`,
-  }
-}
-
 export const SAMPLE_DEV_REPOSITORIES: GitHubRepository[] = [
   {
     id: 101,

@@ -372,14 +372,14 @@ export default function SourceControlPanel({
             Source Control & GitHub
           </div>
           <p style={{ color: 'var(--text-muted)', fontSize: 11, lineHeight: 1.5, marginBottom: 14 }}>
-            Connect with Personal Access Token, Username, or OAuth to view your repositories, edit code, and sync to GitHub.
+            Authorize with GitHub to view your repositories, edit code, and sync changes.
           </p>
           <button
             onClick={onConnectGitHub}
             className="btn btn-primary"
             style={{ width: '100%', justifyContent: 'center', fontSize: 12, padding: '7px 12px' }}
           >
-            Connect GitHub / Browse Repos
+            Authorize with GitHub
           </button>
         </div>
       </div>
