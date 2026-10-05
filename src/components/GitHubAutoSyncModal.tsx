@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { GithubIcon, GitBranchIcon, GitCommitIcon, RefreshIcon, XIcon, CheckIcon } from './icons'
+import { GithubIcon, GitBranchIcon, GitCommitIcon, RefreshIcon, XIcon, CheckIcon, ExternalLinkIcon } from './icons'
 import type { AuthUser } from '../lib/storage'
 import type { GitHubRepository } from '../lib/github'
 import type { TabWithRepo } from './SourceControlPanel'
@@ -69,6 +69,9 @@ export default function GitHubAutoSyncModal({
 
   return (
     <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="GitHub sync settings"
       style={{
         position: 'fixed',
         inset: 0,
@@ -125,7 +128,7 @@ export default function GitHubAutoSyncModal({
             </div>
             <div>
               <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-base, #f0f6fc)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                GitHub Auto-Update Code
+                GitHub Sync
                 <span
                   style={{
                     fontSize: 10,
@@ -141,7 +144,7 @@ export default function GitHubAutoSyncModal({
                 </span>
               </div>
               <div style={{ fontSize: 11, color: 'var(--text-muted, #8b949e)', marginTop: 2 }}>
-                Jaise jaise code change hoga, GitHub pe automatically update hota rahega
+                Configure your repository, automatic updates, and manual pushes.
               </div>
             </div>
           </div>
@@ -172,10 +175,10 @@ export default function GitHubAutoSyncModal({
           >
             <div>
               <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-base, #f0f6fc)' }}>
-                Enable Automatic GitHub Update
+                Automatic sync
               </div>
               <div style={{ fontSize: 11, color: 'var(--text-muted, #8b949e)', marginTop: 2, maxWidth: 360, lineHeight: 1.5 }}>
-                Compiler mein likha gaya code real-time background mein aapke selected GitHub repository mein commit & push hota rahega.
+                Push editor changes to the selected repository after you pause typing.
               </div>
             </div>
 
@@ -230,7 +233,7 @@ export default function GitHubAutoSyncModal({
               }}
             >
               <div style={{ fontSize: 12, color: '#f87171' }}>
-                GitHub account connected nahi hai. Auto-sync ke liye pehle apna GitHub connect karein.
+                Connect your GitHub account to choose a repository and enable automatic sync.
               </div>
               <button
                 onClick={() => {
@@ -247,14 +250,26 @@ export default function GitHubAutoSyncModal({
 
           {/* Repository & Branch Configuration */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted, #8b949e)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-              Target Repository Settings
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted, #8b949e)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                Repository &amp; destination
+              </div>
+              {activeRepo?.html_url && (
+                <a
+                  href={activeRepo.html_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 5, color: 'var(--accent)', fontSize: 11, textDecoration: 'none' }}
+                >
+                  Open repository <ExternalLinkIcon size={12} />
+                </a>
+              )}
             </div>
 
             {/* Repository Select */}
             <div>
               <label style={{ display: 'block', fontSize: 11, color: 'var(--text-muted, #8b949e)', marginBottom: 5 }}>
-                Select GitHub Repository:
+                Target repository
               </label>
               {repositories.length > 0 ? (
                 <select
@@ -284,7 +299,7 @@ export default function GitHubAutoSyncModal({
                 </select>
               ) : (
                 <div style={{ fontSize: 12, color: 'var(--text-muted, #8b949e)', background: 'var(--bg-input, #0d1117)', padding: '10px 12px', borderRadius: 6, border: '1px solid var(--border, #30363d)' }}>
-                  No repositories found. Connect GitHub to fetch your repos or create one in the Source Control panel.
+                  No repositories found. Connect GitHub to load your repositories.
                 </div>
               )}
             </div>
@@ -293,7 +308,7 @@ export default function GitHubAutoSyncModal({
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
               <div>
                 <label style={{ display: 'block', fontSize: 11, color: 'var(--text-muted, #8b949e)', marginBottom: 5 }}>
-                  Target File in Repo:
+                  Destination file
                 </label>
                 <div
                   style={{
@@ -316,7 +331,7 @@ export default function GitHubAutoSyncModal({
 
               <div>
                 <label style={{ display: 'block', fontSize: 11, color: 'var(--text-muted, #8b949e)', marginBottom: 5 }}>
-                  Target Branch:
+                  Target branch
                 </label>
                 <div
                   style={{
@@ -340,7 +355,7 @@ export default function GitHubAutoSyncModal({
             {/* Debounce Interval Selection */}
             <div>
               <label style={{ display: 'block', fontSize: 11, color: 'var(--text-muted, #8b949e)', marginBottom: 5 }}>
-                Sync Delay (Typing rukne ke kitne der baad push kare):
+                Sync delay after typing
               </label>
               <div style={{ display: 'flex', gap: 8 }}>
                 {[
@@ -389,7 +404,7 @@ export default function GitHubAutoSyncModal({
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span style={{ color: 'var(--text-muted, #8b949e)' }}>Current Sync Status:</span>
+              <span style={{ color: 'var(--text-muted, #8b949e)' }}>Sync status</span>
               <span style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
                 {autoSyncStatus === 'syncing' ? (
                   <>
@@ -411,7 +426,7 @@ export default function GitHubAutoSyncModal({
 
             {lastSyncTime && (
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: 'var(--text-muted, #8b949e)' }}>
-                <span>Last Updated:</span>
+                <span>Last synced</span>
                 <span>{lastSyncTime.toLocaleTimeString()}</span>
               </div>
             )}
@@ -444,7 +459,7 @@ export default function GitHubAutoSyncModal({
           }}
         >
           <div style={{ fontSize: 11, color: 'var(--text-muted, #8b949e)' }}>
-            Shortcut: <kbd style={{ padding: '2px 5px', borderRadius: 4, background: '#21262d', border: '1px solid #30363d' }}>⌘S</kbd> saves & pushes instantly
+            {activeRepo ? `Target: ${activeRepo.full_name || activeRepo.name}` : 'Select a repository to start syncing'}
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -473,7 +488,7 @@ export default function GitHubAutoSyncModal({
               ) : (
                 <>
                   <RefreshIcon size={13} />
-                  Push Now to GitHub
+                  Push current file
                 </>
               )}
             </button>

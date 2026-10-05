@@ -3333,69 +3333,6 @@ export default function App() {
             CodeForge AI {aiOpen ? 'On' : 'Off'}
           </button>
 
-          {/* GitHub Auto-Sync Button */}
-          <button
-            onClick={() => setShowAutoSyncModal(true)}
-            title={autoSyncEnabled ? `Auto-Sync to GitHub is ON (${autoSyncStatus}) - Click to configure` : 'Enable GitHub Auto-Sync (Instant real-time push)'}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 6,
-              background: autoSyncEnabled
-                ? (autoSyncStatus === 'syncing' ? 'rgba(59, 130, 246, 0.15)' : 'rgba(34, 197, 94, 0.12)')
-                : 'transparent',
-              border: '1px solid',
-              borderColor: autoSyncEnabled
-                ? (autoSyncStatus === 'syncing' ? 'rgba(59, 130, 246, 0.4)' : 'rgba(34, 197, 94, 0.35)')
-                : 'var(--border)',
-              borderRadius: 6,
-              padding: '4px 10px',
-              cursor: 'pointer',
-              fontSize: 11,
-              fontWeight: 500,
-              color: autoSyncEnabled
-                ? (autoSyncStatus === 'syncing' ? '#60a5fa' : '#4ade80')
-                : 'var(--text-muted)',
-              transition: 'all .15s ease'
-            }}
-          >
-            <GithubIcon size={13} />
-            <span>GitHub Sync</span>
-            {autoSyncEnabled ? (
-              <span style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 4,
-                fontSize: 9,
-                fontWeight: 700,
-                padding: '1px 5px',
-                borderRadius: 999,
-                background: autoSyncStatus === 'syncing' ? 'rgba(59, 130, 246, 0.25)' : 'rgba(34, 197, 94, 0.22)',
-                color: autoSyncStatus === 'syncing' ? '#93c5fd' : '#86efac',
-                textTransform: 'uppercase',
-                letterSpacing: '0.04em'
-              }}>
-                <span style={{
-                  width: 5,
-                  height: 5,
-                  borderRadius: '50%',
-                  background: autoSyncStatus === 'syncing' ? '#60a5fa' : (autoSyncStatus === 'error' ? '#ef4444' : '#22c55e')
-                }} />
-                {autoSyncStatus === 'syncing' ? 'Syncing…' : 'ON'}
-              </span>
-            ) : (
-              <span style={{
-                fontSize: 9,
-                fontWeight: 600,
-                padding: '1px 5px',
-                borderRadius: 999,
-                background: 'rgba(255, 255, 255, 0.06)',
-                color: 'var(--text-dim)',
-                textTransform: 'uppercase'
-              }}>
-                Off
-              </span>
-            )}
-          </button>
-
           {/* Debugger */}
           <button
             onClick={() => { if (isDebugging) { stopDebugging() } else { startDebugging() } }}
@@ -3478,6 +3415,36 @@ export default function App() {
           </button>
           <button data-tooltip="VS Code Themes" onClick={() => openSettings('themes')} className="activity-btn" style={{ marginBottom: 4 }} aria-label="VS Code Themes">
             <PaletteIcon size={16} />
+          </button>
+          <button
+            data-tooltip={`GitHub Sync · ${autoSyncStatus === 'syncing' ? 'Syncing' : autoSyncStatus === 'error' ? 'Error' : autoSyncEnabled ? 'Auto-sync on' : 'Auto-sync off'}`}
+            onClick={() => setShowAutoSyncModal(true)}
+            className="activity-btn"
+            style={{ marginBottom: 4 }}
+            aria-label="GitHub Sync"
+            aria-haspopup="dialog"
+          >
+            <span style={{ position: 'relative', display: 'inline-flex' }}>
+              <GithubIcon size={16} />
+              <span
+                style={{
+                  position: 'absolute',
+                  top: -3,
+                  right: -4,
+                  width: 7,
+                  height: 7,
+                  borderRadius: '50%',
+                  background: autoSyncStatus === 'syncing'
+                    ? '#60a5fa'
+                    : autoSyncStatus === 'error'
+                      ? '#ef4444'
+                      : autoSyncEnabled
+                        ? '#22c55e'
+                        : 'var(--text-dim)',
+                  border: '1px solid var(--bg-activity)',
+                }}
+              />
+            </span>
           </button>
           <button data-tooltip="Settings" onClick={() => setShowSettings(true)} className="activity-btn" style={{ marginBottom: 8 }}>
             <I d="M8 5a3 3 0 1 0 0 6 3 3 0 0 0 0-6Zm-5 3H1M15 8h-2M4.2 4.2 3 3M12 12l-1.2-1.2M4.2 11.8 3 13M12 4 10.8 5.2" s={16} sw={1.2} />
@@ -4677,13 +4644,10 @@ export default function App() {
             <GitBranchIcon size={12} /> {activeRepo.name}
           </div>
         )}
-        {/* GitHub Auto-Sync status */}
         <div
           className="status-item"
-          onClick={() => setShowAutoSyncModal(true)}
           style={{
             borderRight: '1px solid rgba(255,255,255,0.15)',
-            cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
             gap: 5,
@@ -4692,7 +4656,7 @@ export default function App() {
               : 'rgba(255,255,255,0.6)',
             fontWeight: autoSyncEnabled ? 500 : 400,
           }}
-          title={autoSyncEnabled ? `GitHub Auto-Sync is ON (${autoSyncStatus}) - Click to configure` : 'GitHub Auto-Sync is Off - Click to configure'}
+          title={autoSyncEnabled ? `GitHub Auto-Sync: ${autoSyncStatus}` : 'GitHub Auto-Sync is off'}
         >
           <GithubIcon size={11} />
           <span>Auto-Sync: {autoSyncEnabled ? (autoSyncStatus === 'syncing' ? 'Syncing…' : autoSyncStatus === 'synced' ? 'Synced' : 'Active') : 'Off'}</span>
