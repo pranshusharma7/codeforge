@@ -3408,25 +3408,44 @@ export default function App() {
 
           {/* Run / Stop Button */}
           {running ? (
-            <button
-              onClick={handleStop}
-              className="btn"
-              style={{
-                padding: '4px 14px',
-                fontSize: 12,
-                fontWeight: 700,
-                gap: 6,
-                background: 'linear-gradient(135deg, #ef4444, #dc2626)',
-                color: '#fff',
-                border: '1px solid #b91c1c',
-                boxShadow: '0 0 12px rgba(239, 68, 68, 0.45)',
-                cursor: 'pointer',
-              }}
-              title="Stop execution (Click to cancel immediately)"
-            >
-              <div style={{ width: 8, height: 8, background: '#fff', borderRadius: 2 }} />
-              Stop ({runElapsedSec}s)
-            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  background: 'rgba(56, 189, 248, 0.12)',
+                  border: '1px solid rgba(56, 189, 248, 0.3)',
+                  borderRadius: 6,
+                  padding: '4px 10px',
+                  fontSize: 11,
+                  color: 'var(--accent)',
+                  fontWeight: 600,
+                }}
+              >
+                <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#38bdf8', boxShadow: '0 0 8px #38bdf8' }} />
+                Running ({runElapsedSec}s)
+              </div>
+              <button
+                onClick={handleStop}
+                className="btn"
+                style={{
+                  padding: '4px 10px',
+                  fontSize: 11,
+                  fontWeight: 700,
+                  gap: 4,
+                  background: 'linear-gradient(135deg, #ef4444, #dc2626)',
+                  color: '#fff',
+                  border: '1px solid #b91c1c',
+                  cursor: 'pointer',
+                  borderRadius: 6,
+                }}
+                title="Cancel execution immediately"
+              >
+                <div style={{ width: 6, height: 6, background: '#fff', borderRadius: 1 }} />
+                Cancel
+              </button>
+            </div>
           ) : (
             <button onClick={handleRun} disabled={running} className="btn btn-primary" style={{ padding: '4px 16px', fontSize: 12, fontWeight: 600, gap: 6 }}>
               <svg width="7" height="9" viewBox="0 0 7 9" fill="white"><polygon points="0,0 7,4.5 0,9"/></svg> Run
