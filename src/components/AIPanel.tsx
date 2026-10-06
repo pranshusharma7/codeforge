@@ -1,9 +1,12 @@
 import { useState, useRef, useEffect } from 'react'
 import type { AIMessage, ExecutionResult, Language } from '../types'
-import { askAI, fixBug, reviewCode } from '../engine/ai'
+import type { AuthUser } from '../lib/storage'
+import { generateAIReply } from '../lib/aiClient'
 import { SendIcon, BugIcon, ReviewIcon, SpinnerIcon, CopyIcon, CheckIcon, XIcon } from './icons'
 
 interface Props {
+  authUser: AuthUser | null
+  onOpenGitHubAuth: () => void
   code: string
   language: Language
   lastResult: ExecutionResult | null
@@ -77,7 +80,7 @@ const QUICK_PROMPTS = [
   'Suggest improvements',
 ]
 
-export default function AIPanel({ code, language, lastResult, onClose }: Props) {
+export default function AIPanel({ authUser, onOpenGitHubAuth, code, language, lastResult, onClose }: Props) {
   const [messages, setMessages] = useState<AIMessage[]>([
     {
       id: 'welcome',
@@ -105,14 +108,18 @@ export default function AIPanel({ code, language, lastResult, onClose }: Props) 
 
   const send = async (prompt: string) => {
     if (!prompt.trim() || loading) return
+    if (authUser?.provider !== 'github' || !authUser.accessToken) {
+      onOpenGitHubAuth()
+      return
+    }
     setInput('')
 
     addMessage({ id: `u_${Date.now()}`, role: 'user', content: prompt, timestamp: new Date() })
     setLoading(true)
 
     try {
-      const reply = await askAI(prompt, code, language.label, historyRef.current)
-      addMessage({ id: `a_${Date.now()}`, role: 'assistant', content: reply, timestamp: new Date() })
+      const { text } = await generateAIReply(authUser.accessToken, prompt, code, language.label, historyRef.current.slice(0, -1))
+      addMessage({ id: `a_${Date.now()}`, role: 'assistant', content: text, timestamp: new Date() })
     } finally {
       setLoading(false)
     }
@@ -120,11 +127,16 @@ export default function AIPanel({ code, language, lastResult, onClose }: Props) 
 
   const handleFixBug = async () => {
     if (!lastResult || loading) return
+    if (authUser?.provider !== 'github' || !authUser.accessToken) {
+      onOpenGitHubAuth()
+      return
+    }
     addMessage({ id: `u_${Date.now()}`, role: 'user', content: `Fix the bug - error output:\n\`\`\`\n${lastResult.stderr || lastResult.compileOutput}\n\`\`\``, timestamp: new Date() })
     setLoading(true)
     try {
-      const reply = await fixBug(code, lastResult, language.label)
-      addMessage({ id: `a_${Date.now()}`, role: 'assistant', content: reply, type: 'diff', timestamp: new Date() })
+      const prompt = `Fix this code and explain the issue. Error output:\n${lastResult.stderr || lastResult.compileOutput || 'Runtime error'}`
+      const { text } = await generateAIReply(authUser.accessToken, prompt, code, language.label)
+      addMessage({ id: `a_${Date.now()}`, role: 'assistant', content: text, type: 'diff', timestamp: new Date() })
     } finally {
       setLoading(false)
     }
@@ -132,11 +144,15 @@ export default function AIPanel({ code, language, lastResult, onClose }: Props) 
 
   const handleReview = async () => {
     if (loading) return
+    if (authUser?.provider !== 'github' || !authUser.accessToken) {
+      onOpenGitHubAuth()
+      return
+    }
     addMessage({ id: `u_${Date.now()}`, role: 'user', content: 'Review my code before submission.', timestamp: new Date() })
     setLoading(true)
     try {
-      const reply = await reviewCode(code, language.label)
-      addMessage({ id: `a_${Date.now()}`, role: 'assistant', content: reply, type: 'review', timestamp: new Date() })
+      const { text } = await generateAIReply(authUser.accessToken, 'Review my code before submission. Identify bugs, edge cases, and complexity.', code, language.label)
+      addMessage({ id: `a_${Date.now()}`, role: 'assistant', content: text, type: 'review', timestamp: new Date() })
     } finally {
       setLoading(false)
     }

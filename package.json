@@ -9,6 +9,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
+    "test:ai-quota": "node --test tests/ai-quota.test.js",
     "format": "oxfmt"
   },
   "dependencies": {

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import type { AuthUser } from '../lib/storage'
-import { askAI } from '../engine/ai'
+import { AIRequestError, generateAIReply, getAIUsage } from '../lib/aiClient'
 import logoImg from '../assets/logo.png'
 import {
   SendIcon,
@@ -27,8 +27,6 @@ interface Props {
   aiUsage: number
   setAiUsage: React.Dispatch<React.SetStateAction<number>>
   maxFreeAI?: number
-  isPro?: boolean
-  onUpgradePro: () => void
   getActiveCode: () => string
   curTab: { name: string; lang: string }
   onInsertCodeToEditor?: (snippet: string) => void
@@ -42,18 +40,16 @@ export default function AIAppPanel({
   aiUsage,
   setAiUsage,
   maxFreeAI = 20,
-  isPro = false,
-  onUpgradePro,
   getActiveCode,
   curTab,
   onInsertCodeToEditor,
   onClose,
   showToast,
 }: Props) {
-  const geminiApiKey =
-    (import.meta.env.VITE_AI_KEY as string) || localStorage.getItem('cf_gemini_api_key') || ''
   const effectiveUserId = authUser?.id || 'cf_guest_developer'
   const effectiveDisplayName = authUser?.login || authUser?.name || 'developer'
+  const [usageLoading, setUsageLoading] = useState(false)
+  const [usageError, setUsageError] = useState('')
 
   const [messages, setMessages] = useState<AIMessage[]>(() => {
     try {
@@ -77,6 +73,32 @@ export default function AIAppPanel({
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
+
+  useEffect(() => {
+    const accessToken = authUser?.provider === 'github' ? authUser.accessToken : undefined
+    if (!accessToken) {
+      setAiUsage(0)
+      setUsageError('')
+      return
+    }
+
+    let active = true
+    setUsageLoading(true)
+    setUsageError('')
+    getAIUsage(accessToken)
+      .then(usage => {
+        if (active) setAiUsage(usage.used)
+      })
+      .catch(error => {
+        if (active) {
+          setUsageError(error instanceof Error ? error.message : 'Unable to load your monthly AI usage.')
+        }
+      })
+      .finally(() => {
+        if (active) setUsageLoading(false)
+      })
+    return () => { active = false }
+  }, [authUser?.provider, authUser?.accessToken, setAiUsage])
 
   // Reload chats when user changes
   useEffect(() => {
@@ -111,120 +133,22 @@ export default function AIAppPanel({
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, isThinking])
 
-  const isQuotaExceeded = !isPro && aiUsage >= maxFreeAI
-  const remainingQueries = isPro ? 'Unlimited' : Math.max(0, maxFreeAI - aiUsage)
-
-  // Direct backend / Gemini API caller
-  const callGeminiAPI = async (
-    prompt: string,
-    code: string,
-    lang: string,
-    history: { role: string; content: string }[]
-  ) => {
-    // 1. Try server proxy first (reliable, key kept on backend)
-    try {
-      const controller = new AbortController()
-      const timer = setTimeout(() => controller.abort(), 35000)
-      const srvRes = await fetch('/api/ai/gemini', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt, code, lang, history }),
-        signal: controller.signal,
-      }).finally(() => clearTimeout(timer))
-
-      if (srvRes.ok) {
-        const srvData = await srvRes.json()
-        if (srvData.ok && srvData.text) {
-          return srvData.text
-        }
-      }
-    } catch (e) {
-      console.warn('Backend /api/ai/gemini fetch error:', e)
-    }
-
-    // 2. Direct browser fetch to Google Generative AI
-    const key = geminiApiKey.trim() || (import.meta.env.VITE_AI_KEY as string) || ''
-    if (!key) throw new Error('No Gemini key')
-
-    const userPrompt = code.trim()
-      ? `Active Context (${lang || 'code'} - ${curTab.name}):\n\`\`\`${lang || 'text'}\n${code}\n\`\`\`\n\nPrompt: ${prompt}`
-      : prompt
-
-    const systemInstructionText =
-      'You are CodeForge AI, an elite senior software architect and full-stack programmer acting with the depth and helpfulness of Google Gemini and ChatGPT. When asked for code, especially web development (HTML, CSS, JS), always provide COMPLETE code for all 3 technologies (HTML, CSS, JS) without placeholders or omissions, plus an all-in-one index.html runnable version, followed by a friendly explanation.'
-
-    const contents: any[] = []
-    if (Array.isArray(history) && history.length > 0) {
-      let lastRole = ''
-      for (const msg of history.slice(-6)) {
-        const role = msg.role === 'assistant' ? 'model' : 'user'
-        if (role !== lastRole && msg.content && typeof msg.content === 'string' && msg.content.trim()) {
-          contents.push({ role, parts: [{ text: msg.content.trim() }] })
-          lastRole = role
-        }
-      }
-    }
-
-    if (contents.length > 0 && contents[contents.length - 1].role === 'user') {
-      contents[contents.length - 1].parts[0].text += `\n\n${userPrompt}`
-    } else {
-      contents.push({ role: 'user', parts: [{ text: userPrompt }] })
-    }
-
-    const candidateModels = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash']
-    let lastErr = ''
-
-    for (const model of candidateModels) {
-      try {
-        const geminiRes = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(key)}`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              systemInstruction: { parts: [{ text: systemInstructionText }] },
-              contents,
-              generationConfig: {
-                temperature: 0.3,
-                maxOutputTokens: 8192,
-                thinkingConfig: { thinkingBudget: 0 },
-              },
-            }),
-          }
-        )
-
-        if (geminiRes.ok) {
-          const json = await geminiRes.json()
-          const text =
-            json.candidates?.[0]?.content?.parts?.map((p: any) => p.text || '').join('') || ''
-          if (text.trim()) return text
-        } else {
-          const errData = await geminiRes.json().catch(() => ({}))
-          lastErr = errData.error?.message || `HTTP ${geminiRes.status}`
-        }
-      } catch (e: any) {
-        lastErr = e.message
-      }
-    }
-
-    throw new Error(lastErr || 'Gemini response unavailable')
-  }
+  const isSignedIn = authUser?.provider === 'github' && Boolean(authUser.accessToken)
+  const isQuotaExceeded = aiUsage >= maxFreeAI
+  const remainingQueries = Math.max(0, maxFreeAI - aiUsage)
 
   const handleSendMessage = async (customPrompt?: string) => {
     const raw = (customPrompt || inputPrompt).trim()
     if (!raw || isThinking) return
 
-    if (isQuotaExceeded) {
-      onUpgradePro()
+    if (!isSignedIn || !authUser?.accessToken) {
+      onOpenGitHubAuth()
       return
     }
 
-    if (!isPro) {
-      setAiUsage(prev => prev + 1)
-      try {
-        const curCount = parseInt(localStorage.getItem(`cf_ai_usage_${effectiveUserId}`) || '0')
-        localStorage.setItem(`cf_ai_usage_${effectiveUserId}`, String(curCount + 1))
-      } catch {}
+    if (isQuotaExceeded) {
+      showToast(`You have used all ${maxFreeAI} CodeForge AI requests for this month.`)
+      return
     }
 
     const activeCode = activeTabContext ? getActiveCode() : ''
@@ -245,13 +169,10 @@ export default function AIAppPanel({
       let reply = ''
       let isLiveGemini = false
 
-      try {
-        reply = await callGeminiAPI(raw, activeCode, curTab.lang, historyContext)
-        isLiveGemini = true
-      } catch (geminiErr: any) {
-        console.warn('callGeminiAPI failed, falling back to askAI engine:', geminiErr)
-        reply = await askAI(raw, activeCode, curTab.lang, historyContext)
-      }
+      const response = await generateAIReply(authUser.accessToken, raw, activeCode, curTab.lang, historyContext.slice(0, -1))
+      reply = response.text
+      setAiUsage(response.usage.used)
+      isLiveGemini = true
 
       const assistantMsg: AIMessage = {
         id: crypto.randomUUID(),
@@ -262,11 +183,15 @@ export default function AIAppPanel({
       }
 
       setMessages(prev => [...prev, assistantMsg])
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const error = err instanceof Error ? err.message : 'Please check your connection and try again.'
+      if (err instanceof AIRequestError && err.usage) {
+        setAiUsage(err.usage.used)
+      }
       const errorMsg: AIMessage = {
         id: crypto.randomUUID(),
         role: 'assistant',
-        content: `⚠️ Failed to get AI response: ${err?.message || 'Please check your connection and try again.'}`,
+        content: `⚠️ Failed to get AI response: ${error}`,
         timestamp: Date.now(),
       }
       setMessages(prev => [...prev, errorMsg])
@@ -587,22 +512,18 @@ export default function AIAppPanel({
                   fontWeight: 700,
                   padding: '1px 6px',
                   borderRadius: 999,
-                  background: isPro
-                    ? 'var(--accent-subtle)'
-                    : isQuotaExceeded
+                  background: isQuotaExceeded
                     ? 'rgba(239, 68, 68, 0.15)'
                     : 'var(--bg-hover)',
-                  color: isPro ? 'var(--accent)' : isQuotaExceeded ? '#ef4444' : 'var(--text-muted)',
+                  color: isQuotaExceeded ? '#ef4444' : 'var(--text-muted)',
                   border: `1px solid ${
-                    isPro
-                      ? 'var(--accent-border)'
-                      : isQuotaExceeded
+                    isQuotaExceeded
                       ? 'rgba(239, 68, 68, 0.3)'
                       : 'var(--border)'
                   }`,
                 }}
               >
-                {isPro ? '✦ PRO' : `${aiUsage}/${maxFreeAI}`}
+                {usageLoading ? '…' : `${aiUsage}/${maxFreeAI}`}
               </span>
             </div>
 
@@ -617,13 +538,13 @@ export default function AIAppPanel({
                     boxShadow: '0 0 6px rgba(34, 197, 94, 0.6)',
                   }}
                 />
-                <span style={{ color: 'var(--accent)', fontWeight: 600 }}>Gemini 3.8 Flash</span>
+                <span style={{ color: 'var(--accent)', fontWeight: 600 }}>Gemini 2.5 Flash</span>
               </span>
               <span>•</span>
               <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 @{effectiveDisplayName}
               </span>
-              {!authUser && (
+              {!isSignedIn && (
                 <button
                   onClick={onOpenGitHubAuth}
                   style={{
@@ -636,7 +557,7 @@ export default function AIAppPanel({
                     padding: 0,
                   }}
                 >
-                  (Sync GitHub)
+                  (Sign in with GitHub)
                 </button>
               )}
             </div>
@@ -695,6 +616,33 @@ export default function AIAppPanel({
         </div>
       </div>
 
+      {!isSignedIn && (
+        <div
+          style={{
+            padding: '10px 14px',
+            background: 'var(--accent-subtle)',
+            borderBottom: '1px solid var(--accent-border)',
+            color: 'var(--text-base)',
+            fontSize: 11,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 10,
+          }}
+        >
+          <span>Sign in with GitHub to use CodeForge AI. Each GitHub account gets 20 requests per month.</span>
+          <button className="btn btn-primary" onClick={onOpenGitHubAuth} style={{ padding: '4px 9px', flexShrink: 0 }}>
+            Sign in
+          </button>
+        </div>
+      )}
+
+      {usageError && isSignedIn && (
+        <div style={{ padding: '8px 14px', color: '#fca5a5', background: 'rgba(239, 68, 68, 0.1)', fontSize: 11 }}>
+          {usageError}
+        </div>
+      )}
+
       {/* ── Quota Alert Banner ──────────────────────────────────────────────── */}
       {isQuotaExceeded && (
         <div
@@ -709,22 +657,7 @@ export default function AIAppPanel({
             color: '#ef4444',
           }}
         >
-          <span>Free quota reached ({maxFreeAI}/{maxFreeAI}). Upgrade for unlimited requests.</span>
-          <button
-            onClick={onUpgradePro}
-            style={{
-              padding: '3px 9px',
-              borderRadius: 5,
-              background: '#ef4444',
-              border: 'none',
-              color: '#ffffff',
-              fontSize: 10,
-              fontWeight: 700,
-              cursor: 'pointer',
-            }}
-          >
-            Upgrade Pro 🚀
-          </button>
+          <span>Monthly limit reached ({maxFreeAI}/{maxFreeAI}). Your requests reset next month.</span>
         </div>
       )}
 
@@ -750,7 +683,7 @@ export default function AIAppPanel({
           <button
             key={item.label}
             className="ai-quick-chip"
-            disabled={isThinking || isQuotaExceeded}
+            disabled={isThinking || isQuotaExceeded || !isSignedIn || usageLoading || Boolean(usageError)}
             onClick={() => handleSendMessage(item.prompt)}
             style={{
               padding: '4px 9px',
@@ -764,7 +697,7 @@ export default function AIAppPanel({
               alignItems: 'center',
               gap: 5,
               whiteSpace: 'nowrap',
-              cursor: isThinking || isQuotaExceeded ? 'not-allowed' : 'pointer',
+              cursor: isThinking || isQuotaExceeded || !isSignedIn || usageLoading || Boolean(usageError) ? 'not-allowed' : 'pointer',
               flexShrink: 0,
             }}
           >
@@ -866,7 +799,7 @@ export default function AIAppPanel({
                 <span>Synthesizing code solution...</span>
               </div>
               <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>
-                Analyzing context in {curTab.name} • Gemini 3.8 Flash
+                Analyzing context in {curTab.name} • Gemini 2.5 Flash
               </div>
             </div>
           </div>
@@ -920,7 +853,7 @@ export default function AIAppPanel({
             </button>
 
             <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>
-              {remainingQueries} queries left
+              {!isSignedIn ? 'Sign in required' : usageLoading ? 'Checking usage…' : `${remainingQueries} requests left this month`}
             </span>
           </div>
 
@@ -930,11 +863,15 @@ export default function AIAppPanel({
             rows={2}
             value={inputPrompt}
             placeholder={
-              isQuotaExceeded
-                ? 'Monthly quota reached. Upgrade to Pro...'
+              !isSignedIn
+                ? 'Sign in with GitHub to use CodeForge AI...'
+                : isQuotaExceeded
+                ? 'Monthly request limit reached. Resets next month.'
+                : usageError
+                ? 'AI usage is unavailable right now.'
                 : 'Ask CodeForge AI anything, /fix, /optimize, /explain...'
             }
-            disabled={isQuotaExceeded}
+            disabled={!isSignedIn || isQuotaExceeded || usageLoading || Boolean(usageError)}
             onChange={e => setInputPrompt(e.target.value)}
             onKeyDown={e => {
               if (e.key === 'Enter' && !e.shiftKey) {
@@ -968,23 +905,23 @@ export default function AIAppPanel({
             </div>
 
             <button
-              disabled={!inputPrompt.trim() || isThinking || isQuotaExceeded}
+              disabled={!inputPrompt.trim() || isThinking || isQuotaExceeded || !isSignedIn || usageLoading || Boolean(usageError)}
               onClick={() => handleSendMessage()}
               style={{
                 width: 32,
                 height: 32,
                 borderRadius: '50%',
                 background:
-                  inputPrompt.trim() && !isThinking && !isQuotaExceeded
+                  inputPrompt.trim() && !isThinking && !isQuotaExceeded && isSignedIn && !usageLoading && !usageError
                     ? 'var(--accent)'
                     : 'var(--bg-hover)',
-                color: inputPrompt.trim() && !isThinking && !isQuotaExceeded ? '#ffffff' : 'var(--text-dim)',
+                color: inputPrompt.trim() && !isThinking && !isQuotaExceeded && isSignedIn && !usageLoading && !usageError ? '#ffffff' : 'var(--text-dim)',
                 border: 'none',
-                cursor: inputPrompt.trim() && !isThinking && !isQuotaExceeded ? 'pointer' : 'not-allowed',
+                cursor: inputPrompt.trim() && !isThinking && !isQuotaExceeded && isSignedIn && !usageLoading && !usageError ? 'pointer' : 'not-allowed',
                 display: 'grid',
                 placeItems: 'center',
                 boxShadow:
-                  inputPrompt.trim() && !isThinking && !isQuotaExceeded
+                  inputPrompt.trim() && !isThinking && !isQuotaExceeded && isSignedIn && !usageLoading && !usageError
                     ? '0 0 10px var(--accent-subtle)'
                     : 'none',
                 transition: 'all 0.15s ease',

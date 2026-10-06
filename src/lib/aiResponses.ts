@@ -1,5 +1,5 @@
 import type { ExecutionResult } from './judge0'
-import { askAI, isLiveAI } from '../engine/ai'
+import { generateAIReply } from './aiClient'
 
 export type AIAction = 'explain' | 'fix' | 'optimize' | 'review' | 'comment' | 'tests' | 'generate' | 'chat'
 
@@ -436,26 +436,19 @@ export async function generateAIResponse(
   code: string,
   lang: string,
   executionResult?: ExecutionResult | null,
+  accessToken?: string,
 ): Promise<string> {
-  if (isLiveAI()) {
-    const prompt = action === 'chat' ? userMessage : `${action} the following ${lang} code. Return a useful, structured answer with markdown and code examples where appropriate.`
-    const history: { role: string; content: string }[] = []
-    try {
-      return await askAI(
-        `${prompt}\n\nExecution result:\n${executionResult ? JSON.stringify(executionResult) : 'No execution yet.'}`,
-        code,
-        lang,
-        history,
-      )
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown provider error'
-      return `## AI connection error\n\n${message}\n\nCheck \`VITE_AI_KEY\`, provider, model, and API URL. I switched to local analysis for this request.\n\n${getLocalResponse(action, userMessage, code, lang, executionResult)}`
-    }
-  }
-
-  await new Promise(r => setTimeout(r, 1200 + Math.random() * 600))
-
-  return getLocalResponse(action, userMessage, code, lang, executionResult)
+  if (!accessToken) throw new Error('Sign in with GitHub to use CodeForge AI.')
+  const prompt = action === 'chat'
+    ? userMessage
+    : `${action} the following ${lang} code. Return a useful, structured answer with markdown and code examples where appropriate.`
+  const response = await generateAIReply(
+    accessToken,
+    `${prompt}\n\nUser request:\n${userMessage}\n\nExecution result:\n${executionResult ? JSON.stringify(executionResult) : 'No execution yet.'}`,
+    code,
+    lang,
+  )
+  return response.text
 }
 
 function getLocalResponse(action: AIAction, userMessage: string, code: string, lang: string, executionResult?: ExecutionResult | null): string {

@@ -2,14 +2,12 @@ import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import MonacoEditor, { useMonaco } from '@monaco-editor/react'
 import { LANGUAGES, getLangById } from './lib/languages'
 import { executeCode, statusLabel } from './lib/judge0'
-import { generateAIResponse, type AIMessage, type AIAction } from './lib/aiResponses'
-import { aiProviderLabel, isLiveAI } from './engine/ai'
+import type { AIMessage, AIAction } from './lib/aiResponses'
 import { createGitHubRepository, getGitHubRepositories, getGitHubUser, commitOrUpdateRepoFile, type GitHubRepository, SAMPLE_DEV_REPOSITORIES } from './lib/github'
 import SourceControlPanel, { type TabWithRepo } from './components/SourceControlPanel'
 import SettingsModal from './components/SettingsModal'
 import GitHubAuthModal from './components/GitHubAuthModal'
 import GitHubAutoSyncModal from './components/GitHubAutoSyncModal'
-import UpgradeProModal from './components/UpgradeProModal'
 import FileIcon from './components/FileIcon'
 import AIAppPanel from './components/AIAppPanel'
 import VSCodeTerminal from './components/VSCodeTerminal'
@@ -23,7 +21,7 @@ import {
 } from './lib/aiConfig'
 import {
   GitBranchIcon, RepoIcon, PaletteIcon, ShareIcon, DownloadIcon, SaveIcon,
-  FolderIcon, FilePlusIcon, FolderPlusIcon, FileOpenIcon, FolderOpenIcon, TrashIcon, RefreshIcon, ChevronDown, GithubIcon,
+  FolderIcon, FilePlusIcon, FolderPlusIcon, FileOpenIcon, FolderOpenIcon, TrashIcon, RefreshIcon, ChevronDown,
   CollapseAllIcon, TerminalIcon, XIcon, TrophyIcon,
 } from './components/icons'
 import { ContestHubModal } from './components/contest/ContestHubModal'
@@ -44,6 +42,7 @@ import FloatingDebugBar from './components/FloatingDebugBar'
 import DebugConsole, { type DebugConsoleLog } from './components/DebugConsole'
 import { generateExecutionTrace, evaluateWatchExpression, type DebugStep, type WatchItem } from './engine/debugger'
 import type { ExecutionResult } from './lib/judge0'
+import { AIRequestError, generateAIReply } from './lib/aiClient'
 import { getInstalledExtensions, isExtensionEnabled } from './extensions/registry'
 import { getAINextCodeSuggestion } from './extensions/aiHelper'
 import type { Extension } from './extensions/types'
@@ -195,28 +194,6 @@ const detectLanguage = (filename: string): RuntimeLanguage => {
 
 const MAX_FREE_MONTHLY_AI = 20
 
-function getCurrentMonthKey() {
-  const d = new Date()
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-}
-
-function getAiUsageForUser(userId: string): number {
-  try {
-    const val = localStorage.getItem(`cf_ai_usage_${userId}_${getCurrentMonthKey()}`)
-    return val ? parseInt(val, 10) : 0
-  } catch {
-    return 0
-  }
-}
-
-function checkUserIsPro(userId: string): boolean {
-  try {
-    return localStorage.getItem(`cf_is_pro_${userId}`) === 'true'
-  } catch {
-    return false
-  }
-}
-
 const DEFAULT_STARTER_TAB: Tab = {
   id: 'starter-main-py',
   name: 'main.py',
@@ -299,7 +276,7 @@ export default function App() {
   const [openMenuOpen, setOpenMenuOpen]   = useState(false)
   const openMenuRef                       = useRef<HTMLDivElement>(null)
   const [showSettings, setShowSettings]   = useState(false)
-  const [settingsTab, setSettingsTab]     = useState<'editor' | 'extensions' | 'themes' | 'repos' | 'profile'>('editor')
+  const [settingsTab, setSettingsTab]     = useState<'editor' | 'themes' | 'repos' | 'profile'>('editor')
   const [editorTheme, setEditorTheme]     = useState<string>(() => {
     try { return localStorage.getItem('cf_editor_theme') || DEFAULT_THEME_ID } catch { return DEFAULT_THEME_ID }
   })
@@ -405,15 +382,7 @@ export default function App() {
   const status  = result ? statusLabel(result) : null
 
   // AI usage & Pro states
-  const [aiUsage, setAiUsage] = useState<number>(() => {
-    const u = getAuthUser()
-    return u ? getAiUsageForUser(u.id) : 0
-  })
-  const [isPro, setIsPro] = useState<boolean>(() => {
-    const u = getAuthUser()
-    return u ? checkUserIsPro(u.id) : false
-  })
-  const [showUpgradeModal, setShowUpgradeModal] = useState<boolean>(false)
+  const [aiUsage, setAiUsage] = useState<number>(0)
   const [aiConfigVersion, setAiConfigVersion] = useState<number>(0)
 
   // GitHub Auto-Sync states
@@ -1582,18 +1551,10 @@ export default function App() {
 
   // ── AI ───────────────────────────────────────────────────────────────────
   const sendAI = async (action: AIAction, text: string) => {
-    const currentUserId = authUser?.id || 'cf_guest_developer'
-    const currentUsage = getAiUsageForUser(currentUserId)
-    if (!isPro && currentUsage >= MAX_FREE_MONTHLY_AI) {
-      setShowUpgradeModal(true)
-      showToast(`⚠️ Monthly free AI limit reached (${MAX_FREE_MONTHLY_AI}/${MAX_FREE_MONTHLY_AI}). Upgrade to Pro!`)
+    if (authUser?.provider !== 'github' || !authUser.accessToken) {
+      setShowAuth(true)
+      showToast('Sign in with GitHub to use CodeForge AI.')
       return
-    }
-
-    if (!isPro) {
-      const nextUsage = currentUsage + 1
-      localStorage.setItem(`cf_ai_usage_${currentUserId}_${getCurrentMonthKey()}`, String(nextUsage))
-      setAiUsage(nextUsage)
     }
 
     const label = ACTIONS.find(a => a.action === action)?.label ?? action
@@ -1604,8 +1565,28 @@ export default function App() {
     setMsgs(p => [...p, userMsg]); setAiInput(''); setAiThink(true)
     try {
       const currentCode = hasOpenTab ? getActiveCode() : ''
-      const res = await generateAIResponse(action, text, currentCode, curLang.id, result ?? undefined)
-      setMsgs(p => [...p, { id: crypto.randomUUID(), role: 'assistant', timestamp: new Date(), action, content: res }])
+      const prompt = action === 'chat'
+        ? text
+        : `${label} the following ${curLang.label} code. Return a useful, structured answer with markdown and code examples where appropriate.\n\n${text}`
+      const history = msgs.slice(-6).map(message => ({
+        role: message.role,
+        content: message.content,
+      }))
+      const response = await generateAIReply(
+        authUser.accessToken,
+        `${prompt}\n\nExecution result:\n${result ? JSON.stringify(result) : 'No execution yet.'}`,
+        currentCode,
+        curLang.id,
+        history,
+      )
+      setAiUsage(response.usage.used)
+      setMsgs(p => [...p, { id: crypto.randomUUID(), role: 'assistant', timestamp: new Date(), action, content: response.text }])
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'CodeForge AI request failed.'
+      if (error instanceof AIRequestError && error.usage) {
+        setAiUsage(error.usage.used)
+      }
+      showToast(message)
     } finally { setAiThink(false) }
   }
 
@@ -3315,22 +3296,15 @@ export default function App() {
         <div style={{ flex: 1 }} />
 
         {/* Header actions */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 8px' }}>
+        <div className="header-actions" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 8px' }}>
           {/* AI Toggle */}
           <button onClick={() => setAiOpen(p => !p)}
-            title="CodeForge AI"
-            style={{
-              display: 'flex', alignItems: 'center', gap: 5,
-              background: aiOpen ? 'var(--accent-subtle)' : 'transparent',
-              border: '1px solid',
-              borderColor: aiOpen ? 'var(--accent-border)' : 'var(--border)',
-              borderRadius: 6, padding: '4px 10px', cursor: 'pointer',
-              fontSize: 11, fontWeight: 500,
-              color: aiOpen ? 'var(--accent)' : 'var(--text-muted)',
-              transition: 'all .1s'
-            }}>
-            <span style={{ fontSize: 12 }}>✦</span>
-            CodeForge AI {aiOpen ? 'On' : 'Off'}
+            className={`header-ai-button${aiOpen ? ' active' : ''}`}
+            title={aiOpen ? 'Close CodeForge AI assistant' : 'Open CodeForge AI assistant'}
+            aria-label={aiOpen ? 'Close CodeForge AI assistant' : 'Open CodeForge AI assistant'}
+            aria-pressed={aiOpen}>
+            <span className="header-ai-icon" aria-hidden="true">✦</span>
+            <span>CodeForge AI</span>
           </button>
 
           {/* Debugger */}
@@ -3415,36 +3389,6 @@ export default function App() {
           </button>
           <button data-tooltip="VS Code Themes" onClick={() => openSettings('themes')} className="activity-btn" style={{ marginBottom: 4 }} aria-label="VS Code Themes">
             <PaletteIcon size={16} />
-          </button>
-          <button
-            data-tooltip={`GitHub Sync · ${autoSyncStatus === 'syncing' ? 'Syncing' : autoSyncStatus === 'error' ? 'Error' : autoSyncEnabled ? 'Auto-sync on' : 'Auto-sync off'}`}
-            onClick={() => setShowAutoSyncModal(true)}
-            className="activity-btn"
-            style={{ marginBottom: 4 }}
-            aria-label="GitHub Sync"
-            aria-haspopup="dialog"
-          >
-            <span style={{ position: 'relative', display: 'inline-flex' }}>
-              <GithubIcon size={16} />
-              <span
-                style={{
-                  position: 'absolute',
-                  top: -3,
-                  right: -4,
-                  width: 7,
-                  height: 7,
-                  borderRadius: '50%',
-                  background: autoSyncStatus === 'syncing'
-                    ? '#60a5fa'
-                    : autoSyncStatus === 'error'
-                      ? '#ef4444'
-                      : autoSyncEnabled
-                        ? '#22c55e'
-                        : 'var(--text-dim)',
-                  border: '1px solid var(--bg-activity)',
-                }}
-              />
-            </span>
           </button>
           <button data-tooltip="Settings" onClick={() => setShowSettings(true)} className="activity-btn" style={{ marginBottom: 8 }}>
             <I d="M8 5a3 3 0 1 0 0 6 3 3 0 0 0 0-6Zm-5 3H1M15 8h-2M4.2 4.2 3 3M12 12l-1.2-1.2M4.2 11.8 3 13M12 4 10.8 5.2" s={16} sw={1.2} />
@@ -4605,8 +4549,6 @@ export default function App() {
                 aiUsage={aiUsage}
                 setAiUsage={setAiUsage}
                 maxFreeAI={MAX_FREE_MONTHLY_AI}
-                isPro={isPro}
-                onUpgradePro={() => setShowUpgradeModal(true)}
                 getActiveCode={getActiveCode}
                 curTab={curTab}
                 onInsertCodeToEditor={applyAIResponse}
@@ -4644,23 +4586,6 @@ export default function App() {
             <GitBranchIcon size={12} /> {activeRepo.name}
           </div>
         )}
-        <div
-          className="status-item"
-          style={{
-            borderRight: '1px solid rgba(255,255,255,0.15)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 5,
-            color: autoSyncEnabled
-              ? (autoSyncStatus === 'syncing' ? '#93c5fd' : autoSyncStatus === 'error' ? '#fca5a5' : '#86efac')
-              : 'rgba(255,255,255,0.6)',
-            fontWeight: autoSyncEnabled ? 500 : 400,
-          }}
-          title={autoSyncEnabled ? `GitHub Auto-Sync: ${autoSyncStatus}` : 'GitHub Auto-Sync is off'}
-        >
-          <GithubIcon size={11} />
-          <span>Auto-Sync: {autoSyncEnabled ? (autoSyncStatus === 'syncing' ? 'Syncing…' : autoSyncStatus === 'synced' ? 'Synced' : 'Active') : 'Off'}</span>
-        </div>
         {/* Toggle Output & Terminal button right next to Github.md / activeRepo */}
         <div
           className="status-item"
@@ -4693,26 +4618,6 @@ export default function App() {
         <div style={{ flex: 1 }} />
         <div id="editor-cursor-pos-status" className="status-item" style={{ fontFamily: 'JetBrains Mono, monospace', opacity: 0.8 }}>
           Ln 1, Col 1
-        </div>
-        <div
-          className="status-item"
-          onClick={() => {
-            setSettingsTab('extensions')
-            setShowSettings(true)
-          }}
-          title={isAiHelperEnabled ? "CodeForge AI Helper active (Press Tab to accept ghost text). Click to manage extensions." : "CodeForge AI Helper disabled. Click to configure."}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 4,
-            cursor: 'pointer',
-            color: isAiHelperEnabled ? '#c084fc' : 'var(--text-dim)',
-            fontWeight: isAiHelperEnabled ? 600 : 400,
-            borderLeft: '1px solid rgba(255,255,255,0.15)',
-          }}
-        >
-          <span style={{ fontSize: 11 }}>✨</span>
-          <span>{isAiHelperEnabled ? 'CodeForge AI: Tab to Accept' : 'AI Helper: Off'}</span>
         </div>
         <div className="status-item" style={{ opacity: 0.7 }}>UTF-8</div>
         <div className="status-item" onClick={() => openSettings('themes')} title="Change Theme" style={{ display: 'flex', alignItems: 'center', gap: 4, borderLeft: '1px solid rgba(255,255,255,0.15)' }}>
@@ -4786,21 +4691,6 @@ export default function App() {
           setShowAuth(true)
         }}
         showToast={showToast}
-      />
-
-      {/* Upgrade to Pro Modal */}
-      <UpgradeProModal
-        isOpen={showUpgradeModal}
-        onClose={() => setShowUpgradeModal(false)}
-        onSuccess={() => {
-          if (authUser) {
-            localStorage.setItem(`cf_is_pro_${authUser.id}`, 'true')
-          }
-          setIsPro(true)
-        }}
-        showToast={showToast}
-        currentUsage={aiUsage}
-        maxFree={MAX_FREE_MONTHLY_AI}
       />
 
       {/* New file */}
@@ -4891,8 +4781,6 @@ export default function App() {
         onSelectRepoForCommit={handleSelectRepoForCommit}
         onOpenFileFromRepo={handleOpenFileFromRepo}
         onImportMultipleFiles={handleImportMultipleFilesFromRepo}
-        extensions={extensions}
-        onExtensionsChange={setExtensions}
         showToast={showToast}
       />
 

@@ -77,6 +77,22 @@ The optimized production bundle will be created in the `dist/` directory.
 
 ---
 
+## 🤖 CodeForge AI setup
+
+CodeForge AI requires GitHub sign-in. Each verified GitHub account can make 20 successful AI requests per UTC calendar month. The limit is enforced by the server and stored atomically in Upstash Redis; changing browser storage or signing in from another device does not reset it.
+
+For Vercel deployment, configure these environment variables in the project settings:
+
+- `AI_API_KEY` — a server-side Gemini API key from [Google AI Studio](https://aistudio.google.com/apikey). Do not prefix it with `VITE_`.
+- `AI_MODEL` — optional; defaults to `gemini-2.5-flash`.
+- `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` — REST credentials for an Upstash Redis database.
+
+The AI endpoint verifies the supplied GitHub token against GitHub on every request and fails closed if authentication, quota storage, or the server-side AI key is unavailable. AI requests are counted after a successful response; failed provider requests release their reservation.
+
+This serverless AI endpoint requires a host that runs the project's Vercel API functions; the Render Static Site configuration only serves the frontend. `npm run dev` starts Vite's frontend server and does not run the API functions locally. Quota behavior can be tested with `npm run test:ai-quota`.
+
+---
+
 ## 📁 Project Structure
 
 ```
