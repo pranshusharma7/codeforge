@@ -37,19 +37,95 @@ export interface AuthUser {
   scopes?: string[]
 }
 
+import { encryptPayload, decryptPayload, isEncryptedEnvelope } from './crypto'
+
 const SUBMISSIONS_KEY = 'cf_submissions'
 const AUTH_KEY        = 'cf_auth_user'
 const SAVED_CODE_KEY  = 'cf_saved_code_history'
 
+// In-memory decrypted cache for instantaneous zero-latency access
+const memoryVault = new Map<string, unknown>()
+
+// Pre-hydrate vault at startup from localStorage
+function initVault() {
+  try {
+    const keys = [SUBMISSIONS_KEY, AUTH_KEY, SAVED_CODE_KEY]
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i)
+      if (k && (k.startsWith('cf_snippets_') || keys.includes(k))) {
+        const raw = localStorage.getItem(k)
+        if (raw) {
+          if (!isEncryptedEnvelope(raw)) {
+            // Legacy plain data: cache and re-encrypt
+            try {
+              const parsed = JSON.parse(raw)
+              memoryVault.set(k, parsed)
+              encryptPayload(raw).then(enc => {
+                try { localStorage.setItem(k, enc) } catch {}
+              })
+            } catch {}
+          } else {
+            // Asynchronously decrypt into memory vault
+            decryptPayload(raw).then(decrypted => {
+              if (decrypted) {
+                try {
+                  memoryVault.set(k, JSON.parse(decrypted))
+                } catch {}
+              }
+            })
+          }
+        }
+      }
+    }
+  } catch {}
+}
+
+// Auto-run vault initialization
+if (typeof window !== 'undefined') {
+  initVault()
+}
+
 function load<T>(key: string, fallback: T): T {
   try {
+    if (memoryVault.has(key)) {
+      return memoryVault.get(key) as T
+    }
     const raw = localStorage.getItem(key)
-    return raw ? JSON.parse(raw) : fallback
+    if (!raw) return fallback
+
+    if (isEncryptedEnvelope(raw)) {
+      // If encrypted and not yet in memoryVault, trigger async decryption
+      decryptPayload(raw).then(decrypted => {
+        if (decrypted) {
+          try {
+            memoryVault.set(key, JSON.parse(decrypted))
+          } catch {}
+        }
+      })
+      return fallback
+    }
+
+    const parsed = JSON.parse(raw)
+    memoryVault.set(key, parsed)
+    // Upgrade to encrypted envelope in background
+    encryptPayload(raw).then(enc => {
+      try { localStorage.setItem(key, enc) } catch {}
+    })
+    return parsed
   } catch { return fallback }
 }
 
 function save(key: string, value: unknown) {
-  try { localStorage.setItem(key, JSON.stringify(value)) } catch {}
+  try {
+    memoryVault.set(key, value)
+    const jsonStr = JSON.stringify(value)
+    // Encrypt at rest with AES-256-GCM before writing to localStorage
+    encryptPayload(jsonStr).then(enc => {
+      try {
+        localStorage.setItem(key, enc)
+      } catch {}
+    })
+  } catch {}
 }
 
 // ── Submissions ────────────────────────────────────────────────────────────

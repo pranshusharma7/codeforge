@@ -798,11 +798,13 @@ export default function AIAppPanel({
               color: 'var(--text-dim)',
               marginTop: 18,
               display: 'flex',
+              flexDirection: 'column',
               alignItems: 'center',
-              gap: 4,
+              gap: 3,
             }}
           >
             <span>🔒 Secure GitHub Device Flow. No passwords stored.</span>
+            <span style={{ color: 'var(--accent)', fontSize: 9.5 }}>🛡️ 256-Bit AES-GCM Encrypted Storage Active</span>
           </div>
         </div>
       ) : (

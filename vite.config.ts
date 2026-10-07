@@ -149,6 +149,11 @@ function codeForgeApiServerPlugin(): Plugin {
   const apiMiddleware = async (req: any, res: any, next: any) => {
     const url = req.url || ""
 
+    // Security Headers on all API responses
+    res.setHeader("X-Content-Type-Options", "nosniff")
+    res.setHeader("X-Frame-Options", "DENY")
+    res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin")
+
     // CORS preflight for all /api/ endpoints
     if (url.startsWith("/api/") && req.method === "OPTIONS") {
       res.setHeader("Access-Control-Allow-Origin", "*")

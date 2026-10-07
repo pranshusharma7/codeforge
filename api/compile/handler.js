@@ -62,6 +62,26 @@ function checkBinaryExists(bin) {
 }
 
 /**
+ * Sandboxed Execution Environment:
+ * Strips all host environment variables (API keys, Redis tokens, host secrets)
+ * so running user code cannot exfiltrate host credentials via os.environ / process.env.
+ */
+function getSanitizedChildEnv() {
+  return {
+    PATH: process.env.PATH || "/usr/local/bin:/usr/bin:/bin",
+    TMPDIR: os.tmpdir(),
+    TEMP: os.tmpdir(),
+    TMP: os.tmpdir(),
+    HOME: os.tmpdir(),
+    LANG: "en_US.UTF-8",
+    LC_ALL: "en_US.UTF-8",
+    PYTHONUNBUFFERED: "1",
+    NODE_ENV: "production",
+    PAGER: "cat",
+  }
+}
+
+/**
  * Spawns a child process with timeout, stdin, and output buffer protection
  */
 function runProcess(command, args, { stdin = "", timeout = 3500, cwd } = {}) {
@@ -74,7 +94,7 @@ function runProcess(command, args, { stdin = "", timeout = 3500, cwd } = {}) {
     try {
       const child = spawn(command, args, {
         cwd,
-        env: { ...process.env, PYTHONUNBUFFERED: "1", PAGER: "cat" },
+        env: getSanitizedChildEnv(),
         stdio: ["pipe", "pipe", "pipe"],
       })
 
