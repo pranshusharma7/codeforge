@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import type { AIMessage, ExecutionResult, Language } from '../types'
 import type { AuthUser } from '../lib/storage'
 import { generateAIReply } from '../lib/aiClient'
-import { SendIcon, BugIcon, ReviewIcon, SpinnerIcon, CopyIcon, CheckIcon, XIcon } from './icons'
+import { SendIcon, BugIcon, ReviewIcon, SpinnerIcon, CopyIcon, CheckIcon, XIcon, GithubIcon } from './icons'
 
 interface Props {
   authUser: AuthUser | null
@@ -81,6 +81,7 @@ const QUICK_PROMPTS = [
 ]
 
 export default function AIPanel({ authUser, onOpenGitHubAuth, code, language, lastResult, onClose }: Props) {
+  const isSignedIn = authUser?.provider === 'github' && Boolean(authUser.accessToken)
   const [messages, setMessages] = useState<AIMessage[]>([
     {
       id: 'welcome',
@@ -220,37 +221,50 @@ export default function AIPanel({ authUser, onOpenGitHubAuth, code, language, la
         ))}
       </div>
 
-      {/* Input */}
+      {/* Input / Continue with GitHub Gate */}
       <div style={{ padding: '0 12px 12px', flexShrink: 0 }}>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '8px 10px', transition: 'border-color 0.15s' }}
-          onFocusCapture={e => e.currentTarget.style.borderColor = 'var(--accent)'}
-          onBlurCapture={e => e.currentTarget.style.borderColor = 'var(--border)'}>
-          <textarea
-            ref={inputRef}
-            value={input}
-            onChange={e => setInput(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(input) } }}
-            placeholder="Ask anything about your code... (Enter to send)"
-            rows={1}
-            style={{
-              flex: 1, background: 'none', border: 'none', outline: 'none',
-              color: 'var(--text-base)', fontSize: 13, fontFamily: 'Inter, sans-serif',
-              resize: 'none', lineHeight: 1.5, maxHeight: 96, overflowY: 'auto',
-            }}
-            onInput={e => {
-              const el = e.currentTarget
-              el.style.height = 'auto'
-              el.style.height = Math.min(el.scrollHeight, 96) + 'px'
-            }}
-          />
-          <button onClick={() => send(input)} disabled={!input.trim() || loading}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', color: input.trim() && !loading ? 'var(--accent)' : 'var(--text-dim)', padding: 2, flexShrink: 0, transition: 'color 0.12s' }}>
-            {loading ? <SpinnerIcon size={16} style={{ color: 'var(--accent)' }} /> : <SendIcon size={16} />}
-          </button>
-        </div>
-        <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: '5px 2px 0', lineHeight: 1.4 }}>
-          AI reads your current code + last execution output. Shift+Enter for new line.
-        </p>
+        {!isSignedIn ? (
+          <div style={{ padding: '14px', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
+            <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+              Sign in with GitHub to use CodeForge AI (20 free requests / month)
+            </div>
+            <button onClick={onOpenGitHubAuth} className="btn btn-primary" style={{ padding: '8px 18px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <GithubIcon size={14} /> Continue with GitHub
+            </button>
+          </div>
+        ) : (
+          <>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '8px 10px', transition: 'border-color 0.15s' }}
+              onFocusCapture={e => e.currentTarget.style.borderColor = 'var(--accent)'}
+              onBlurCapture={e => e.currentTarget.style.borderColor = 'var(--border)'}>
+              <textarea
+                ref={inputRef}
+                value={input}
+                onChange={e => setInput(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(input) } }}
+                placeholder="Ask anything about your code... (Enter to send)"
+                rows={1}
+                style={{
+                  flex: 1, background: 'none', border: 'none', outline: 'none',
+                  color: 'var(--text-base)', fontSize: 13, fontFamily: 'Inter, sans-serif',
+                  resize: 'none', lineHeight: 1.5, maxHeight: 96, overflowY: 'auto',
+                }}
+                onInput={e => {
+                  const el = e.currentTarget
+                  el.style.height = 'auto'
+                  el.style.height = Math.min(el.scrollHeight, 96) + 'px'
+                }}
+              />
+              <button onClick={() => send(input)} disabled={!input.trim() || loading}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: input.trim() && !loading ? 'var(--accent)' : 'var(--text-dim)', padding: 2, flexShrink: 0, transition: 'color 0.12s' }}>
+                {loading ? <SpinnerIcon size={16} style={{ color: 'var(--accent)' }} /> : <SendIcon size={16} />}
+              </button>
+            </div>
+            <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: '5px 2px 0', lineHeight: 1.4 }}>
+              AI reads your current code + last execution output. Shift+Enter for new line.
+            </p>
+          </>
+        )}
       </div>
     </div>
   )

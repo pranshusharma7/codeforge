@@ -11,6 +11,7 @@ import {
   CheckIcon,
   XIcon,
   TrashIcon,
+  GithubIcon,
 } from './icons'
 
 export interface AIMessage {
@@ -542,57 +543,43 @@ export default function AIAppPanel({
               </span>
               <span>•</span>
               <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                @{effectiveDisplayName}
+                {isSignedIn ? `@${effectiveDisplayName}` : 'Sign in to continue'}
               </span>
-              {!isSignedIn && (
-                <button
-                  onClick={onOpenGitHubAuth}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    color: 'var(--accent)',
-                    cursor: 'pointer',
-                    fontSize: 10,
-                    textDecoration: 'underline',
-                    padding: 0,
-                  }}
-                >
-                  (Sign in with GitHub)
-                </button>
-              )}
             </div>
           </div>
         </div>
 
         {/* Right Actions */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
-          <button
-            onClick={handleClearChat}
-            title="Reset Conversation"
-            style={{
-              padding: '5px 8px',
-              borderRadius: 6,
-              background: 'var(--bg-card)',
-              border: '1px solid var(--border)',
-              color: 'var(--text-muted)',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 4,
-              fontSize: 11,
-              transition: 'all 0.15s ease',
-            }}
-            onMouseEnter={e => {
-              e.currentTarget.style.color = 'var(--text-base)'
-              e.currentTarget.style.background = 'var(--bg-hover)'
-            }}
-            onMouseLeave={e => {
-              e.currentTarget.style.color = 'var(--text-muted)'
-              e.currentTarget.style.background = 'var(--bg-card)'
-            }}
-          >
-            <TrashIcon size={12} />
-          </button>
+          {isSignedIn && (
+            <button
+              onClick={handleClearChat}
+              title="Reset Conversation"
+              style={{
+                padding: '5px 8px',
+                borderRadius: 6,
+                background: 'var(--bg-card)',
+                border: '1px solid var(--border)',
+                color: 'var(--text-muted)',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 4,
+                fontSize: 11,
+                transition: 'all 0.15s ease',
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.color = 'var(--text-base)'
+                e.currentTarget.style.background = 'var(--bg-hover)'
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.color = 'var(--text-muted)'
+                e.currentTarget.style.background = 'var(--bg-card)'
+              }}
+            >
+              <TrashIcon size={12} />
+            </button>
+          )}
 
           <button
             onClick={onClose}
@@ -616,323 +603,506 @@ export default function AIAppPanel({
         </div>
       </div>
 
-      {!isSignedIn && (
+      {!isSignedIn ? (
         <div
           style={{
-            padding: '10px 14px',
-            background: 'var(--accent-subtle)',
-            borderBottom: '1px solid var(--accent-border)',
-            color: 'var(--text-base)',
-            fontSize: 11,
+            flex: 1,
+            overflowY: 'auto',
+            padding: '32px 20px',
             display: 'flex',
+            flexDirection: 'column',
             alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 10,
+            justifyContent: 'center',
+            textAlign: 'center',
+            background: 'var(--bg-app)',
           }}
         >
-          <span>Sign in with GitHub to use CodeForge AI. Each GitHub account gets 20 requests per month.</span>
-          <button className="btn btn-primary" onClick={onOpenGitHubAuth} style={{ padding: '4px 9px', flexShrink: 0 }}>
-            Sign in
-          </button>
-        </div>
-      )}
-
-      {usageError && isSignedIn && (
-        <div style={{ padding: '8px 14px', color: '#fca5a5', background: 'rgba(239, 68, 68, 0.1)', fontSize: 11 }}>
-          {usageError}
-        </div>
-      )}
-
-      {/* ── Quota Alert Banner ──────────────────────────────────────────────── */}
-      {isQuotaExceeded && (
-        <div
-          style={{
-            padding: '8px 14px',
-            background: 'rgba(239, 68, 68, 0.12)',
-            borderBottom: '1px solid rgba(239, 68, 68, 0.25)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            fontSize: 11.5,
-            color: '#ef4444',
-          }}
-        >
-          <span>Monthly limit reached ({maxFreeAI}/{maxFreeAI}). Your requests reset next month.</span>
-        </div>
-      )}
-
-      {/* ── Quick Action Command Bar ────────────────────────────────────────── */}
-      <div
-        style={{
-          display: 'flex',
-          gap: 6,
-          padding: '7px 12px',
-          borderBottom: '1px solid var(--border)',
-          background: 'var(--bg-app)',
-          overflowX: 'auto',
-          flexShrink: 0,
-        }}
-      >
-        {[
-          { label: '/fix', desc: 'Fix Bugs', icon: <BugIcon size={12} />, prompt: `Analyze and fix all errors, syntax bugs, and runtime exceptions in ${curTab.name}. Provide the complete corrected code.` },
-          { label: '/review', desc: 'Review Code', icon: <ReviewIcon size={12} />, prompt: `Perform a thorough, senior-level code review of ${curTab.name}. Evaluate code quality, logic errors, architectural patterns, and performance.` },
-          { label: '/optimize', desc: 'Optimize Big-O', icon: <span>⚡</span>, prompt: `Optimize the algorithmic Time and Space complexity of ${curTab.name}. State Big-O before and after, with a complete optimized implementation.` },
-          { label: '/tests', desc: 'Write Tests', icon: <span>🧪</span>, prompt: `Write comprehensive unit tests with edge cases and happy paths for ${curTab.name}.` },
-          { label: '/explain', desc: 'Deep Dive', icon: <span>💡</span>, prompt: `Explain step-by-step how ${curTab.name} works, its control flow, and edge cases in clear detail.` },
-        ].map(item => (
-          <button
-            key={item.label}
-            className="ai-quick-chip"
-            disabled={isThinking || isQuotaExceeded || !isSignedIn || usageLoading || Boolean(usageError)}
-            onClick={() => handleSendMessage(item.prompt)}
-            style={{
-              padding: '4px 9px',
-              borderRadius: 6,
-              background: 'var(--bg-card)',
-              border: '1px solid var(--border)',
-              color: 'var(--text-base)',
-              fontSize: 11,
-              fontWeight: 500,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 5,
-              whiteSpace: 'nowrap',
-              cursor: isThinking || isQuotaExceeded || !isSignedIn || usageLoading || Boolean(usageError) ? 'not-allowed' : 'pointer',
-              flexShrink: 0,
-            }}
-          >
-            <span style={{ color: 'var(--accent)' }}>{item.icon}</span>
-            <span>{item.desc}</span>
-          </button>
-        ))}
-      </div>
-
-      {/* ── Chat Messages Stream ───────────────────────────────────────────── */}
-      <div
-        style={{
-          flex: 1,
-          overflowY: 'auto',
-          padding: '14px 16px',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 16,
-          background: 'var(--bg-app)',
-        }}
-      >
-        {messages.map(msg => {
-          const isUser = msg.role === 'user'
-          return (
-            <div
-              key={msg.id}
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: isUser ? 'flex-end' : 'flex-start',
-                width: '100%',
-              }}
-            >
-              {/* Message Header (Logo/Badge + Timestamp) */}
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  fontSize: 10.5,
-                  color: 'var(--text-dim)',
-                  marginBottom: 4,
-                  padding: '0 4px',
-                }}
-              >
-                {!isUser ? (
-                  <>
-                    <img
-                      src={logoImg}
-                      alt="CodeForge AI"
-                      style={{ width: 13, height: 13, objectFit: 'contain' }}
-                    />
-                    <span style={{ fontWeight: 600, color: 'var(--accent)' }}>
-                      CodeForge AI
-                    </span>
-                  </>
-                ) : (
-                  <span style={{ fontWeight: 600, color: 'var(--text-muted)' }}>@{effectiveDisplayName}</span>
-                )}
-                <span>•</span>
-                <span>{new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-              </div>
-
-              {/* Message Bubble Card */}
-              <div
-                style={{
-                  maxWidth: isUser ? '88%' : '100%',
-                  width: isUser ? 'auto' : '100%',
-                  padding: isUser ? '10px 14px' : '12px 14px',
-                  borderRadius: isUser ? '14px 14px 2px 14px' : '10px',
-                  background: isUser ? 'var(--accent-subtle)' : 'var(--bg-card)',
-                  border: isUser ? '1px solid var(--accent-border)' : '1px solid var(--border)',
-                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
-                }}
-              >
-                {renderMessageContent(msg.content, msg.id)}
-              </div>
-            </div>
-          )
-        })}
-
-        {/* Thinking / Synthesizing State */}
-        {isThinking && (
+          {/* Visual Logo / Badge */}
           <div
             style={{
-              padding: '12px 14px',
-              borderRadius: 10,
-              background: 'var(--bg-card)',
-              border: '1px solid var(--border)',
+              position: 'relative',
+              marginBottom: 18,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <div
+              style={{
+                width: 72,
+                height: 72,
+                borderRadius: '50%',
+                background: 'var(--accent)',
+                opacity: 0.18,
+                position: 'absolute',
+                filter: 'blur(16px)',
+              }}
+            />
+            <div
+              style={{
+                width: 58,
+                height: 58,
+                borderRadius: 14,
+                background: 'var(--bg-card)',
+                border: '1px solid var(--border)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: '0 8px 24px rgba(0, 0, 0, 0.25)',
+                position: 'relative',
+              }}
+            >
+              <img
+                src={logoImg}
+                alt="CodeForge AI"
+                style={{ width: 28, height: 28, objectFit: 'contain' }}
+              />
+              <div
+                style={{
+                  position: 'absolute',
+                  bottom: -6,
+                  right: -6,
+                  width: 22,
+                  height: 22,
+                  borderRadius: '50%',
+                  background: '#24292f',
+                  border: '2px solid var(--bg-card)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#fff',
+                }}
+              >
+                <GithubIcon size={12} />
+              </div>
+            </div>
+          </div>
+
+          <h3
+            style={{
+              fontSize: 16,
+              fontWeight: 700,
+              color: 'var(--text-base)',
+              marginBottom: 6,
+              letterSpacing: '-0.01em',
+            }}
+          >
+            Unlock CodeForge AI
+          </h3>
+
+          <p
+            style={{
+              fontSize: 12,
+              lineHeight: 1.55,
+              color: 'var(--text-muted)',
+              maxWidth: 290,
+              marginBottom: 18,
+            }}
+          >
+            Sign in with your GitHub account to access AI code generation, bug fixing, and real-time pair programming.
+          </p>
+
+          {/* Quota Feature Card */}
+          <div
+            style={{
+              width: '100%',
+              maxWidth: 300,
+              padding: '10px 14px',
+              borderRadius: 8,
+              background: 'var(--accent-subtle)',
+              border: '1px solid var(--accent-border)',
               display: 'flex',
               alignItems: 'center',
               gap: 10,
-              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
+              marginBottom: 20,
+              textAlign: 'left',
             }}
           >
-            <SpinnerIcon size={16} className="text-sky-400" />
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--accent)', display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span>Synthesizing code solution...</span>
+            <div style={{ fontSize: 18, lineHeight: 1 }}>🎁</div>
+            <div>
+              <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-base)' }}>
+                {maxFreeAI} Free AI Requests / Month
               </div>
-              <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>
-                Analyzing context in {curTab.name} • Gemini 2.5 Flash
+              <div style={{ fontSize: 10.5, color: 'var(--text-muted)', marginTop: 2 }}>
+                Quota is tracked per GitHub account and resets on the 1st of every month.
               </div>
             </div>
           </div>
-        )}
 
-        <div ref={messagesEndRef} />
-      </div>
-
-      {/* ── Composer Box ──────────────────────────────────────────────────── */}
-      <div
-        style={{
-          padding: '10px 14px 14px',
-          borderTop: '1px solid var(--border)',
-          background: 'var(--bg-header)',
-          flexShrink: 0,
-        }}
-      >
-        <div
-          className="ai-composer-box"
-          style={{
-            background: 'var(--bg-card)',
-            border: '1px solid var(--border)',
-            borderRadius: 10,
-            padding: '10px 12px',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 8,
-          }}
-        >
-          {/* Active Context Chip Bar */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 11 }}>
-            <button
-              onClick={() => setActiveTabContext(p => !p)}
-              style={{
-                background: activeTabContext ? 'var(--accent-subtle)' : 'var(--bg-hover)',
-                border: `1px solid ${activeTabContext ? 'var(--accent-border)' : 'var(--border)'}`,
-                borderRadius: 5,
-                color: activeTabContext ? 'var(--accent)' : 'var(--text-muted)',
-                padding: '2px 8px',
-                fontSize: 10.5,
-                fontWeight: 600,
-                display: 'flex',
-                alignItems: 'center',
-                gap: 5,
-                cursor: 'pointer',
-              }}
-              title="Toggle active file context"
-            >
-              <span>📄 #{curTab.name || 'main.py'}</span>
-              <span style={{ fontSize: 9, opacity: 0.8 }}>({activeTabContext ? 'Active' : 'Muted'})</span>
-            </button>
-
-            <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>
-              {!isSignedIn ? 'Sign in required' : usageLoading ? 'Checking usage…' : `${remainingQueries} requests left this month`}
-            </span>
-          </div>
-
-          {/* Smooth Textarea */}
-          <textarea
-            ref={inputRef}
-            rows={2}
-            value={inputPrompt}
-            placeholder={
-              !isSignedIn
-                ? 'Sign in with GitHub to use CodeForge AI...'
-                : isQuotaExceeded
-                ? 'Monthly request limit reached. Resets next month.'
-                : usageError
-                ? 'AI usage is unavailable right now.'
-                : 'Ask CodeForge AI anything, /fix, /optimize, /explain...'
-            }
-            disabled={!isSignedIn || isQuotaExceeded || usageLoading || Boolean(usageError)}
-            onChange={e => setInputPrompt(e.target.value)}
-            onKeyDown={e => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault()
-                handleSendMessage()
-              }
+          {/* Continue with GitHub Button */}
+          <button
+            className="btn btn-primary"
+            onClick={onOpenGitHubAuth}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+              padding: '10px 22px',
+              fontSize: 13,
+              fontWeight: 600,
+              borderRadius: 8,
+              width: '100%',
+              maxWidth: 300,
+              cursor: 'pointer',
+              boxShadow: '0 4px 14px var(--accent-subtle)',
+              marginBottom: 20,
             }}
+          >
+            <GithubIcon size={16} />
+            <span>Continue with GitHub</span>
+          </button>
+
+          {/* Feature Highlights Grid */}
+          <div
             style={{
               width: '100%',
-              background: 'transparent',
-              border: 'none',
-              outline: 'none',
-              color: 'var(--text-base)',
-              fontSize: 12.5,
-              fontFamily: 'inherit',
-              lineHeight: 1.5,
-              resize: 'none',
-              padding: 0,
+              maxWidth: 300,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 7,
+              textAlign: 'left',
             }}
-          />
+          >
+            {[
+              { icon: '🐛', title: 'Fix Code & Syntax Bugs', desc: 'Pinpoint runtime errors and fix code in 1-click' },
+              { icon: '⚡', title: 'Optimize Complexity', desc: 'Improve algorithmic Big-O time and space' },
+              { icon: '🔍', title: 'Senior Code Review', desc: 'Architecture, clean code standards, and patterns' },
+              { icon: '🧪', title: 'Unit Test Generation', desc: 'Auto-generate comprehensive test suites' },
+            ].map(f => (
+              <div
+                key={f.title}
+                style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: 8,
+                  padding: '7px 10px',
+                  borderRadius: 6,
+                  background: 'var(--bg-card)',
+                  border: '1px solid var(--border)',
+                  fontSize: 11,
+                }}
+              >
+                <span style={{ fontSize: 13, flexShrink: 0 }}>{f.icon}</span>
+                <div>
+                  <span style={{ fontWeight: 600, color: 'var(--text-base)' }}>{f.title}: </span>
+                  <span style={{ color: 'var(--text-muted)' }}>{f.desc}</span>
+                </div>
+              </div>
+            ))}
+          </div>
 
-          {/* Composer Footer Actions */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 4 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 10, color: 'var(--text-dim)' }}>
-              <span style={{ padding: '1px 5px', borderRadius: 4, background: 'var(--bg-hover)', border: '1px solid var(--border)' }}>
-                ↵ Enter to send
-              </span>
-              <span style={{ padding: '1px 5px', borderRadius: 4, background: 'var(--bg-hover)', border: '1px solid var(--border)' }}>
-                Shift+↵ New line
-              </span>
-            </div>
-
-            <button
-              disabled={!inputPrompt.trim() || isThinking || isQuotaExceeded || !isSignedIn || usageLoading || Boolean(usageError)}
-              onClick={() => handleSendMessage()}
-              style={{
-                width: 32,
-                height: 32,
-                borderRadius: '50%',
-                background:
-                  inputPrompt.trim() && !isThinking && !isQuotaExceeded && isSignedIn && !usageLoading && !usageError
-                    ? 'var(--accent)'
-                    : 'var(--bg-hover)',
-                color: inputPrompt.trim() && !isThinking && !isQuotaExceeded && isSignedIn && !usageLoading && !usageError ? '#ffffff' : 'var(--text-dim)',
-                border: 'none',
-                cursor: inputPrompt.trim() && !isThinking && !isQuotaExceeded && isSignedIn && !usageLoading && !usageError ? 'pointer' : 'not-allowed',
-                display: 'grid',
-                placeItems: 'center',
-                boxShadow:
-                  inputPrompt.trim() && !isThinking && !isQuotaExceeded && isSignedIn && !usageLoading && !usageError
-                    ? '0 0 10px var(--accent-subtle)'
-                    : 'none',
-                transition: 'all 0.15s ease',
-              }}
-              title="Send to CodeForge AI"
-            >
-              <SendIcon size={14} />
-            </button>
+          <div
+            style={{
+              fontSize: 10,
+              color: 'var(--text-dim)',
+              marginTop: 18,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4,
+            }}
+          >
+            <span>🔒 Secure GitHub Device Flow. No passwords stored.</span>
           </div>
         </div>
-      </div>
+      ) : (
+        <>
+          {usageError && (
+            <div style={{ padding: '8px 14px', color: '#fca5a5', background: 'rgba(239, 68, 68, 0.1)', fontSize: 11 }}>
+              {usageError}
+            </div>
+          )}
+
+          {/* ── Quota Alert Banner ──────────────────────────────────────────────── */}
+          {isQuotaExceeded && (
+            <div
+              style={{
+                padding: '8px 14px',
+                background: 'rgba(239, 68, 68, 0.12)',
+                borderBottom: '1px solid rgba(239, 68, 68, 0.25)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                fontSize: 11.5,
+                color: '#ef4444',
+              }}
+            >
+              <span>Monthly limit reached ({maxFreeAI}/{maxFreeAI}). Your requests reset next month.</span>
+            </div>
+          )}
+
+          {/* ── Quick Action Command Bar ────────────────────────────────────────── */}
+          <div
+            style={{
+              display: 'flex',
+              gap: 6,
+              padding: '7px 12px',
+              borderBottom: '1px solid var(--border)',
+              background: 'var(--bg-app)',
+              overflowX: 'auto',
+              flexShrink: 0,
+            }}
+          >
+            {[
+              { label: '/fix', desc: 'Fix Bugs', icon: <BugIcon size={12} />, prompt: `Analyze and fix all errors, syntax bugs, and runtime exceptions in ${curTab.name}. Provide the complete corrected code.` },
+              { label: '/review', desc: 'Review Code', icon: <ReviewIcon size={12} />, prompt: `Perform a thorough, senior-level code review of ${curTab.name}. Evaluate code quality, logic errors, architectural patterns, and performance.` },
+              { label: '/optimize', desc: 'Optimize Big-O', icon: <span>⚡</span>, prompt: `Optimize the algorithmic Time and Space complexity of ${curTab.name}. State Big-O before and after, with a complete optimized implementation.` },
+              { label: '/tests', desc: 'Write Tests', icon: <span>🧪</span>, prompt: `Write comprehensive unit tests with edge cases and happy paths for ${curTab.name}.` },
+              { label: '/explain', desc: 'Deep Dive', icon: <span>💡</span>, prompt: `Explain step-by-step how ${curTab.name} works, its control flow, and edge cases in clear detail.` },
+            ].map(item => (
+              <button
+                key={item.label}
+                className="ai-quick-chip"
+                disabled={isThinking || isQuotaExceeded || usageLoading || Boolean(usageError)}
+                onClick={() => handleSendMessage(item.prompt)}
+                style={{
+                  padding: '4px 9px',
+                  borderRadius: 6,
+                  background: 'var(--bg-card)',
+                  border: '1px solid var(--border)',
+                  color: 'var(--text-base)',
+                  fontSize: 11,
+                  fontWeight: 500,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 5,
+                  whiteSpace: 'nowrap',
+                  cursor: isThinking || isQuotaExceeded || usageLoading || Boolean(usageError) ? 'not-allowed' : 'pointer',
+                  flexShrink: 0,
+                }}
+              >
+                <span style={{ color: 'var(--accent)' }}>{item.icon}</span>
+                <span>{item.desc}</span>
+              </button>
+            ))}
+          </div>
+
+          {/* ── Chat Messages Stream ───────────────────────────────────────────── */}
+          <div
+            style={{
+              flex: 1,
+              overflowY: 'auto',
+              padding: '14px 16px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 16,
+              background: 'var(--bg-app)',
+            }}
+          >
+            {messages.map(msg => {
+              const isUser = msg.role === 'user'
+              return (
+                <div
+                  key={msg.id}
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: isUser ? 'flex-end' : 'flex-start',
+                    width: '100%',
+                  }}
+                >
+                  {/* Message Header (Logo/Badge + Timestamp) */}
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      fontSize: 10.5,
+                      color: 'var(--text-dim)',
+                      marginBottom: 4,
+                      padding: '0 4px',
+                    }}
+                  >
+                    {!isUser ? (
+                      <>
+                        <img
+                          src={logoImg}
+                          alt="CodeForge AI"
+                          style={{ width: 13, height: 13, objectFit: 'contain' }}
+                        />
+                        <span style={{ fontWeight: 600, color: 'var(--accent)' }}>
+                          CodeForge AI
+                        </span>
+                      </>
+                    ) : (
+                      <span style={{ fontWeight: 600, color: 'var(--text-muted)' }}>@{effectiveDisplayName}</span>
+                    )}
+                    <span>•</span>
+                    <span>{new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                  </div>
+
+                  {/* Message Bubble Card */}
+                  <div
+                    style={{
+                      maxWidth: isUser ? '88%' : '100%',
+                      width: isUser ? 'auto' : '100%',
+                      padding: isUser ? '10px 14px' : '12px 14px',
+                      borderRadius: isUser ? '14px 14px 2px 14px' : '10px',
+                      background: isUser ? 'var(--accent-subtle)' : 'var(--bg-card)',
+                      border: isUser ? '1px solid var(--accent-border)' : '1px solid var(--border)',
+                      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
+                    }}
+                  >
+                    {renderMessageContent(msg.content, msg.id)}
+                  </div>
+                </div>
+              )
+            })}
+
+            {/* Thinking / Synthesizing State */}
+            {isThinking && (
+              <div
+                style={{
+                  padding: '12px 14px',
+                  borderRadius: 10,
+                  background: 'var(--bg-card)',
+                  border: '1px solid var(--border)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
+                }}
+              >
+                <SpinnerIcon size={16} className="text-sky-400" />
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--accent)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span>Synthesizing code solution...</span>
+                  </div>
+                  <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>
+                    Analyzing context in {curTab.name} • Gemini 2.5 Flash
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div ref={messagesEndRef} />
+          </div>
+
+          {/* ── Composer Box ──────────────────────────────────────────────────── */}
+          <div
+            style={{
+              padding: '10px 14px 14px',
+              borderTop: '1px solid var(--border)',
+              background: 'var(--bg-header)',
+              flexShrink: 0,
+            }}
+          >
+            <div
+              className="ai-composer-box"
+              style={{
+                background: 'var(--bg-card)',
+                border: '1px solid var(--border)',
+                borderRadius: 10,
+                padding: '10px 12px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 8,
+              }}
+            >
+              {/* Active Context Chip Bar */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 11 }}>
+                <button
+                  onClick={() => setActiveTabContext(p => !p)}
+                  style={{
+                    background: activeTabContext ? 'var(--accent-subtle)' : 'var(--bg-hover)',
+                    border: `1px solid ${activeTabContext ? 'var(--accent-border)' : 'var(--border)'}`,
+                    borderRadius: 5,
+                    color: activeTabContext ? 'var(--accent)' : 'var(--text-muted)',
+                    padding: '2px 8px',
+                    fontSize: 10.5,
+                    fontWeight: 600,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 5,
+                    cursor: 'pointer',
+                  }}
+                  title="Toggle active file context"
+                >
+                  <span>📄 #{curTab.name || 'main.py'}</span>
+                  <span style={{ fontSize: 9, opacity: 0.8 }}>({activeTabContext ? 'Active' : 'Muted'})</span>
+                </button>
+
+                <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>
+                  {usageLoading ? 'Checking usage…' : `${remainingQueries} requests left this month`}
+                </span>
+              </div>
+
+              {/* Smooth Textarea */}
+              <textarea
+                ref={inputRef}
+                rows={2}
+                value={inputPrompt}
+                placeholder={
+                  isQuotaExceeded
+                    ? 'Monthly request limit reached. Resets next month.'
+                    : usageError
+                    ? 'AI usage is unavailable right now.'
+                    : 'Ask CodeForge AI anything, /fix, /optimize, /explain...'
+                }
+                disabled={isQuotaExceeded || usageLoading || Boolean(usageError)}
+                onChange={e => setInputPrompt(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault()
+                    handleSendMessage()
+                  }
+                }}
+                style={{
+                  width: '100%',
+                  background: 'transparent',
+                  border: 'none',
+                  outline: 'none',
+                  color: 'var(--text-base)',
+                  fontSize: 12.5,
+                  fontFamily: 'inherit',
+                  lineHeight: 1.5,
+                  resize: 'none',
+                  padding: 0,
+                }}
+              />
+
+              {/* Composer Footer Actions */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 4 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 10, color: 'var(--text-dim)' }}>
+                  <span style={{ padding: '1px 5px', borderRadius: 4, background: 'var(--bg-hover)', border: '1px solid var(--border)' }}>
+                    ↵ Enter to send
+                  </span>
+                  <span style={{ padding: '1px 5px', borderRadius: 4, background: 'var(--bg-hover)', border: '1px solid var(--border)' }}>
+                    Shift+↵ New line
+                  </span>
+                </div>
+
+                <button
+                  disabled={!inputPrompt.trim() || isThinking || isQuotaExceeded || usageLoading || Boolean(usageError)}
+                  onClick={() => handleSendMessage()}
+                  style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: '50%',
+                    background:
+                      inputPrompt.trim() && !isThinking && !isQuotaExceeded && !usageLoading && !usageError
+                        ? 'var(--accent)'
+                        : 'var(--bg-hover)',
+                    color: inputPrompt.trim() && !isThinking && !isQuotaExceeded && !usageLoading && !usageError ? '#ffffff' : 'var(--text-dim)',
+                    border: 'none',
+                    cursor: inputPrompt.trim() && !isThinking && !isQuotaExceeded && !usageLoading && !usageError ? 'pointer' : 'not-allowed',
+                    display: 'grid',
+                    placeItems: 'center',
+                    boxShadow:
+                      inputPrompt.trim() && !isThinking && !isQuotaExceeded && !usageLoading && !usageError
+                        ? '0 0 10px var(--accent-subtle)'
+                        : 'none',
+                    transition: 'all 0.15s ease',
+                  }}
+                  title="Send to CodeForge AI"
+                >
+                  <SendIcon size={14} />
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   )
 }
