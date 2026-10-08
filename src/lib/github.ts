@@ -275,7 +275,11 @@ export async function getGitHubRepositories(
   username?: string
 ): Promise<GitHubRepository[]> {
   const cleanToken = token?.trim()
-  const cleanUsername = username?.trim() || 'pranshusharma7'
+  const cleanUsername = username?.trim()
+
+  if (!cleanToken && !cleanUsername) {
+    return []
+  }
 
   // 1. Try authenticated user repos if token is present
   if (cleanToken) {
@@ -286,16 +290,16 @@ export async function getGitHubRepositories(
       )
       if (response.ok) {
         const repos = (await response.json()) as GitHubRepository[]
-        if (Array.isArray(repos) && repos.length > 0) {
+        if (Array.isArray(repos)) {
           return repos
         }
       }
     } catch {
-      // Continue to public username fallback
+      // Continue to public username fallback if provided
     }
   }
 
-  // 2. Fetch public repos for the given username or default 'pranshusharma7'
+  // 2. Fetch public repos for the given username if provided
   if (cleanUsername) {
     try {
       const pubRes = await fetch(
@@ -304,16 +308,16 @@ export async function getGitHubRepositories(
       )
       if (pubRes.ok) {
         const repos = (await pubRes.json()) as GitHubRepository[]
-        if (Array.isArray(repos) && repos.length > 0) {
+        if (Array.isArray(repos)) {
           return repos
         }
       }
     } catch {
-      // Continue to sample repos fallback
+      // Continue
     }
   }
 
-  return SAMPLE_DEV_REPOSITORIES
+  return []
 }
 
 export async function createGitHubRepository(

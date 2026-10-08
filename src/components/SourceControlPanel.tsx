@@ -59,6 +59,7 @@ interface Props {
   ) => void
   onCommitSuccess: (tabId: string, newSha: string, commitUrl: string, commitSha: string) => void
   onConnectGitHub: () => void
+  onSignOut?: () => void
   onRefreshRepos: () => void
   showToast: (msg: string) => void
   autoSyncEnabled?: boolean
@@ -79,6 +80,7 @@ export default function SourceControlPanel({
   onImportMultipleFiles,
   onCommitSuccess,
   onConnectGitHub,
+  onSignOut,
   onRefreshRepos,
   showToast,
   autoSyncEnabled,
@@ -342,44 +344,105 @@ export default function SourceControlPanel({
     }
   }
 
-  if (!authUser && repositories.length === 0) {
+  if (!authUser || !authUser.accessToken) {
     return (
-      <div style={{ padding: '16px 12px', flex: 1, overflowY: 'auto' }}>
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          height: '100%',
+          padding: '24px 14px',
+          textAlign: 'center',
+          overflowY: 'auto',
+        }}
+      >
         <div
           style={{
             background: 'var(--bg-card)',
             border: '1px solid var(--border)',
-            borderRadius: 8,
-            padding: '16px 14px',
-            textAlign: 'center',
+            borderRadius: 12,
+            padding: '26px 18px',
+            width: '100%',
+            maxWidth: 340,
+            boxShadow: '0 8px 24px rgba(0, 0, 0, 0.2)',
           }}
         >
+          {/* GitHub Octocat Icon */}
           <div
             style={{
-              width: 36,
-              height: 36,
+              width: 54,
+              height: 54,
               borderRadius: '50%',
-              background: 'var(--bg-hover)',
-              color: 'var(--accent)',
+              background: 'linear-gradient(135deg, rgba(35, 134, 54, 0.2) 0%, rgba(56, 189, 248, 0.15) 100%)',
+              border: '1px solid rgba(35, 134, 54, 0.4)',
+              color: 'var(--text-base)',
               display: 'grid',
               placeItems: 'center',
-              margin: '0 auto 10px',
+              margin: '0 auto 14px',
             }}
           >
-            <GitCommitIcon size={20} />
+            <svg width="28" height="28" viewBox="0 0 16 16" fill="currentColor">
+              <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z" />
+            </svg>
           </div>
-          <div style={{ color: 'var(--text-base)', fontWeight: 600, fontSize: 13, marginBottom: 4 }}>
-            Source Control & GitHub
+
+          <div style={{ color: 'var(--text-base)', fontWeight: 700, fontSize: 16, marginBottom: 6 }}>
+            Connect GitHub
           </div>
-          <p style={{ color: 'var(--text-muted)', fontSize: 11, lineHeight: 1.5, marginBottom: 14 }}>
-            Authorize with GitHub to view your repositories, edit code, and sync changes.
+          <p style={{ color: 'var(--text-muted)', fontSize: 12, lineHeight: 1.5, marginBottom: 18 }}>
+            Connect your GitHub account to access your repositories, browse source code, and commit directly from CodeForge.
           </p>
+
+          {/* Feature checklist */}
+          <div
+            style={{
+              background: 'var(--bg-app)',
+              border: '1px solid var(--border)',
+              borderRadius: 8,
+              padding: '10px 12px',
+              textAlign: 'left',
+              marginBottom: 18,
+              fontSize: 11,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 7,
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 7, color: 'var(--text-base)' }}>
+              <span style={{ color: '#2ea043', fontSize: 13, fontWeight: 700 }}>✓</span>
+              <span>Load your private & public repositories</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 7, color: 'var(--text-base)' }}>
+              <span style={{ color: '#2ea043', fontSize: 13, fontWeight: 700 }}>✓</span>
+              <span>Commit & push code directly</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 7, color: 'var(--text-base)' }}>
+              <span style={{ color: '#2ea043', fontSize: 13, fontWeight: 700 }}>✓</span>
+              <span>Live background code synchronization</span>
+            </div>
+          </div>
+
           <button
             onClick={onConnectGitHub}
             className="btn btn-primary"
-            style={{ width: '100%', justifyContent: 'center', fontSize: 12, padding: '7px 12px' }}
+            style={{
+              width: '100%',
+              justifyContent: 'center',
+              fontSize: 13,
+              fontWeight: 600,
+              padding: '9px 14px',
+              background: 'linear-gradient(135deg, #238636 0%, #2ea043 100%)',
+              boxShadow: '0 4px 14px rgba(35, 134, 54, 0.3)',
+              gap: 8,
+              cursor: 'pointer',
+            }}
           >
-            Authorize with GitHub
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+              <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z" />
+            </svg>
+            Connect GitHub
           </button>
         </div>
       </div>
@@ -391,38 +454,83 @@ export default function SourceControlPanel({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflowY: 'auto', padding: '10px 12px' }}>
-      {!authUser && (
-        <div
-          style={{
-            background: 'rgba(56, 189, 248, 0.08)',
-            border: '1px solid rgba(56, 189, 248, 0.25)',
-            borderRadius: 6,
-            padding: '8px 10px',
-            marginBottom: 10,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            fontSize: 11,
-          }}
-        >
-          <span style={{ color: 'var(--accent)', fontWeight: 500 }}>GitHub Public Viewer</span>
+      {/* ── Connected User Account Status Bar ────────────────────────────── */}
+      <div
+        style={{
+          background: 'rgba(35, 134, 54, 0.08)',
+          border: '1px solid rgba(35, 134, 54, 0.28)',
+          borderRadius: 8,
+          padding: '8px 10px',
+          marginBottom: 12,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          fontSize: 11,
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+          {authUser.avatarUrl ? (
+            <img
+              src={authUser.avatarUrl}
+              alt=""
+              style={{ width: 22, height: 22, borderRadius: '50%', flexShrink: 0, border: '1px solid var(--border)' }}
+            />
+          ) : (
+            <div
+              style={{
+                width: 22,
+                height: 22,
+                borderRadius: '50%',
+                background: '#238636',
+                color: '#fff',
+                fontSize: 10,
+                fontWeight: 700,
+                display: 'grid',
+                placeItems: 'center',
+                flexShrink: 0,
+              }}
+            >
+              {authUser.initials || 'GH'}
+            </div>
+          )}
+          <div style={{ minWidth: 0 }}>
+            <div
+              style={{
+                fontWeight: 600,
+                color: 'var(--text-base)',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+                fontSize: 12,
+              }}
+            >
+              @{authUser.login || authUser.name}
+            </div>
+            <div style={{ fontSize: 9.5, color: '#2ea043', display: 'flex', alignItems: 'center', gap: 4 }}>
+              <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#2ea043', display: 'inline-block' }}></span>
+              Connected
+            </div>
+          </div>
+        </div>
+
+        {onSignOut && (
           <button
-            onClick={onConnectGitHub}
+            onClick={onSignOut}
+            title="Disconnect GitHub account"
             style={{
-              background: 'linear-gradient(135deg, #238636 0%, #2ea043 100%)',
-              color: '#fff',
+              background: 'transparent',
               border: 'none',
-              borderRadius: 4,
-              padding: '3px 8px',
-              fontSize: 10,
-              fontWeight: 600,
+              color: 'var(--text-muted)',
               cursor: 'pointer',
+              fontSize: 10,
+              padding: '2px 6px',
+              textDecoration: 'underline',
             }}
           >
-            Sign in to Commit
+            Disconnect
           </button>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* ── Active Repository Selector ─────────────────────────────────── */}
       <div style={{ marginBottom: 12 }}>
@@ -452,25 +560,71 @@ export default function SourceControlPanel({
           </div>
         </div>
 
-        <select
-          value={activeRepo?.id || ''}
-          onChange={e => {
-            const chosen = repositories.find(r => r.id === Number(e.target.value))
-            setActiveRepo(chosen || null)
-            setTreeItems([])
-            setShowFileTree(false)
-          }}
-          className="ide-input"
-          style={{ width: '100%', fontSize: 11, padding: '6px 8px', cursor: 'pointer' }}
-        >
-          <option value="">Select a repository ({repositories.length} available)...</option>
-          {repositories.map(r => (
-            <option key={r.id} value={r.id}>
-              {r.name} {r.private ? '(Private)' : ''}
-            </option>
-          ))}
-        </select>
+        {repositories.length === 0 ? (
+          <div
+            style={{
+              background: 'var(--bg-card)',
+              border: '1px dashed var(--border)',
+              borderRadius: 8,
+              padding: '12px 10px',
+              textAlign: 'center',
+            }}
+          >
+            <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-base)', marginBottom: 3 }}>
+              No repositories found
+            </div>
+            <p style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 6, lineHeight: 1.4 }}>
+              No repositories found on @{authUser.login || authUser.name}.
+            </p>
+            <button
+              onClick={onRefreshRepos}
+              className="btn btn-ghost"
+              style={{ fontSize: 10, padding: '3px 8px', gap: 4, margin: '0 auto' }}
+            >
+              <RefreshIcon size={11} /> Refresh
+            </button>
+          </div>
+        ) : (
+          <select
+            value={activeRepo?.id || ''}
+            onChange={e => {
+              const chosen = repositories.find(r => r.id === Number(e.target.value))
+              setActiveRepo(chosen || null)
+              setTreeItems([])
+              setShowFileTree(false)
+            }}
+            className="ide-input"
+            style={{ width: '100%', fontSize: 11, padding: '6px 8px', cursor: 'pointer' }}
+          >
+            <option value="">Select a repository ({repositories.length} available)...</option>
+            {repositories.map(r => (
+              <option key={r.id} value={r.id}>
+                {r.name} {r.private ? '(Private)' : ''}
+              </option>
+            ))}
+          </select>
+        )}
       </div>
+
+      {!activeRepo && repositories.length > 0 && (
+        <div
+          style={{
+            background: 'var(--bg-card)',
+            border: '1px dashed var(--border)',
+            borderRadius: 8,
+            padding: '14px 12px',
+            textAlign: 'center',
+            marginBottom: 12,
+          }}
+        >
+          <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-base)', marginBottom: 3 }}>
+            Select a Repository
+          </div>
+          <p style={{ fontSize: 10.5, color: 'var(--text-muted)', lineHeight: 1.4 }}>
+            Choose a repository above to explore branches, browse files, and commit changes.
+          </p>
+        </div>
+      )}
 
       {activeRepo && (
         <>

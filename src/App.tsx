@@ -3,7 +3,7 @@ import MonacoEditor, { useMonaco } from '@monaco-editor/react'
 import { LANGUAGES, getLangById } from './lib/languages'
 import { executeCode, statusLabel } from './lib/judge0'
 import type { AIMessage, AIAction } from './lib/aiResponses'
-import { createGitHubRepository, getGitHubRepositories, getGitHubUser, commitOrUpdateRepoFile, type GitHubRepository, SAMPLE_DEV_REPOSITORIES } from './lib/github'
+import { createGitHubRepository, getGitHubRepositories, getGitHubUser, commitOrUpdateRepoFile, type GitHubRepository } from './lib/github'
 import SourceControlPanel, { type TabWithRepo } from './components/SourceControlPanel'
 import SettingsModal from './components/SettingsModal'
 import GitHubAuthModal from './components/GitHubAuthModal'
@@ -499,10 +499,10 @@ export default function App() {
     setAuthUserState(savedUser)
     setSnips(getSnippets(savedUser?.id ?? 'guest'))
 
-    const userToLoad = savedUser?.login || 'pranshusharma7'
+    const userToLoad = savedUser?.login
     const tokenToLoad = savedUser?.accessToken
 
-    if (tokenToLoad) {
+    if (tokenToLoad && userToLoad) {
       getGitHubUser(tokenToLoad)
         .then(profile => {
           if (profile.scopes) {
@@ -512,22 +512,25 @@ export default function App() {
           }
         })
         .catch(() => {})
-    }
 
-    getGitHubRepositories(tokenToLoad, userToLoad)
-      .then(repos => {
-        if (repos && repos.length > 0) {
-          setRepositories(repos)
-          if (!activeRepo) setActiveRepo(repos[0])
-        } else {
-          setRepositories(SAMPLE_DEV_REPOSITORIES)
-          if (!activeRepo) setActiveRepo(SAMPLE_DEV_REPOSITORIES[0])
-        }
-      })
-      .catch(() => {
-        setRepositories(SAMPLE_DEV_REPOSITORIES)
-        if (!activeRepo) setActiveRepo(SAMPLE_DEV_REPOSITORIES[0])
-      })
+      getGitHubRepositories(tokenToLoad, userToLoad)
+        .then(repos => {
+          if (repos && repos.length > 0) {
+            setRepositories(repos)
+            if (!activeRepo) setActiveRepo(repos[0])
+          } else {
+            setRepositories([])
+            setActiveRepo(null)
+          }
+        })
+        .catch(() => {
+          setRepositories([])
+          setActiveRepo(null)
+        })
+    } else {
+      setRepositories([])
+      setActiveRepo(null)
+    }
     const shared = decodeShare()
     if (shared) {
       const lang = getLangById(shared.lang)
@@ -1722,10 +1725,14 @@ export default function App() {
 
   const refreshRepositories = async () => {
     try {
-      const userToLoad = authUser?.login || 'pranshusharma7'
-      const token = authUser?.accessToken
+      if (!authUser?.accessToken) {
+        showToast('Please connect GitHub first')
+        return
+      }
+      const userToLoad = authUser.login || authUser.name
+      const token = authUser.accessToken
       const [profile, repos] = await Promise.all([
-        token ? getGitHubUser(token).catch(() => null) : null,
+        getGitHubUser(token).catch(() => null),
         getGitHubRepositories(token, userToLoad),
       ])
       if (profile?.scopes && authUser) {
@@ -1734,8 +1741,13 @@ export default function App() {
         setAuthUser(updated)
       }
       setRepositories(repos)
-      if (!activeRepo && repos.length > 0) {
-        setActiveRepo(repos[0])
+      if (repos.length > 0) {
+        const stillValid = repos.find(r => r.id === activeRepo?.id)
+        if (!stillValid) {
+          setActiveRepo(repos[0])
+        }
+      } else {
+        setActiveRepo(null)
       }
       showToast(`Synced ${repos.length} repositories from GitHub (@${userToLoad})`)
     } catch (err: any) {
@@ -3813,6 +3825,7 @@ export default function App() {
                   onImportMultipleFiles={handleImportMultipleFilesFromRepo}
                   onCommitSuccess={handleCommitSuccess}
                   onConnectGitHub={() => setShowAuth(true)}
+                  onSignOut={signOut}
                   onRefreshRepos={refreshRepositories}
                   showToast={showToast}
                   autoSyncEnabled={autoSyncEnabled}
