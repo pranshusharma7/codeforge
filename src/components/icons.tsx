@@ -19,6 +19,7 @@ export const HistoryIcon = (p: IconProps) => <I {...p} d="M1 8a7 7 0 1 0 14 0A7 
 export const SettingsIcon= (p: IconProps) => <I {...p} d="M8 10a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm5.3-1.7a5.4 5.4 0 0 0 .1-.3l1.5-.9-1.5-2.6-1.5.9a5.4 5.4 0 0 0-1-.6l-.2-1.8H7.7l-.2 1.8a5.4 5.4 0 0 0-1 .6l-1.5-.9-1.5 2.6 1.5.9a5.4 5.4 0 0 0 0 .6 5.4 5.4 0 0 0 0 .6l-1.5.9 1.5 2.6 1.5-.9a5.4 5.4 0 0 0 1 .6l.2 1.8h3l.2-1.8a5.4 5.4 0 0 0 1-.6l1.5.9 1.5-2.6-1.5-.9a5.4 5.4 0 0 0 .1-.3" />
 export const AIIcon      = (p: IconProps) => <I {...p} d="M9.5 2a4 4 0 0 1 0 8H8l-3 3v-3H4a4 4 0 0 1 0-8h5.5z" />
 export const XIcon       = (p: IconProps) => <I {...p} d="M3 3l10 10M13 3 3 13" />
+export const SearchIcon  = (p: IconProps) => <I {...p} d="M11 11l3.5 3.5M6.5 11a4.5 4.5 0 1 0 0-9 4.5 4.5 0 0 0 0 9z" />
 export const PlusIcon    = (p: IconProps) => <I {...p} d="M8 2v12M2 8h12" />
 export const CopyIcon    = (p: IconProps) => <I {...p} d="M5 3H3a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h7a1 1 0 0 0 1-1v-2M6 1h7a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1z" />
 export const CheckIcon   = (p: IconProps) => <I {...p} d="M2 8l4 4 8-8" />

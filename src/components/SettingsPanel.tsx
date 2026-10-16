@@ -5,9 +5,11 @@ interface Props {
   theme: Theme
   fontSize: number
   wordWrap: boolean
+  autoSaveDisk?: boolean
   onTheme: (t: Theme) => void
   onFontSize: (n: number) => void
   onWordWrap: (v: boolean) => void
+  onAutoSaveDisk?: (v: boolean) => void
 }
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
@@ -19,7 +21,7 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
   )
 }
 
-export default function SettingsPanel({ theme, fontSize, wordWrap, onTheme, onFontSize, onWordWrap }: Props) {
+export default function SettingsPanel({ theme, fontSize, wordWrap, autoSaveDisk = true, onTheme, onFontSize, onWordWrap, onAutoSaveDisk }: Props) {
   return (
     <div style={{ padding: '14px 16px' }}>
       <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 12 }}>Editor Settings</div>
@@ -48,6 +50,14 @@ export default function SettingsPanel({ theme, fontSize, wordWrap, onTheme, onFo
         <button onClick={() => onWordWrap(!wordWrap)}
           style={{ width: 40, height: 22, borderRadius: 11, background: wordWrap ? 'var(--accent)' : 'var(--bg-hover)', border: '1px solid var(--border)', cursor: 'pointer', position: 'relative', transition: 'background 0.2s', padding: 0 }}>
           <div style={{ position: 'absolute', top: 2, left: wordWrap ? 20 : 2, width: 16, height: 16, borderRadius: '50%', background: wordWrap ? '#1e1e2e' : 'var(--text-muted)', transition: 'left 0.2s' }} />
+        </button>
+      </Row>
+
+      <Row label="Auto-Save to Disk">
+        <button onClick={() => onAutoSaveDisk && onAutoSaveDisk(!autoSaveDisk)}
+          title="Auto-saves directly to local computer disk files (VS Code style)"
+          style={{ width: 40, height: 22, borderRadius: 11, background: autoSaveDisk ? '#38bdf8' : 'var(--bg-hover)', border: '1px solid var(--border)', cursor: 'pointer', position: 'relative', transition: 'background 0.2s', padding: 0 }}>
+          <div style={{ position: 'absolute', top: 2, left: autoSaveDisk ? 20 : 2, width: 16, height: 16, borderRadius: '50%', background: autoSaveDisk ? '#0f172a' : 'var(--text-muted)', transition: 'left 0.2s' }} />
         </button>
       </Row>
 

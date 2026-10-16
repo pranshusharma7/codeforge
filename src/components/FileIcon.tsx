@@ -160,6 +160,16 @@ export default function FileIcon({ fileName, name, size = 16, className, style }
     )
   }
 
+  // R / RStudio
+  if (ext === 'r' || ext === 'rmd') {
+    return (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" style={style} className={className}>
+        <rect width="24" height="24" rx="4" fill="#276dc3" fillOpacity="0.2"/>
+        <path d="M12 3C7.03 3 3 7.03 3 12s4.03 9 9 9 9-4.03 9-9-4.03-9-9-9zm1.2 13.5H10.5v-3.2H9.2v3.2H7.2V7.5h4.5c2.4 0 3.9 1.2 3.9 3.2 0 1.5-.9 2.5-2.2 2.9l2.8 3.4zm-1.2-5.4c1 0 1.7-.5 1.7-1.4 0-.9-.7-1.4-1.7-1.4H9.2v2.8H12z" fill="#276dc3"/>
+      </svg>
+    )
+  }
+
   // JSON
   if (ext === 'json') {
     return (

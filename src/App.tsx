@@ -48,12 +48,14 @@ import { getAINextCodeSuggestion } from './extensions/aiHelper'
 import type { Extension } from './extensions/types'
 import { getEditorFontById, DEFAULT_FONT_ID } from './lib/fonts'
 import logoImg from './assets/logo.png'
-import LeetCodeRunner from './components/LeetCodeRunner'
+import PackageInstaller from './components/PackageInstaller'
 import {
   isFileSystemAccessSupported,
   openFilesFromDisk,
   saveToLocalDisk,
+  saveToLocalDiskSafe,
   saveAsLocalDisk,
+  requestDiskFilePermission,
 } from './lib/fileSystemAccess'
 import {
   executeToggleLineComment,
@@ -64,8 +66,8 @@ import {
 
 // ── Types ──────────────────────────────────────────────────────────────────
 type Tab = TabWithRepo
-type Panel = 'explorer' | 'history' | 'source-control' | 'profile' | 'debug'
-type ConsoleTab = 'terminal' | 'testcase' | 'output' | 'aisugg' | 'debug' | 'dsa'
+type Panel = 'explorer' | 'history' | 'source-control' | 'profile' | 'debug' | 'packages'
+type ConsoleTab = 'terminal' | 'testcase' | 'output' | 'aisugg' | 'debug'
 
 // ── Monaco themes registered from src/lib/themes.ts ──────────────────────
 
@@ -108,6 +110,8 @@ const COMMANDS = [
   { id: 'run', label: 'Run Code', detail: 'Execute the active file', key: 'Ctrl Enter', icon: '▶' },
   { id: 'save', label: 'Save File (Ctrl+S)', detail: 'Directly save changes to computer disk file', key: 'Ctrl S', icon: '💾' },
   { id: 'save-as', label: 'Save As... (Choose Location)', detail: 'Save code to a chosen file on local disk', key: 'Ctrl Shift S', icon: '📁' },
+  { id: 'toggle-autosave', label: 'Toggle Auto-Save to Disk (VS Code Style)', detail: 'Automatically save to local file on disk as you type', key: '', icon: '🔄' },
+  { id: 'link-disk', label: 'Link File to Local Disk (Auto-Save)', detail: 'Pick a location on your computer to auto-save this file', key: '', icon: '🔗' },
   { id: 'new', label: 'New File', detail: 'Create a new editor tab', key: 'Ctrl N', icon: '+' },
   { id: 'new-folder', label: 'New Folder', detail: 'Create a new folder in workspace', key: '', icon: '🗂️' },
   { id: 'open-file', label: 'Open File from Computer', detail: 'Open code file with direct disk saving', key: 'Ctrl O', icon: '📄' },
@@ -120,6 +124,9 @@ const COMMANDS = [
   { id: 'source-control', label: 'Open Source Control', detail: 'Review changes and branches', key: '', icon: '⑂' },
   { id: 'themes', label: 'VS Code Themes', detail: 'Choose from 15 iconic VS Code themes', key: '', icon: '🎨' },
   { id: 'repos', label: 'GitHub Repositories', detail: 'Manage repositories and commit code', key: '', icon: '📦' },
+  { id: 'packages', label: 'Package Installer', detail: 'Manage R (CRAN), Python (pip), and npm packages', key: '', icon: '📦' },
+  { id: 'new-r', label: 'New R Script (RStudio)', detail: 'Create a runnable R statistical computing file', key: '', icon: '🔵' },
+  { id: 'switch-r', label: 'Change Language: R (RStudio)', detail: 'Switch current file to R language', key: '', icon: '📊' },
   { id: 'settings', label: 'Open Settings', detail: 'Configure the editor', key: '', icon: '⚙' },
   { id: 'shortcuts', label: 'Keyboard Shortcuts', detail: 'View all editor shortcuts', key: '?', icon: '⌨' },
 ]
@@ -181,6 +188,10 @@ const EXT_MAP: Record<string, string> = {
   swift: 'swift',
   dart: 'dart',
   lua: 'lua',
+  r: 'r',
+  R: 'r',
+  rmd: 'r',
+  Rmd: 'r',
 }
 
 const detectLanguage = (filename: string): RuntimeLanguage => {
@@ -199,7 +210,7 @@ const DEFAULT_STARTER_TAB: Tab = {
   name: 'main.py',
   lang: 'python',
   code: `# Welcome to CodeForge - Online Code Compiler & IDE!
-# Multi-language compiler, Monaco editor, LeetCode runner & AI copilot.
+# Multi-language compiler, Monaco editor, Package Installer & AI copilot.
 
 def solve():
     message = "Hello, World from CodeForge!"
@@ -225,6 +236,26 @@ export default function App() {
   const [wordWrap, setWordWrap]   = useState<'on'|'off'>('off')
   const [showMini, setShowMini]   = useState(false)
 
+  // Auto-Save to Local Disk (VS Code Style)
+  const [autoSaveDisk, setAutoSaveDisk] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem('cf_auto_save_disk')
+      return saved !== null ? saved === 'true' : true
+    } catch { return true }
+  })
+  const [autoSaveDelay, setAutoSaveDelay] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem('cf_auto_save_delay')
+      return saved ? parseInt(saved, 10) : 800
+    } catch { return 800 }
+  })
+  const [diskSaveState, setDiskSaveState] = useState<{
+    status: 'idle' | 'saving' | 'saved' | 'unlinked' | 'error'
+    lastSavedTime?: string
+    fileName?: string
+    errorMessage?: string
+  }>({ status: 'idle' })
+
   // layout
   const [panel, setPanel]           = useState<Panel>('explorer')
   const [sideOpen, setSideOpen]     = useState(true)
@@ -234,6 +265,7 @@ export default function App() {
   const [consH, setConsH]           = useState(220)
   const [consTab, setConsTab]       = useState<ConsoleTab>('output')
   const [bottomPanelOpen, setBottomPanelOpen] = useState(false)
+  const [pendingTerminalCmd, setPendingTerminalCmd] = useState<string | null>(null)
   const [newFileOpen, setNewFileOpen] = useState(false)
   const [newFileName, setNewFileName] = useState('')
   const [newFolderOpen, setNewFolderOpen] = useState(false)
@@ -358,6 +390,9 @@ export default function App() {
   const saveRef       = useRef<() => void>(() => {})
   const handleOpenDiskFileRef = useRef<() => void>(() => {})
   const handleSaveAsDiskRef   = useRef<() => void>(() => {})
+  const autoSaveDiskTimerRef  = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const autoSaveDiskRef       = useRef<(tabId: string, code: string) => void>(() => {})
+  const flushDiskSaveRef      = useRef<() => Promise<void>>(async () => {})
   const fileInputRef  = useRef<HTMLInputElement>(null)
   const folderInputRef = useRef<HTMLInputElement>(null)
   const aiBottomRef   = useRef<HTMLDivElement>(null)
@@ -966,6 +1001,181 @@ export default function App() {
     }
   }, [activeTab])
 
+  // Perform actual disk save with safe error handling and visual feedback
+  const performDiskAutoSave = useCallback(async (targetTabId: string, codeToSave: string) => {
+    const tab = tabs.find(t => t.id === targetTabId)
+    if (!tab) return
+
+    if (!tab.fileHandle) {
+      setDiskSaveState({ status: 'unlinked', fileName: tab.name })
+      return
+    }
+
+    try {
+      setDiskSaveState({ status: 'saving', fileName: tab.name })
+      await saveToLocalDiskSafe(tab.fileHandle, codeToSave, false)
+
+      const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+      setDiskSaveState({
+        status: 'saved',
+        fileName: tab.name,
+        lastSavedTime: timeStr,
+      })
+
+      // Mark tab clean in tabs list
+      setTabs(prev => prev.map(t => t.id === targetTabId ? { ...t, code: codeToSave, modified: false } : t))
+
+      // Also record snapshot in local history
+      const snapshot = saveCodeSnapshot(tab.name, tab.lang, codeToSave)
+      setSavedCodes(prev => [snapshot, ...prev].slice(0, 50))
+    } catch (err: any) {
+      console.warn('Auto-save to disk error:', err)
+      setDiskSaveState({
+        status: 'error',
+        fileName: tab.name,
+        errorMessage: err.message || 'Write permission needed',
+      })
+    }
+  }, [tabs])
+
+  // Flush pending disk auto-save immediately (before tab switch, window blur, unload, or execution)
+  const flushDiskSave = useCallback(async () => {
+    if (autoSaveDiskTimerRef.current) {
+      clearTimeout(autoSaveDiskTimerRef.current)
+      autoSaveDiskTimerRef.current = null
+    }
+    const currentCode = activeCodeRef.current
+    if (currentCode !== undefined && activeTab) {
+      const cur = tabs.find(t => t.id === activeTab)
+      if (cur?.fileHandle && cur.modified) {
+        try {
+          await saveToLocalDiskSafe(cur.fileHandle, currentCode, false)
+          setTabs(prev => prev.map(t => t.id === activeTab ? { ...t, code: currentCode, modified: false } : t))
+          const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+          setDiskSaveState({ status: 'saved', fileName: cur.name, lastSavedTime: timeStr })
+        } catch (e) {
+          console.warn('Flush disk save error:', e)
+        }
+      }
+    }
+  }, [activeTab, tabs])
+
+  flushDiskSaveRef.current = flushDiskSave
+
+  // Update autoSaveDiskRef implementation
+  useEffect(() => {
+    autoSaveDiskRef.current = (tabId: string, code: string) => {
+      if (!autoSaveDisk) return
+      const tab = tabs.find(t => t.id === tabId)
+      if (!tab) return
+      if (!tab.fileHandle) {
+        setDiskSaveState({ status: 'unlinked', fileName: tab.name })
+        return
+      }
+      setDiskSaveState({ status: 'saving', fileName: tab.name })
+      if (autoSaveDiskTimerRef.current) {
+        clearTimeout(autoSaveDiskTimerRef.current)
+      }
+      autoSaveDiskTimerRef.current = setTimeout(() => {
+        performDiskAutoSave(tabId, code)
+      }, autoSaveDelay)
+    }
+  }, [autoSaveDisk, autoSaveDelay, tabs, performDiskAutoSave])
+
+  // Save on window blur and beforeunload (VS Code auto-save parity)
+  useEffect(() => {
+    const handleBlur = () => {
+      if (autoSaveDisk) {
+        flushDiskSaveRef.current?.()
+      }
+    }
+    const handleBeforeUnload = () => {
+      if (autoSaveDisk) {
+        flushDiskSaveRef.current?.()
+      }
+    }
+    window.addEventListener('blur', handleBlur)
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => {
+      window.removeEventListener('blur', handleBlur)
+      window.removeEventListener('beforeunload', handleBeforeUnload)
+    }
+  }, [autoSaveDisk])
+
+  // Sync diskSaveState when activeTab changes
+  useEffect(() => {
+    const cur = tabs.find(t => t.id === activeTab)
+    if (!cur) {
+      setDiskSaveState({ status: 'idle' })
+    } else if (cur.isLocalDisk) {
+      setDiskSaveState(prev => prev.status === 'saving' ? prev : { status: cur.modified ? 'idle' : 'saved', fileName: cur.name })
+    } else {
+      setDiskSaveState({ status: 'unlinked', fileName: cur.name })
+    }
+  }, [activeTab, tabs])
+
+  const toggleAutoSaveDisk = useCallback((enable?: boolean) => {
+    setAutoSaveDisk(prev => {
+      const next = enable !== undefined ? enable : !prev
+      try { localStorage.setItem('cf_auto_save_disk', String(next)) } catch {}
+      showToast(next ? '💾 Auto-Save to Local Disk enabled (VS Code Style)' : '⏸️ Auto-Save to Local Disk paused')
+      return next
+    })
+  }, [showToast])
+
+  const changeAutoSaveDelay = useCallback((ms: number) => {
+    setAutoSaveDelay(ms)
+    try { localStorage.setItem('cf_auto_save_delay', String(ms)) } catch {}
+    showToast(`⏱️ Auto-Save delay set to ${ms}ms`)
+  }, [showToast])
+
+  const linkCurrentTabToDisk = async () => {
+    if (!hasOpenTab) {
+      showToast('⚠️ No active file to link')
+      return
+    }
+    const currentCode = getActiveCode()
+    if (!isFileSystemAccessSupported()) {
+      downloadCode(curTab.name, currentCode)
+      showToast(`Downloaded ${curTab.name} (File System Access not supported)`)
+      return
+    }
+    try {
+      const handle = await saveAsLocalDisk(curTab.name, currentCode)
+      const newName = handle.name
+      const detected = detectLanguage(newName)
+      const snapshot = saveCodeSnapshot(newName, detected.id, currentCode)
+      setSavedCodes(previous => [snapshot, ...previous].slice(0, 50))
+      setTabs(previous => previous.map(tab => tab.id === activeTab ? {
+        ...tab,
+        name: newName,
+        lang: detected.id,
+        code: currentCode,
+        modified: false,
+        fileHandle: handle,
+        isLocalDisk: true,
+        localPath: newName,
+      } : tab))
+      const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+      setDiskSaveState({ status: 'saved', fileName: newName, lastSavedTime: timeStr })
+      showToast(`Linked to "${newName}" on your computer disk! Auto-Save is active 💾`)
+    } catch (err: any) {
+      if (err.name === 'AbortError') return
+      showToast(`⚠️ Could not link file: ${err.message}`)
+    }
+  }
+
+  const grantDiskPermissionForCurrentTab = async () => {
+    if (!hasOpenTab || !curTab?.fileHandle) return
+    const granted = await requestDiskFilePermission(curTab.fileHandle)
+    if (granted) {
+      showToast('✓ Disk write permission granted! Auto-saving resumed 💾')
+      performDiskAutoSave(activeTab, getActiveCode())
+    } else {
+      showToast('⚠️ Permission not granted')
+    }
+  }
+
   // Instant zero-latency typing handler:
   // 1. Immediately updates activeCodeRef in memory with zero input lag.
   // 2. Debounces the full React tree state update so individual keystrokes NEVER cause
@@ -986,6 +1196,11 @@ export default function App() {
       })
     }, 280)
 
+    // Trigger Auto-Save to Local Disk (VS Code Style)
+    if (autoSaveDisk) {
+      autoSaveDiskRef.current(activeTab, code)
+    }
+
     // Debounced GitHub Auto-Sync
     if (autoSyncEnabled && authUser?.accessToken) {
       if (autoSyncTimerRef.current) {
@@ -995,13 +1210,14 @@ export default function App() {
         triggerGitHubSyncRef.current?.(activeTab, false)
       }, autoSyncDelaySec * 1000)
     }
-  }, [activeTab, autoSyncEnabled, authUser?.accessToken, autoSyncDelaySec])
+  }, [activeTab, autoSaveDisk, autoSyncEnabled, authUser?.accessToken, autoSyncDelaySec])
 
   const switchActiveTab = useCallback((tabId: string) => {
     if (tabId === activeTab) return
     flushTabsSync()
+    flushDiskSave()
     setActiveTab(tabId)
-  }, [activeTab, flushTabsSync])
+  }, [activeTab, flushTabsSync, flushDiskSave])
 
   const switchLang = (langId: string) => {
     const l = getLangById(langId)
@@ -1371,6 +1587,9 @@ export default function App() {
 
   const closeTab = (id: string, e: React.MouseEvent) => {
     e.stopPropagation()
+    if (activeTab === id) {
+      flushDiskSave()
+    }
     const rest = tabs.filter(t => t.id !== id)
     setTabs(rest)
     if (activeTab === id) setActiveTab(rest.length > 0 ? rest[rest.length - 1].id : '')
@@ -1418,6 +1637,7 @@ export default function App() {
   const handleRun = useCallback(async () => {
     if (running) return
     flushTabsSync()
+    flushDiskSave()
     let activeTabToUse = curTab
     let codeToRun = getActiveCode()
 
@@ -2024,6 +2244,8 @@ export default function App() {
       case 'run': handleRun(); break
       case 'save': saveCurrentFile(); break
       case 'save-as': handleSaveAsDisk(); break
+      case 'toggle-autosave': toggleAutoSaveDisk(); break
+      case 'link-disk': linkCurrentTabToDisk(); break
       case 'new': setPanel('explorer'); setSideOpen(true); setWorkspaceExpanded(true); setInlineItem({ type: 'file', parentFolder: '' }); setInlineName(''); break
       case 'new-folder': setPanel('explorer'); setSideOpen(true); setWorkspaceExpanded(true); setInlineItem({ type: 'folder', parentFolder: '' }); setInlineName(''); break
       case 'open-file': handleOpenFileWithPicker(); break
@@ -2036,6 +2258,20 @@ export default function App() {
       case 'themes': openSettings('themes'); break
       case 'repos': openSettings('repos'); break
       case 'ai': setAiOpen(p => !p); break
+      case 'packages': setPanel('packages'); setSideOpen(true); break
+      case 'switch-r': switchLang('r'); showToast('Switched to R (RStudio) ✨'); break
+      case 'new-r': {
+        let candidate = 'main.r'
+        let idx = 1
+        while (tabs.some(t => t.name === candidate)) {
+          idx++
+          candidate = `script_${idx}.r`
+        }
+        const rLang = getLangById('r')
+        newTab(candidate, rLang.defaultCode)
+        showToast(`Created ${candidate} (RStudio) 📊`)
+        break
+      }
       case 'settings': setShowSettings(true); break
       case 'shortcuts': setShowKeys(true); break
     }
@@ -3388,6 +3624,7 @@ export default function App() {
             { id: 'debug'    as Panel, tip: 'Run and Debug',  d: 'M8 2a3 3 0 0 0-3 3v2h6V5a3 3 0 0 0-3-3ZM4 8v1a4 4 0 0 0 8 0V8H4Zm-2 1h2m8 0h2M3 12l2-1m6 1 2 1M3 6l2 1m6-1 2-1' },
             { id: 'source-control' as Panel, tip: 'Source Control', d: 'M5 3a2 2 0 1 0 0 4 2 2 0 0 0 0-4Zm6 6a2 2 0 1 0 0 4 2 2 0 0 0 0-4ZM5 7v2a2 2 0 0 0 2 2h2' },
             { id: 'profile' as Panel, tip: 'Profile', d: 'M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm-5 6a5 5 0 0 1 10 0' },
+            { id: 'packages' as Panel, tip: 'Package Installer', d: 'M2 4.5L8 1l6 3.5v7L8 15l-6-3.5v-7zm6-2.3L3.8 4.7 8 7.1l4.2-2.4L8 2.2zM3 5.6v5.8l4.5 2.6V8.2L3 5.6zm10 0l-4.5 2.6v5.8l4.5-2.6V5.6z' },
           ]).map(item => (
             <button key={item.id} data-tooltip={item.tip}
               onClick={() => { setPanel(item.id); setSideOpen(true) }}
@@ -3413,7 +3650,7 @@ export default function App() {
             <div style={{ width: sideW, background: 'var(--bg-sidebar)', borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column', overflow: 'hidden', flexShrink: 0 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px 6px' }}>
                 <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
-                  {panel === 'explorer' ? 'Explorer' : panel === 'history' ? 'Recent Saves' : panel === 'debug' ? 'Run and Debug' : panel === 'source-control' ? 'Source Control' : 'Profile'}
+                  {panel === 'explorer' ? 'Explorer' : panel === 'history' ? 'Recent Saves' : panel === 'debug' ? 'Run and Debug' : panel === 'source-control' ? 'Source Control' : panel === 'profile' ? 'Profile' : 'Package Installer'}
                 </span>
                 <button onClick={() => setSideOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 2 }}>
                   <I d="M10 3L4 8l6 5" s={11} />
@@ -3989,6 +4226,25 @@ export default function App() {
                   )}
                 </div>
               )}
+
+              {/* Package Installer Panel (under profile) */}
+              {panel === 'packages' && (
+                <PackageInstaller
+                  activeLang={curLang.id}
+                  activeCode={getActiveCode()}
+                  onInsertCode={(codeToInsert: string) => {
+                    const currentCode = getActiveCode()
+                    const updatedCode = codeToInsert + '\n' + currentCode
+                    setTabs(prev => prev.map(tab => tab.id === activeTab ? { ...tab, code: updatedCode, modified: true } : tab))
+                  }}
+                  onRunTerminalCommand={(command: string) => {
+                    setBottomPanelOpen(true)
+                    setConsTab('terminal')
+                    setPendingTerminalCmd(command)
+                  }}
+                  showToast={showToast}
+                />
+              )}
             </div>
             <div className="resizer-v" onMouseDown={mkSideResize} />
           </>
@@ -4109,6 +4365,143 @@ export default function App() {
                 <span>No file open</span>
               </div>
             )}
+
+            {/* Right: Auto-Save Status, Disk Link, and Controls */}
+            {hasOpenTab && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                {curTab.isLocalDisk ? (
+                  // File is already linked to local disk
+                  <>
+                    {diskSaveState.status === 'saving' && (
+                      <span
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 6,
+                          fontSize: 10,
+                          fontWeight: 600,
+                          color: '#38bdf8',
+                          background: 'rgba(56, 189, 248, 0.12)',
+                          border: '1px solid rgba(56, 189, 248, 0.3)',
+                          padding: '2px 8px',
+                          borderRadius: 12,
+                        }}
+                      >
+                        <span
+                          style={{
+                            width: 6,
+                            height: 6,
+                            borderRadius: '50%',
+                            border: '1.5px solid #38bdf8',
+                            borderTopColor: 'transparent',
+                            animation: 'spin 0.8s linear infinite',
+                            display: 'inline-block',
+                          }}
+                        />
+                        Saving to disk...
+                      </span>
+                    )}
+
+                    {diskSaveState.status === 'error' && (
+                      <button
+                        onClick={grantDiskPermissionForCurrentTab}
+                        title="Permission needed. Click to allow writing directly to this disk file."
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 5,
+                          fontSize: 10,
+                          fontWeight: 600,
+                          color: '#f87171',
+                          background: 'rgba(239, 68, 68, 0.15)',
+                          border: '1px solid rgba(239, 68, 68, 0.35)',
+                          padding: '2px 8px',
+                          borderRadius: 12,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        ⚠️ Grant Disk Write Access
+                      </button>
+                    )}
+
+                    {diskSaveState.status !== 'saving' && diskSaveState.status !== 'error' && (
+                      <span
+                        title={
+                          curTab.modified
+                            ? 'Editing... Will auto-save to computer disk when you pause typing'
+                            : diskSaveState.lastSavedTime
+                            ? `All changes saved to your computer file at ${diskSaveState.lastSavedTime}. Open in VS Code or any compiler to view!`
+                            : 'All changes synced to local computer disk file'
+                        }
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 5,
+                          fontSize: 10,
+                          fontWeight: 500,
+                          color: curTab.modified ? '#fbbf24' : '#4ade80',
+                          background: curTab.modified ? 'rgba(251, 191, 36, 0.1)' : 'rgba(74, 222, 128, 0.1)',
+                          border: `1px solid ${curTab.modified ? 'rgba(251, 191, 36, 0.3)' : 'rgba(74, 222, 128, 0.25)'}`,
+                          padding: '2px 8px',
+                          borderRadius: 12,
+                        }}
+                      >
+                        <span style={{ width: 5, height: 5, borderRadius: '50%', background: curTab.modified ? '#fbbf24' : '#4ade80' }} />
+                        {curTab.modified ? 'Auto-saving...' : 'Synced to Disk 💾'}
+                      </span>
+                    )}
+                  </>
+                ) : (
+                  // File not yet saved on disk
+                  <button
+                    onClick={linkCurrentTabToDisk}
+                    title="Save this file to your computer disk so all future edits automatically auto-save like in VS Code!"
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 5,
+                      fontSize: 10,
+                      fontWeight: 600,
+                      color: '#38bdf8',
+                      background: 'rgba(56, 189, 248, 0.1)',
+                      border: '1px solid rgba(56, 189, 248, 0.3)',
+                      padding: '2px 9px',
+                      borderRadius: 12,
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
+                    }}
+                    onMouseEnter={e => (e.currentTarget.style.background = 'rgba(56, 189, 248, 0.2)')}
+                    onMouseLeave={e => (e.currentTarget.style.background = 'rgba(56, 189, 248, 0.1)')}
+                  >
+                    <span>💾</span>
+                    <span>Link to Disk File</span>
+                  </button>
+                )}
+
+                {/* Auto-Save Toggle pill */}
+                <button
+                  onClick={() => toggleAutoSaveDisk()}
+                  title={autoSaveDisk ? 'Auto-Save is ON. Keystrokes automatically save to computer disk file. Click to pause.' : 'Auto-Save is OFF. Click to enable automatic saving to disk.'}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 5,
+                    fontSize: 10,
+                    fontWeight: 600,
+                    padding: '2px 8px',
+                    borderRadius: 12,
+                    cursor: 'pointer',
+                    background: autoSaveDisk ? 'rgba(99, 102, 241, 0.12)' : 'rgba(255, 255, 255, 0.04)',
+                    border: autoSaveDisk ? '1px solid rgba(99, 102, 241, 0.35)' : '1px solid var(--border)',
+                    color: autoSaveDisk ? '#a5b4fc' : 'var(--text-muted)',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: autoSaveDisk ? '#34d399' : '#64748b' }} />
+                  <span>Auto-Save: {autoSaveDisk ? 'ON' : 'OFF'}</span>
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Editor Center Area */}
@@ -4173,6 +4566,54 @@ export default function App() {
                     }}
                   >
                     <FilePlusIcon size={15} /> New Empty File
+                  </button>
+                  <button
+                    onClick={() => {
+                      let candidate = 'main.r'
+                      let idx = 1
+                      while (tabs.some(t => t.name === candidate)) {
+                        idx++
+                        candidate = `script_${idx}.r`
+                      }
+                      const rLang = getLangById('r')
+                      newTab(candidate, rLang.defaultCode)
+                      showToast(`Created ${candidate} (R / RStudio) 📊`)
+                    }}
+                    className="btn btn-ghost"
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 8,
+                      padding: '10px 18px',
+                      borderRadius: 8,
+                      fontSize: 13,
+                      border: '1px solid rgba(39, 109, 195, 0.4)',
+                      background: 'rgba(39, 109, 195, 0.1)',
+                      color: '#38bdf8',
+                      cursor: 'pointer',
+                      fontWeight: 600,
+                    }}
+                  >
+                    <span>🔵</span> New R Script (RStudio)
+                  </button>
+                  <button
+                    onClick={() => {
+                      setPanel('packages')
+                      setSideOpen(true)
+                    }}
+                    className="btn btn-ghost"
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 8,
+                      padding: '10px 18px',
+                      borderRadius: 8,
+                      fontSize: 13,
+                      border: '1px solid var(--border)',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <span>📦</span> Package Installer
                   </button>
                   <button
                     onClick={() => handleOpenFileWithPicker()}
@@ -4289,7 +4730,6 @@ export default function App() {
                 <div style={{ display: 'flex', alignItems: 'center', background: 'var(--bg-header)', borderBottom: '1px solid var(--border)', height: 33, flexShrink: 0, paddingLeft: 6, paddingRight: 6 }}>
                   {([
                     { id: 'output'   as ConsoleTab, label: 'Output' },
-                    { id: 'dsa'      as ConsoleTab, label: '⚡ LeetCode Testcases' },
                     { id: 'terminal' as ConsoleTab, label: '💻 Terminal' },
                     { id: 'testcase' as ConsoleTab, label: 'Standard Input (stdin)' },
                     { id: 'debug'    as ConsoleTab, label: '🐛 Debug Console' },
@@ -4297,7 +4737,6 @@ export default function App() {
                   ]).map(t => (
                     <button key={t.id} className={`terminal-tab ${consTab === t.id ? 'active' : ''}`} onClick={() => setConsTab(t.id)}>
                       {t.id === 'output' && status && <div style={{ width: 6, height: 6, borderRadius: '50%', background: status.color }} />}
-                      {t.id === 'dsa' && <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981' }} />}
                       {t.id === 'debug' && isDebugging && <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#eab308' }} />}
                       {t.label}
                     </button>
@@ -4377,6 +4816,8 @@ export default function App() {
                   }}
                   activeBranch={activeRepo?.default_branch || 'main'}
                   showToast={showToast}
+                  pendingCommand={pendingTerminalCmd}
+                  onCommandExecuted={() => setPendingTerminalCmd(null)}
                 />
               </div>
             )}
@@ -4423,24 +4864,6 @@ export default function App() {
                         <span>●</span> {statusLabel(result).label} {result.time ? `(${result.time}s)` : ''}
                       </span>
                     )}
-                    <button
-                      onClick={() => setConsTab('dsa')}
-                      style={{
-                        background: 'rgba(16, 185, 129, 0.12)',
-                        border: '1px solid #10b981',
-                        color: '#10b981',
-                        fontSize: 10,
-                        fontWeight: 700,
-                        padding: '2px 8px',
-                        borderRadius: 4,
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 4,
-                      }}
-                    >
-                      ⚡ Open LeetCode DSA Testcases
-                    </button>
                   </div>
                 </div>
 
@@ -4510,15 +4933,6 @@ export default function App() {
                   </>
                 )}
               </div>
-            )}
-
-            {/* LeetCode DSA Testcases Runner */}
-            {consTab === 'dsa' && (
-              <LeetCodeRunner
-                sourceCode={getActiveCode()}
-                langId={curLang.id}
-                showToast={showToast}
-              />
             )}
 
             {/* AI Suggestions */}
@@ -4633,6 +5047,29 @@ export default function App() {
           Ln 1, Col 1
         </div>
         <div className="status-item" style={{ opacity: 0.7 }}>UTF-8</div>
+        <div
+          className="status-item"
+          onClick={() => toggleAutoSaveDisk()}
+          title={
+            autoSaveDisk
+              ? curTab?.isLocalDisk
+                ? `Auto-Save is ON: Automatically saves directly to computer disk file "${curTab.name}". Click to pause.`
+                : 'Auto-Save is ON. Link this file to computer disk to enable live auto-save. Click to pause.'
+              : 'Auto-Save is OFF. Click to enable automatic saving to disk.'
+          }
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 5,
+            cursor: 'pointer',
+            borderLeft: '1px solid rgba(255,255,255,0.15)',
+            color: autoSaveDisk ? (curTab?.isLocalDisk ? '#4ade80' : '#38bdf8') : 'rgba(255,255,255,0.5)',
+            fontWeight: autoSaveDisk ? 600 : 400,
+          }}
+        >
+          <span style={{ fontSize: 11 }}>💾</span>
+          <span>Auto-Save: {autoSaveDisk ? (curTab?.isLocalDisk ? 'Disk' : 'On') : 'Off'}</span>
+        </div>
         <div className="status-item" onClick={() => openSettings('themes')} title="Change Theme" style={{ display: 'flex', alignItems: 'center', gap: 4, borderLeft: '1px solid rgba(255,255,255,0.15)' }}>
           <PaletteIcon size={11} /> {getThemeById(editorTheme).name.split(' (')[0]}
         </div>
@@ -4778,6 +5215,10 @@ export default function App() {
         wordWrap={wordWrap}
         showMini={showMini}
         aiOpen={aiOpen}
+        autoSaveDisk={autoSaveDisk}
+        onAutoSaveDiskToggle={toggleAutoSaveDisk}
+        autoSaveDelay={autoSaveDelay}
+        onAutoSaveDelayChange={changeAutoSaveDelay}
         onFontSizeChange={setFontSize}
         onWordWrapChange={setWordWrap}
         onMiniChange={setShowMini}

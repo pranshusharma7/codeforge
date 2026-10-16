@@ -316,9 +316,26 @@ SELECT
     COUNT(*) AS headcount,
     ROUND(AVG(salary), 2) AS avg_salary,
     MAX(salary) AS top_salary
-FROM employees
 GROUP BY department
 ORDER BY avg_salary DESC;`,
+  },
+  {
+    id: 'r', label: 'R (RStudio)', monacoId: 'r', judge0Id: 80, ext: 'r', icon: 'R', color: '#276dc3',
+    starter: `# ── CodeForge R / RStudio Statistical Computing ──────────────
+cat("🚀 RStudio Environment Active!\n")
+x <- c(12, 24, 36, 48, 60, 72, 84, 96)
+cat("Summary Statistics:\n")
+print(summary(x))
+
+df <- data.frame(
+  id = 1:4,
+  name = c("Alpha", "Beta", "Gamma", "Delta"),
+  value = c(10.5, 20.2, 15.8, 30.1)
+)
+cat("\nData Frame:\n")
+print(df)
+cat("\nMean value:", mean(df$value), "\n")
+`,
   },
 ]
 

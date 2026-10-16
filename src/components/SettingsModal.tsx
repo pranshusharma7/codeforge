@@ -25,6 +25,10 @@ interface Props {
   wordWrap: 'on' | 'off'
   showMini: boolean
   aiOpen: boolean
+  autoSaveDisk?: boolean
+  onAutoSaveDiskToggle?: () => void
+  autoSaveDelay?: number
+  onAutoSaveDelayChange?: (ms: number) => void
   onFontSizeChange: (n: number | ((p: number) => number)) => void
   onWordWrapChange: (w: 'on' | 'off') => void
   onMiniChange: (m: boolean) => void
@@ -68,6 +72,10 @@ export default function SettingsModal({
   wordWrap,
   showMini,
   aiOpen,
+  autoSaveDisk = true,
+  onAutoSaveDiskToggle,
+  autoSaveDelay = 800,
+  onAutoSaveDelayChange,
   onFontSizeChange,
   onWordWrapChange,
   onMiniChange,
@@ -552,6 +560,61 @@ export default function SettingsModal({
                   >
                     {showMini ? 'Shown' : 'Hidden'}
                   </button>
+                </div>
+
+                {/* Auto-Save to Local Disk (VS Code Style) */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12, paddingBottom: 16, borderBottom: '1px solid #21262d' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontSize: 13, color: '#c9d1d9', fontWeight: 600 }}>Auto-Save to Local Disk</span>
+                        <span style={{ fontSize: 10, background: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8', border: '1px solid rgba(56, 189, 248, 0.3)', borderRadius: 10, padding: '1px 7px', fontWeight: 600 }}>
+                          VS Code Style 💾
+                        </span>
+                      </div>
+                      <div style={{ fontSize: 11, color: '#7d8590', marginTop: 2, maxWidth: 360, lineHeight: 1.4 }}>
+                        Automatically saves your code directly to your computer's local file on disk as you type. Changes immediately reflect in VS Code, terminal, and external compilers.
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => onAutoSaveDiskToggle?.()}
+                      className={`btn ${autoSaveDisk ? 'btn-primary' : 'btn-ghost'}`}
+                      style={{ padding: '4px 18px' }}
+                    >
+                      {autoSaveDisk ? 'Enabled' : 'Disabled'}
+                    </button>
+                  </div>
+
+                  {autoSaveDisk && onAutoSaveDelayChange && (
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingLeft: 12, borderLeft: '2px solid #38bdf8', marginTop: 2 }}>
+                      <span style={{ fontSize: 11, color: '#8b949e' }}>Auto-Save Delay (after typing stops):</span>
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        {[
+                          { label: '500ms', ms: 500 },
+                          { label: '800ms', ms: 800 },
+                          { label: '1.5s', ms: 1500 },
+                          { label: '3s', ms: 3000 },
+                        ].map(d => (
+                          <button
+                            key={d.ms}
+                            onClick={() => onAutoSaveDelayChange(d.ms)}
+                            style={{
+                              background: autoSaveDelay === d.ms ? '#0284c7' : 'rgba(255,255,255,0.05)',
+                              color: autoSaveDelay === d.ms ? '#ffffff' : '#8b949e',
+                              border: autoSaveDelay === d.ms ? '1px solid #38bdf8' : '1px solid #30363d',
+                              borderRadius: 5,
+                              padding: '2px 8px',
+                              fontSize: 10,
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                            }}
+                          >
+                            {d.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
               </div>

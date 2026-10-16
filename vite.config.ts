@@ -4,6 +4,7 @@ import tailwindcss from "@tailwindcss/vite"
 import path from "node:path"
 import http from "node:http"
 import fs from "node:fs"
+import { pathToFileURL } from "node:url"
 
 // Helper to get environment variables reliably in dev server plugins
 function getReliableEnv(): Record<string, string> {
@@ -167,8 +168,11 @@ function codeForgeApiServerPlugin(): Plugin {
     // Compiler Execution API endpoint
     if (url.startsWith("/api/compile")) {
       try {
+        const handlerUrl = pathToFileURL(
+          path.resolve(process.cwd(), "api/compile/handler.js"),
+        ).href
         // @ts-ignore
-        const { handleCompileApi } = await import("./api/compile/handler.js")
+        const { handleCompileApi } = await import(`${handlerUrl}?t=${Date.now()}`)
         if (await handleCompileApi(req, res)) {
           return
         }
@@ -184,12 +188,65 @@ function codeForgeApiServerPlugin(): Plugin {
       }
     }
 
+    // Package Management API endpoint (CRAN, PyPI, npm)
+    if (url.startsWith("/api/packages")) {
+      try {
+        const handlerUrl = pathToFileURL(
+          path.resolve(process.cwd(), "api/compile/handler.js"),
+        ).href
+        // @ts-ignore
+        const { handlePackagesApi } = await import(
+          `${handlerUrl}?t=${Date.now()}`
+        )
+        if (await handlePackagesApi(req, res)) {
+          return
+        }
+      } catch (err: any) {
+        console.error("Packages API error:", err)
+        res.writeHead(500, { "Content-Type": "application/json" })
+        res.end(
+          JSON.stringify({
+            error: err.message || "Packages API handler failed",
+          }),
+        )
+        return
+      }
+    }
+
+    // Real Terminal Execution API endpoint
+    if (url.startsWith("/api/terminal")) {
+      try {
+        const handlerUrl = pathToFileURL(
+          path.resolve(process.cwd(), "api/compile/handler.js"),
+        ).href
+        // @ts-ignore
+        const { handleTerminalApi } = await import(
+          `${handlerUrl}?t=${Date.now()}`
+        )
+        if (await handleTerminalApi(req, res)) {
+          return
+        }
+      } catch (err: any) {
+        console.error("Terminal API error:", err)
+        res.writeHead(500, { "Content-Type": "application/json" })
+        res.end(
+          JSON.stringify({
+            error: err.message || "Terminal API handler failed",
+          }),
+        )
+        return
+      }
+    }
+
+
     // Contest API endpoints
     if (url.startsWith("/api/contest/")) {
       try {
-        // Dynamically require or import handler
+        const handlerUrl = pathToFileURL(
+          path.resolve(process.cwd(), "api/contest/handler.js"),
+        ).href
         // @ts-ignore
-        const { handleContestApi } = await import("./api/contest/handler.js")
+        const { handleContestApi } = await import(handlerUrl)
         if (handleContestApi(req, res)) {
           return
         }

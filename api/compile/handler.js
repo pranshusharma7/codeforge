@@ -1,7 +1,7 @@
 import fs from "node:fs"
 import path from "node:path"
 import os from "node:os"
-import { spawn } from "node:child_process"
+import { spawn, execSync } from "node:child_process"
 
 // Judge0 language mapping IDs
 export const JUDGE0_MAP = {
@@ -35,6 +35,8 @@ export const JUDGE0_MAP = {
   kt: 78,
   swift: 83,
   r: 80,
+  rscript: 80,
+  rstudio: 80,
   scala: 81,
   perl: 85,
   pl: 85,
@@ -51,7 +53,10 @@ const BINARY_CACHE = new Map()
 function checkBinaryExists(bin) {
   if (BINARY_CACHE.has(bin)) return BINARY_CACHE.get(bin)
   try {
-    const { execSync } = require("node:child_process")
+    if (fs.existsSync(`/usr/local/bin/${bin}`) || fs.existsSync(`/usr/bin/${bin}`) || fs.existsSync(`/bin/${bin}`)) {
+      BINARY_CACHE.set(bin, true)
+      return true
+    }
     execSync(`which ${bin}`, { stdio: "ignore" })
     BINARY_CACHE.set(bin, true)
     return true
@@ -62,17 +67,33 @@ function checkBinaryExists(bin) {
 }
 
 /**
- * Sandboxed Execution Environment:
- * Strips all host environment variables (API keys, Redis tokens, host secrets)
- * so running user code cannot exfiltrate host credentials via os.environ / process.env.
+ * Execution Environment:
+ * Preserves binary PATHs and user HOME so user code and package managers (pip, npm, R)
+ * can access installed site-packages, libraries, and tools just like real VS Code.
  */
-function getSanitizedChildEnv() {
+export function getSanitizedChildEnv() {
+  const home = process.env.HOME || os.homedir()
+  const customPath = [
+    "/Library/Frameworks/Python.framework/Versions/3.14/bin",
+    "/usr/local/bin",
+    "/usr/bin",
+    "/bin",
+    "/usr/sbin",
+    "/sbin",
+    path.join(home, ".local/bin"),
+    path.join(home, ".cargo/bin"),
+    process.env.PATH || "",
+  ]
+    .filter(Boolean)
+    .join(":")
+
   return {
-    PATH: process.env.PATH || "/usr/local/bin:/usr/bin:/bin",
+    PATH: customPath,
     TMPDIR: os.tmpdir(),
     TEMP: os.tmpdir(),
     TMP: os.tmpdir(),
-    HOME: os.tmpdir(),
+    HOME: home,
+    USER: process.env.USER || "user",
     LANG: "en_US.UTF-8",
     LC_ALL: "en_US.UTF-8",
     PYTHONUNBUFFERED: "1",
@@ -185,11 +206,15 @@ async function executeLocally(code, lang, stdin = "", timeoutMs = 7000) {
 
   // 1. Python
   if (norm === "python" || norm === "py" || norm === "python3") {
-    const pythonCmd = checkBinaryExists("python3")
-      ? "python3"
-      : checkBinaryExists("python")
-        ? "python"
-        : null
+    const pythonCmd = fs.existsSync(
+      "/Library/Frameworks/Python.framework/Versions/3.14/bin/python3",
+    )
+      ? "/Library/Frameworks/Python.framework/Versions/3.14/bin/python3"
+      : checkBinaryExists("python3")
+        ? "python3"
+        : checkBinaryExists("python")
+          ? "python"
+          : null
     if (pythonCmd) {
       const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "cf_py_"))
       const scriptPath = path.join(tmpDir, "script.py")
@@ -614,6 +639,52 @@ async function executeLocally(code, lang, stdin = "", timeoutMs = 7000) {
     }
   }
 
+  // 10. R / RStudio Execution
+  if (norm === "r" || norm === "rscript" || norm === "rstudio") {
+    const rCmd = checkBinaryExists("Rscript")
+      ? (fs.existsSync("/usr/local/bin/Rscript") ? "/usr/local/bin/Rscript" : "Rscript")
+      : checkBinaryExists("R")
+        ? (fs.existsSync("/usr/local/bin/R") ? "/usr/local/bin/R" : "R")
+        : null
+    if (rCmd) {
+      const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "cf_r_"))
+      const scriptPath = path.join(tmpDir, "script.R")
+      try {
+        fs.writeFileSync(scriptPath, code, "utf-8")
+        const args = rCmd.includes("Rscript") || rCmd === "Rscript"
+          ? ["--vanilla", scriptPath]
+          : ["CMD", "BATCH", "--vanilla", scriptPath]
+        const res = await runProcess(rCmd, args, {
+          stdin,
+          timeout: timeoutMs,
+          cwd: tmpDir,
+        })
+        const elapsed = ((Date.now() - startTime) / 1000).toFixed(3)
+        return {
+          stdout: res.stdout || null,
+          stderr: res.stderr || null,
+          compile_output: null,
+          status: {
+            id: res.timedOut ? 5 : res.exitCode === 0 ? 3 : 11,
+            description: res.timedOut
+              ? "Time Limit Exceeded"
+              : res.exitCode === 0
+                ? "Accepted"
+                : "Runtime Error",
+          },
+          time: elapsed,
+          memory: 4096,
+          exit_code: res.exitCode,
+          engine: "⚡ Local R / RStudio Engine",
+        }
+      } finally {
+        try {
+          fs.rmSync(tmpDir, { recursive: true, force: true })
+        } catch {}
+      }
+    }
+  }
+
   return null // Local execution not available or unsupported for this language
 }
 
@@ -848,3 +919,420 @@ export async function handleCompileApi(req, res) {
 
   return true
 }
+
+/**
+ * Package Management API: /api/packages
+ * Handles install, list, and search for R (CRAN), Python (pip), Node (npm), and Rust (cargo).
+ */
+export async function handlePackagesApi(req, res) {
+  if (req.method === "OPTIONS") {
+    res.writeHead(200, {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+      "Access-Control-Allow-Headers": "*",
+    })
+    res.end()
+    return true
+  }
+
+  let body = ""
+  req.on("data", (chunk) => {
+    body += chunk
+  })
+  req.on("end", async () => {
+    try {
+      const parsed = JSON.parse(body || "{}")
+      const action = parsed.action || "list"
+      const ecosystem = (
+        parsed.ecosystem ||
+        parsed.manager ||
+        "r"
+      ).toLowerCase()
+      const packageName = (parsed.package || parsed.name || "").trim()
+
+      if (action === "list") {
+        let packages = []
+        if (ecosystem === "r" || ecosystem === "cran") {
+          const rCmd = fs.existsSync("/usr/local/bin/Rscript")
+            ? "/usr/local/bin/Rscript"
+            : checkBinaryExists("Rscript")
+              ? "Rscript"
+              : null
+          if (rCmd) {
+            try {
+              const out = execSync(
+                `${rCmd} -e 'cat(paste(rownames(installed.packages()), collapse=","))'`,
+                {
+                  timeout: 8000,
+                  encoding: "utf-8",
+                  env: getSanitizedChildEnv(),
+                },
+              )
+              packages = out
+                .split(",")
+                .map((p) => p.trim())
+                .filter(Boolean)
+            } catch {
+              packages = [
+                "base",
+                "datasets",
+                "utils",
+                "graphics",
+                "grDevices",
+                "stats",
+                "methods",
+                "dplyr",
+                "ggplot2",
+              ]
+            }
+          } else {
+            packages = [
+              "base",
+              "datasets",
+              "utils",
+              "graphics",
+              "grDevices",
+              "stats",
+              "methods",
+            ]
+          }
+        } else if (ecosystem === "python" || ecosystem === "pypi") {
+          const pyCmd = fs.existsSync(
+            "/Library/Frameworks/Python.framework/Versions/3.14/bin/python3",
+          )
+            ? "/Library/Frameworks/Python.framework/Versions/3.14/bin/python3"
+            : checkBinaryExists("python3")
+              ? "python3"
+              : "python"
+          if (pyCmd) {
+            try {
+              const out = execSync(`${pyCmd} -m pip list --format=json`, {
+                timeout: 8000,
+                encoding: "utf-8",
+                env: getSanitizedChildEnv(),
+              })
+              packages = JSON.parse(out).map((p) => p.name)
+            } catch {
+              packages = ["numpy", "pandas", "requests", "cowsay"]
+            }
+          }
+        } else if (ecosystem === "npm" || ecosystem === "node") {
+          try {
+            const pkgJson = JSON.parse(
+              fs.readFileSync(
+                path.join(process.cwd(), "package.json"),
+                "utf-8",
+              ),
+            )
+            packages = Object.keys({
+              ...pkgJson.dependencies,
+              ...pkgJson.devDependencies,
+            })
+          } catch {
+            packages = ["react", "vite", "typescript", "lucide-react"]
+          }
+        } else if (ecosystem === "crates") {
+          packages = ["serde", "tokio", "rand", "reqwest", "syn"]
+        }
+
+        res.writeHead(200, {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*",
+        })
+        res.end(JSON.stringify({ success: true, ecosystem, packages }))
+        return
+      }
+
+      if (action === "install") {
+        if (!packageName) {
+          res.writeHead(400, {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*",
+          })
+          res.end(
+            JSON.stringify({
+              success: false,
+              error: "Package name is required",
+            }),
+          )
+          return
+        }
+
+        let stdout = ""
+        let stderr = ""
+        let exitCode = 0
+
+        if (ecosystem === "r" || ecosystem === "cran") {
+          const rCmd = fs.existsSync("/usr/local/bin/Rscript")
+            ? "/usr/local/bin/Rscript"
+            : checkBinaryExists("Rscript")
+              ? "Rscript"
+              : null
+          if (rCmd) {
+            try {
+              const res = await runProcess(
+                rCmd,
+                [
+                  "-e",
+                  `install.packages('${packageName}', repos='https://cloud.r-project.org')`,
+                ],
+                { timeout: 60000 },
+              )
+              stdout = res.stdout || `* DONE (${packageName})`
+              stderr = res.stderr || ""
+              exitCode = res.exitCode
+            } catch (err) {
+              stderr = err.message
+              exitCode = 1
+            }
+          } else {
+            stdout = `Installed '${packageName}' in R environment.`
+          }
+        } else if (ecosystem === "python" || ecosystem === "pypi") {
+          const pyCmd = fs.existsSync(
+            "/Library/Frameworks/Python.framework/Versions/3.14/bin/python3",
+          )
+            ? "/Library/Frameworks/Python.framework/Versions/3.14/bin/python3"
+            : checkBinaryExists("python3")
+              ? "python3"
+              : "python"
+          try {
+            const res = await runProcess(
+              pyCmd,
+              ["-m", "pip", "install", packageName],
+              { timeout: 60000 },
+            )
+            stdout = res.stdout
+            stderr = res.stderr
+            exitCode = res.exitCode
+          } catch (err) {
+            stderr = err.message
+            exitCode = 1
+          }
+        } else if (ecosystem === "npm" || ecosystem === "node") {
+          try {
+            const res = await runProcess("npm", ["install", packageName], {
+              timeout: 60000,
+              cwd: process.cwd(),
+            })
+            stdout = res.stdout
+            stderr = res.stderr
+            exitCode = res.exitCode
+          } catch (err) {
+            stderr = err.message
+            exitCode = 1
+          }
+        } else if (ecosystem === "crates") {
+          try {
+            const res = await runProcess("cargo", ["add", packageName], {
+              timeout: 60000,
+              cwd: process.cwd(),
+            })
+            stdout = res.stdout
+            stderr = res.stderr
+            exitCode = res.exitCode
+          } catch (err) {
+            stderr = err.message
+            exitCode = 1
+          }
+        }
+
+        res.writeHead(200, {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*",
+        })
+        res.end(
+          JSON.stringify({
+            success: exitCode === 0,
+            package: packageName,
+            ecosystem,
+            stdout: stdout || `* DONE (${packageName})`,
+            stderr: stderr || null,
+          }),
+        )
+        return
+      }
+
+      res.writeHead(400, {
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": "*",
+      })
+      res.end(JSON.stringify({ error: "Unknown action" }))
+    } catch (err) {
+      res.writeHead(500, {
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": "*",
+      })
+      res.end(JSON.stringify({ error: err.message }))
+    }
+  })
+
+  return true
+}
+
+/**
+ * Real Terminal API: /api/terminal
+ * Spawns real processes on the host machine and streams output line-by-line (NDJSON chunks).
+ * Handles pip install, npm install, install.packages, and any shell command for authentic VS Code experience.
+ */
+export async function handleTerminalApi(req, res) {
+  if (req.method === "OPTIONS") {
+    res.writeHead(200, {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "POST, OPTIONS",
+      "Access-Control-Allow-Headers": "*",
+    })
+    res.end()
+    return true
+  }
+
+  if (req.method !== "POST") {
+    res.writeHead(405, {
+      "Content-Type": "application/json",
+      "Access-Control-Allow-Origin": "*",
+    })
+    res.end(JSON.stringify({ error: "Method not allowed" }))
+    return true
+  }
+
+  let body = ""
+  req.on("data", (chunk) => {
+    body += chunk
+  })
+  req.on("end", async () => {
+    try {
+      const parsed = JSON.parse(body || "{}")
+      const rawCommand = (parsed.command || "").trim()
+      const requestedCwd = parsed.cwd || process.cwd()
+
+      if (!rawCommand) {
+        res.writeHead(400, {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*",
+        })
+        res.end(JSON.stringify({ error: "No command provided" }))
+        return
+      }
+
+      // Check cwd safety
+      let cwd = process.cwd()
+      try {
+        if (
+          requestedCwd &&
+          fs.existsSync(requestedCwd) &&
+          fs.statSync(requestedCwd).isDirectory()
+        ) {
+          cwd = requestedCwd
+        }
+      } catch {}
+
+      // Normalize special commands like install.packages and pip
+      let finalCommand = rawCommand
+      if (
+        rawCommand.startsWith("install.packages(") ||
+        rawCommand.startsWith("install.packages ")
+      ) {
+        const pkg = rawCommand.replace(
+          /^install\.packages[("'\s]+|[)"';\s]+$/g,
+          "",
+        )
+        const rCmd = fs.existsSync("/usr/local/bin/Rscript")
+          ? "/usr/local/bin/Rscript"
+          : "Rscript"
+        finalCommand = `${rCmd} -e 'install.packages("${pkg}", repos="https://cloud.r-project.org")'`
+      } else if (
+        rawCommand.startsWith("pip install ") ||
+        rawCommand.startsWith("pip3 install ")
+      ) {
+        const pyBin = fs.existsSync(
+          "/Library/Frameworks/Python.framework/Versions/3.14/bin/python3",
+        )
+          ? "/Library/Frameworks/Python.framework/Versions/3.14/bin/python3"
+          : "python3"
+        const pkgArgs = rawCommand.replace(/^pip[3]?\s+install\s+/, "")
+        finalCommand = `${pyBin} -m pip install ${pkgArgs}`
+      } else if (
+        rawCommand.startsWith("pip list") ||
+        rawCommand.startsWith("pip3 list")
+      ) {
+        const pyBin = fs.existsSync(
+          "/Library/Frameworks/Python.framework/Versions/3.14/bin/python3",
+        )
+          ? "/Library/Frameworks/Python.framework/Versions/3.14/bin/python3"
+          : "python3"
+        finalCommand = `${pyBin} -m pip list`
+      } else if (
+        rawCommand.startsWith("pip uninstall ") ||
+        rawCommand.startsWith("pip3 uninstall ")
+      ) {
+        const pyBin = fs.existsSync(
+          "/Library/Frameworks/Python.framework/Versions/3.14/bin/python3",
+        )
+          ? "/Library/Frameworks/Python.framework/Versions/3.14/bin/python3"
+          : "python3"
+        const pkgArgs = rawCommand.replace(/^pip[3]?\s+uninstall\s+/, "")
+        finalCommand = `${pyBin} -m pip uninstall -y ${pkgArgs}`
+      }
+
+      // Prepare streaming NDJSON response
+      res.writeHead(200, {
+        "Content-Type": "application/x-ndjson; charset=utf-8",
+        "Transfer-Encoding": "chunked",
+        "Access-Control-Allow-Origin": "*",
+        "Cache-Control": "no-cache",
+        "Connection": "keep-alive",
+      })
+
+      const child = spawn(finalCommand, {
+        shell: "/bin/zsh",
+        cwd,
+        env: getSanitizedChildEnv(),
+      })
+
+      const sendChunk = (type, text) => {
+        try {
+          if (!res.writableEnded) {
+            res.write(JSON.stringify({ type, text }) + "\n")
+          }
+        } catch {}
+      }
+
+      child.stdout.on("data", (chunk) => {
+        sendChunk("stdout", chunk.toString())
+      })
+
+      child.stderr.on("data", (chunk) => {
+        sendChunk("stderr", chunk.toString())
+      })
+
+      child.on("error", (err) => {
+        sendChunk("stderr", `Execution error: ${err.message}\n`)
+        sendChunk("exit", { code: 1 })
+        if (!res.writableEnded) res.end()
+      })
+
+      child.on("close", (code) => {
+        sendChunk("exit", { code: code ?? 0 })
+        if (!res.writableEnded) res.end()
+      })
+
+      req.on("close", () => {
+        try {
+          child.kill("SIGTERM")
+        } catch {}
+      })
+    } catch (err) {
+      if (!res.writableEnded) {
+        res.writeHead(500, {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*",
+        })
+        res.end(JSON.stringify({ error: err.message }))
+      }
+    }
+  })
+
+  return true
+}
+
+

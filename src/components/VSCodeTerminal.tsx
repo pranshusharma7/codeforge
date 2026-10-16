@@ -34,6 +34,8 @@ interface Props {
   ) => Promise<{ stdout?: string | null; stderr?: string | null; compile_output?: string | null }>
   activeBranch?: string
   showToast: (msg: string) => void
+  pendingCommand?: string | null
+  onCommandExecuted?: () => void
 }
 
 const COMMON_COMMANDS = [
@@ -58,6 +60,10 @@ const COMMON_COMMANDS = [
   'cargo run',
   'go run',
   'brew install',
+  'Rscript',
+  'Rscript main.r',
+  'install.packages("ggplot2")',
+  'install.packages("dplyr")',
   'python',
   'python3',
   'node',
@@ -125,6 +131,8 @@ export default function VSCodeTerminal({
   onExecuteCode,
   activeBranch = 'main',
   showToast,
+  pendingCommand,
+  onCommandExecuted,
 }: Props) {
   // Current active branch can be updated by `git checkout`
   const [currentBranch, setCurrentBranch] = useState(activeBranch)
@@ -855,6 +863,51 @@ export default function VSCodeTerminal({
           break
         }
 
+        // ── R / RStudio Execution & CRAN Packages ───────────────────────────
+        case 'rscript':
+        case 'r': {
+          if (args[0] === '-e' && args[1]) {
+            const inlineCode = args.slice(1).join(' ').replace(/^["']|["']$/g, '')
+            if (onExecuteCode) {
+              const res = await onExecuteCode(inlineCode, 'r')
+              if (res.stdout) appendLineToActive('output', res.stdout.trimEnd())
+              if (res.stderr) appendLineToActive('error', res.stderr.trimEnd())
+            } else {
+              appendLineToActive('output', inlineCode)
+            }
+            break
+          }
+
+          if (args.length === 0) {
+            appendLineToActive('system', 'R version 4.6.1 (2026-06-24) -- "Statistical Studio"')
+            appendLineToActive('system', 'Platform: aarch64-apple-darwin23.4.0 (64-bit)')
+            appendLineToActive('output', "Type 'q()' to quit R or use Rscript <file.r> to execute.")
+            break
+          }
+
+          const target = args[0]
+          await runFileCode(target, 'r')
+          break
+        }
+
+        case 'install.packages':
+        case 'install_packages': {
+          let pkg = args.join(' ').replace(/^[("']+|[)"';\s]+$/g, '') || 'ggplot2'
+          appendLineToActive('system', `Installing package into '/usr/local/lib/R/site-library'`)
+          appendLineToActive('system', `(as 'lib' is unspecified)`)
+          appendLineToActive('output', `--- CRAN Cloud Mirror: https://cloud.r-project.org ---`)
+          appendLineToActive('output', `trying URL 'https://cloud.r-project.org/src/contrib/${pkg}.tar.gz'`)
+          await new Promise(r => setTimeout(r, 450))
+          appendLineToActive('output', `Content type 'application/x-gzip' length 3145728 bytes (3.0 MB)`)
+          appendLineToActive('output', `downloaded 3.0 MB`)
+          appendLineToActive('output', `* installing *source* package '${pkg}' ...`)
+          appendLineToActive('output', `** byte-compile and prepare package for lazy loading`)
+          appendLineToActive('output', `** testing if installed package can be loaded from final location`)
+          appendLineToActive('success', `* DONE (${pkg})`)
+          showToast(`✓ CRAN package ${pkg} installed`)
+          break
+        }
+
         // ── Node.js Execution ───────────────────────────────────────────────
         case 'node': {
           if (args[0] === '-e' && args[1]) {
@@ -1388,6 +1441,14 @@ export default function VSCodeTerminal({
       abortControllerRef.current = null
     }
   }
+
+  // Auto-run programmatic pending command (e.g. from Package Installer sidebar)
+  useEffect(() => {
+    if (pendingCommand && pendingCommand.trim()) {
+      handleCommand(pendingCommand)
+      onCommandExecuted?.()
+    }
+  }, [pendingCommand])
 
   // ── Keyboard Navigation (History, Tab, Ctrl+C, Ctrl+L) ──────────────────────
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {

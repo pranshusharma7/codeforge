@@ -131,19 +131,97 @@ export async function openDirectoryFromDisk(): Promise<{ folderName: string; fil
 /**
  * Save code directly to a file handle on local disk without prompting
  */
-export async function saveToLocalDisk(handle: FileSystemFileHandle, content: string): Promise<void> {
+export async function saveToLocalDisk(
+  handle: FileSystemFileHandle,
+  content: string,
+  userGesture = false
+): Promise<void> {
   // Check or request write permission
-  let perm = await (handle as any).queryPermission?.({ mode: 'readwrite' })
-  if (perm !== 'granted') {
-    perm = await (handle as any).requestPermission?.({ mode: 'readwrite' })
+  let perm: string = 'granted'
+  if (typeof (handle as any).queryPermission === 'function') {
+    try {
+      perm = await (handle as any).queryPermission({ mode: 'readwrite' })
+    } catch {
+      perm = 'prompt'
+    }
   }
+
+  if (perm !== 'granted') {
+    if (userGesture && typeof (handle as any).requestPermission === 'function') {
+      try {
+        perm = await (handle as any).requestPermission({ mode: 'readwrite' })
+      } catch (e) {
+        console.warn('requestPermission error:', e)
+      }
+    }
+  }
+
   if (perm && perm !== 'granted') {
-    throw new Error('Permission to write to file was not granted.')
+    const err = new Error('Permission to write to file was not granted.')
+    ;(err as any).needsUserGesture = true
+    throw err
   }
 
   const writable = await (handle as any).createWritable()
   await writable.write(content)
   await writable.close()
+}
+
+// Map to track active write per file handle to prevent concurrent write collisions
+const activeWritePromises = new WeakMap<FileSystemFileHandle, Promise<void>>()
+const pendingWrites = new WeakMap<FileSystemFileHandle, string>()
+
+/**
+ * Serialized safe write to local disk.
+ * If a write is already in progress, saves the latest content and writes it immediately
+ * as soon as current write completes, avoiding lock contention and file corruption.
+ */
+export async function saveToLocalDiskSafe(
+  handle: FileSystemFileHandle,
+  content: string,
+  userGesture = false
+): Promise<void> {
+  if (activeWritePromises.has(handle)) {
+    // Write in flight, update pending content to latest
+    pendingWrites.set(handle, content)
+    return activeWritePromises.get(handle)!
+  }
+
+  const runWrite = async (text: string): Promise<void> => {
+    try {
+      await saveToLocalDisk(handle, text, userGesture)
+    } finally {
+      if (pendingWrites.has(handle)) {
+        const nextContent = pendingWrites.get(handle)!
+        pendingWrites.delete(handle)
+        const nextPromise = runWrite(nextContent)
+        activeWritePromises.set(handle, nextPromise)
+        await nextPromise
+      } else {
+        activeWritePromises.delete(handle)
+      }
+    }
+  }
+
+  const writePromise = runWrite(content)
+  activeWritePromises.set(handle, writePromise)
+  return writePromise
+}
+
+/**
+ * Request write permission with explicit user gesture
+ */
+export async function requestDiskFilePermission(handle: FileSystemFileHandle): Promise<boolean> {
+  try {
+    if (typeof (handle as any).requestPermission === 'function') {
+      const perm = await (handle as any).requestPermission({ mode: 'readwrite' })
+      return perm === 'granted'
+    }
+    return true
+  } catch (e) {
+    console.warn('Error requesting permission:', e)
+    return false
+  }
 }
 
 /**
@@ -166,6 +244,7 @@ export async function saveAsLocalDisk(suggestedName: string, content: string): P
     ],
   })
 
-  await saveToLocalDisk(handle, content)
+  await saveToLocalDisk(handle, content, true)
   return handle
 }
+

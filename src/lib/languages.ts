@@ -249,19 +249,47 @@ echo "Fibonacci: [" . implode(", ", $fibs) . "]\\n";
 echo "Sum: " . array_sum($fibs) . "\\n";
 `},
   {
-    id: 'r', judge0Id: 80, label: 'R 4.2', monacoId: 'r', ext: 'r', color: '#198ce7', version: '4.2',
-    defaultCode: `# R 4.2
-fibonacci <- function(n) {
-  fib <- numeric(n)
-  fib[1] <- 0; fib[2] <- 1
-  for (i in 3:n) fib[i] <- fib[i-1] + fib[i-2]
-  return(fib)
-}
+    id: 'r', judge0Id: 80, label: 'R (RStudio)', monacoId: 'r', ext: 'r', color: '#276dc3', version: '4.6',
+    defaultCode: `# ── CodeForge R / RStudio Statistical Computing ──────────────
+# Interactive R script runnable directly in CodeForge!
 
-fibs <- fibonacci(15)
-cat("Fibonacci:", fibs, "\\n")
-cat("Sum:", sum(fibs), "\\n")
-cat("Mean:", mean(fibs), "\\n")
+cat("🚀 Welcome to RStudio Cloud Environment in CodeForge!\n")
+cat("R Version:", R.version.string, "\n\n")
+
+# 1. Vectors & Summary Statistics
+set.seed(42)
+scores <- round(rnorm(20, mean = 78, sd = 10), 1)
+cat("=== Summary Statistics ===\n")
+print(summary(scores))
+cat("Standard Deviation:", round(sd(scores), 2), "\n\n")
+
+# 2. RStudio Data Frame Analysis
+students <- data.frame(
+  id = 1:5,
+  name = c("Alice", "Bob", "Charlie", "Diana", "Ethan"),
+  major = c("CS", "Data Science", "Math", "CS", "Statistics"),
+  gpa = c(3.85, 3.92, 3.65, 3.98, 3.74),
+  graduated = c(TRUE, TRUE, FALSE, TRUE, FALSE)
+)
+cat("=== Student Data Frame (head) ===\n")
+print(students)
+cat("\nAverage GPA by Major:\n")
+print(aggregate(gpa ~ major, data = students, FUN = mean))
+cat("\n")
+
+# 3. Linear Regression Model (lm)
+x <- 1:10
+y <- 2.5 * x + 4 + rnorm(10, mean = 0, sd = 1.2)
+fit <- lm(y ~ x)
+cat("=== Linear Regression Model (lm: y ~ x) ===\n")
+cat("Coefficients:\n")
+print(coef(fit))
+cat("R-Squared:", round(summary(fit)$r.squared, 4), "\n\n")
+
+# 4. Built-in Datasets (mtcars quick preview)
+cat("=== Built-in Datasets: mtcars preview ===\n")
+print(head(mtcars[, c("mpg", "cyl", "hp", "wt")], 4))
+cat("\n✓ R / RStudio script executed successfully!\n")
 `},
   {
     id: 'scala', judge0Id: 81, label: 'Scala 3', monacoId: 'scala', ext: 'scala', color: '#c22d40', version: '3.2',
