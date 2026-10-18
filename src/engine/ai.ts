@@ -1,7 +1,7 @@
 /**
  * AI assistant engine.
  * Supports Bring Your Own Key (BYOK) for:
- * - Google Gemini (Gemini 2.5 Flash, 2.5 Pro, 2.0 Flash)
+ * - Google Gemini (Gemini 3.8 Flash, 3.7 Flash, 2.5 Flash, 2.5 Pro)
  * - OpenAI ChatGPT (GPT-4o, o3-mini, o1)
  * - Anthropic Claude (Claude 3.7 Sonnet, 3.5 Sonnet)
  * - GitHub Copilot / Models (GitHub Personal Access Token)
@@ -28,7 +28,7 @@ const ENV_AI_MODEL =
   (ENV_AI_PROVIDER === 'openai'
     ? 'gpt-4o-mini'
     : ENV_AI_PROVIDER === 'gemini'
-    ? 'gemini-2.5-flash'
+    ? 'gemini-3.8-flash'
     : 'claude-3-5-sonnet-20241022')
 const ENV_AI_URL =
   (import.meta.env.VITE_AI_API_URL as string | undefined) ??
@@ -246,7 +246,7 @@ async function callHostEnvProvider(messages: { role: string; content: string }[]
       const proxyResp = await fetch('/api/ai/gemini', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: lastUser, history: priorHistory })
+        body: JSON.stringify({ prompt: lastUser, history: priorHistory, model: ENV_AI_MODEL })
       })
       if (proxyResp.ok) {
         const proxyData = await proxyResp.json()

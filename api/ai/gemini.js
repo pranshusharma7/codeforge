@@ -122,14 +122,20 @@ function validatePayload(body) {
   )) {
     return null
   }
-  return { prompt: body.prompt.trim(), code: body.code, lang: body.lang, history }
+  return {
+    prompt: body.prompt.trim(),
+    code: body.code,
+    lang: body.lang,
+    history,
+    model: typeof body.model === 'string' ? body.model.trim() : undefined,
+  }
 }
 
-async function generateWithGemini({ prompt, code, lang, history }) {
+async function generateWithGemini({ prompt, code, lang, history, model: requestedModel }) {
   const key = process.env.AI_API_KEY
   if (!key) throw new Error('AI service is not configured. Set AI_API_KEY on the server.')
 
-  const model = process.env.AI_MODEL || 'gemini-2.5-flash'
+  const model = requestedModel || process.env.AI_MODEL || 'gemini-3.8-flash'
   const userPrompt = code.trim()
     ? `Active File (${lang}):\n\`\`\`${lang}\n${code}\n\`\`\`\n\nPrompt: ${prompt}`
     : prompt
@@ -142,7 +148,7 @@ async function generateWithGemini({ prompt, code, lang, history }) {
   ]
 
   let lastError = ''
-  const candidates = [...new Set([model, 'gemini-2.5-flash', 'gemini-2.5-pro'])]
+  const candidates = [...new Set([model, 'gemini-3.8-flash', 'gemini-3.7-flash', 'gemini-2.5-flash', 'gemini-2.5-pro'])]
   const generationDeadline = Date.now() + 35000
   for (const candidate of candidates) {
     const remainingMs = generationDeadline - Date.now()

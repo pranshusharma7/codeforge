@@ -371,6 +371,12 @@ function codeForgeApiServerPlugin(): Plugin {
           const code = parsed?.code || ""
           const lang = parsed?.lang || "code"
           const history = parsed?.history || []
+          const requestedModel =
+            parsed?.model ||
+            env.VITE_AI_MODEL ||
+            process.env.VITE_AI_MODEL ||
+            process.env.AI_MODEL ||
+            "gemini-3.8-flash"
 
           const systemInstructionText = `You are CodeForge AI, an elite senior software architect and full-stack programmer acting with the full intelligence, depth, and helpfulness of Google Gemini and ChatGPT.
 
@@ -425,9 +431,14 @@ When a user asks for code, especially web development requests involving HTML, C
           }
 
           const candidateModels = [
-            "gemini-2.5-flash",
-            "gemini-2.0-flash",
-            "gemini-1.5-flash",
+            ...new Set([
+              requestedModel,
+              "gemini-3.8-flash",
+              "gemini-3.7-flash",
+              "gemini-2.5-flash",
+              "gemini-2.0-flash",
+              "gemini-1.5-flash",
+            ]),
           ]
           let text = ""
           let lastErr = ""

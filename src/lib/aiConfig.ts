@@ -89,7 +89,7 @@ export const AI_PROVIDERS: Record<AIProviderId, ProviderDefinition> = {
     icon: '✨',
     gradient: 'linear-gradient(135deg, #1e3a8a 0%, #3b82f6 50%, #9333ea 100%)',
     accentColor: '#38bdf8',
-    description: 'Ultra-fast & intelligent multimodal coding. Sign in with Google to use Gemini Advanced & 2.5 Flash.',
+    description: 'Ultra-fast & intelligent multimodal coding. Powered by Gemini 3.8 Flash & Gemini 3.7 Flash.',
     webAppUrl: 'https://gemini.google.com/app',
     loginBrand: 'Continue with Google Gemini',
     tierName: 'Gemini Advanced',
@@ -389,6 +389,12 @@ export function getUserAIConfig(): UserAIConfig {
     if (!raw) return getDefaultConfig()
     const parsed = JSON.parse(raw) as UserAIConfig
     const defaults = getDefaultConfig()
+
+    // Automatically migrate legacy/stale 2.5 flash selection to 3.8 flash
+    if (parsed.providers?.gemini && (parsed.providers.gemini.selectedModel === 'gemini-2.5-flash' || !parsed.providers.gemini.selectedModel)) {
+      parsed.providers.gemini.selectedModel = 'gemini-3.8-flash'
+    }
+
     return {
       activeProvider: parsed.activeProvider || defaults.activeProvider,
       providers: {
