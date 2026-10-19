@@ -320,9 +320,9 @@ GROUP BY department
 ORDER BY avg_salary DESC;`,
   },
   {
-    id: 'r', label: 'R (RStudio)', monacoId: 'r', judge0Id: 80, ext: 'r', icon: 'R', color: '#276dc3',
-    starter: `# ── CodeForge R / RStudio Statistical Computing ──────────────
-cat("🚀 RStudio Environment Active!\n")
+    id: 'r', label: 'R', monacoId: 'r', judge0Id: 80, ext: 'r', icon: 'R', color: '#276dc3',
+    starter: `# ── CodeForge R Data Analysis & Statistical Computing ──────────────
+cat("🚀 R Environment Active!\\n")
 x <- c(12, 24, 36, 48, 60, 72, 84, 96)
 cat("Summary Statistics:\n")
 print(summary(x))

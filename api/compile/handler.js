@@ -220,11 +220,65 @@ async function executeLocally(code, lang, stdin = "", timeoutMs = 7000) {
       const scriptPath = path.join(tmpDir, "script.py")
       try {
         fs.writeFileSync(scriptPath, code, "utf-8")
-        const res = await runProcess(pythonCmd, ["-u", scriptPath], {
+        let res = await runProcess(pythonCmd, ["-u", scriptPath], {
           stdin,
           timeout: timeoutMs,
           cwd: tmpDir,
         })
+
+        // Auto-install missing Python package if ModuleNotFoundError occurs
+        if (
+          res.exitCode !== 0 &&
+          res.stderr &&
+          res.stderr.includes("ModuleNotFoundError: No module named '")
+        ) {
+          const match = res.stderr.match(/ModuleNotFoundError: No module named '([^']+)'/)
+          if (match && match[1]) {
+            const rawMod = match[1]
+            const PY_ALIASES = {
+              cv2: "opencv-python",
+              bs4: "beautifulsoup4",
+              PIL: "pillow",
+              sklearn: "scikit-learn",
+              yaml: "pyyaml",
+              dotenv: "python-dotenv",
+              dateutil: "python-dateutil",
+              jwt: "pyjwt",
+              Crypto: "pycryptodome",
+              serial: "pyserial",
+              psycopg2: "psycopg2-binary",
+              seaborn: "seaborn",
+              plotly: "plotly",
+              scipy: "scipy",
+              numpy: "numpy",
+              pandas: "pandas",
+              sympy: "sympy",
+              requests: "requests",
+              rich: "rich",
+              cowsay: "cowsay",
+              torch: "torch",
+              fastapi: "fastapi",
+              uvicorn: "uvicorn",
+            }
+            const pkgToInstall = PY_ALIASES[rawMod] || rawMod
+            const installRes = await runProcess(
+              pythonCmd,
+              ["-m", "pip", "install", pkgToInstall],
+              { timeout: 35000, cwd: tmpDir }
+            )
+            if (installRes.exitCode === 0) {
+              res = await runProcess(pythonCmd, ["-u", scriptPath], {
+                stdin,
+                timeout: timeoutMs,
+                cwd: tmpDir,
+              })
+              if (res.stdout) {
+                res.stdout = `[CodeForge Package Manager] 📦 Auto-installed '${pkgToInstall}' ✓\n\n` + res.stdout
+              }
+            }
+          }
+        }
+
         const elapsed = ((Date.now() - startTime) / 1000).toFixed(3)
         return {
           stdout: res.stdout || null,
@@ -262,7 +316,18 @@ async function executeLocally(code, lang, stdin = "", timeoutMs = 7000) {
     const nodeCmd = checkBinaryExists("node") ? "node" : null
     if (nodeCmd) {
       const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "cf_js_"))
-      const scriptPath = path.join(tmpDir, "main.js")
+      const isESM = /import\s+[\s\S]*?from|export\s+/.test(code)
+      if (isESM) {
+        try {
+          fs.writeFileSync(
+            path.join(tmpDir, "package.json"),
+            JSON.stringify({ type: "module" }),
+            "utf-8",
+          )
+        } catch {}
+      }
+      const scriptExt = isESM ? ".mjs" : ".js"
+      const scriptPath = path.join(tmpDir, `main${scriptExt}`)
       try {
         let cleanCode = code
         if (norm === "typescript" || norm === "ts") {
@@ -277,11 +342,43 @@ async function executeLocally(code, lang, stdin = "", timeoutMs = 7000) {
             .replace(/as\s+\w+/g, "")
         }
         fs.writeFileSync(scriptPath, cleanCode, "utf-8")
-        const res = await runProcess(nodeCmd, [scriptPath], {
+        let res = await runProcess(nodeCmd, [scriptPath], {
           stdin,
           timeout: timeoutMs,
           cwd: tmpDir,
         })
+
+        // Auto-install missing npm package if module not found
+        if (
+          res.exitCode !== 0 &&
+          res.stderr &&
+          (res.stderr.includes("Cannot find module '") ||
+            res.stderr.includes("ERR_MODULE_NOT_FOUND"))
+        ) {
+          const match = res.stderr.match(/(?:Cannot find module '|Cannot find package ')@?([^'/]+)/)
+          if (match && match[1] && !match[1].startsWith(".")) {
+            const pkgName = match[1]
+            const npmCmd = checkBinaryExists("npm") ? "npm" : null
+            if (npmCmd) {
+              const installRes = await runProcess(
+                npmCmd,
+                ["install", "--no-save", pkgName],
+                { timeout: 35000, cwd: tmpDir }
+              )
+              if (installRes.exitCode === 0) {
+                res = await runProcess(nodeCmd, [scriptPath], {
+                  stdin,
+                  timeout: timeoutMs,
+                  cwd: tmpDir,
+                })
+                if (res.stdout) {
+                  res.stdout = `[CodeForge Package Manager] 📦 Auto-installed npm package '${pkgName}' ✓\n\n` + res.stdout
+                }
+              }
+            }
+          }
+        }
+
         const elapsed = ((Date.now() - startTime) / 1000).toFixed(3)
         return {
           stdout: res.stdout || null,
@@ -323,7 +420,7 @@ async function executeLocally(code, lang, stdin = "", timeoutMs = 7000) {
         fs.writeFileSync(srcPath, code, "utf-8")
         const comp = await runProcess(
           cppCompiler,
-          ["-O2", "-std=c++17", srcPath, "-o", binPath],
+          ["-O2", "-std=c++17", "-pthread", "-lm", srcPath, "-o", binPath],
           { timeout: 6000, cwd: tmpDir },
         )
         if (comp.exitCode !== 0 || comp.spawnError) {
@@ -385,7 +482,7 @@ async function executeLocally(code, lang, stdin = "", timeoutMs = 7000) {
         fs.writeFileSync(srcPath, code, "utf-8")
         const comp = await runProcess(
           cCompiler,
-          ["-O2", srcPath, "-o", binPath],
+          ["-O2", "-pthread", "-lm", srcPath, "-o", binPath],
           { timeout: 6000, cwd: tmpDir },
         )
         if (comp.exitCode !== 0 || comp.spawnError) {
@@ -441,7 +538,8 @@ async function executeLocally(code, lang, stdin = "", timeoutMs = 7000) {
       const className = classMatch ? classMatch[1] : "Main"
       const javaPath = path.join(tmpDir, `${className}.java`)
       try {
-        fs.writeFileSync(javaPath, code, "utf-8")
+        const cleanJavaCode = code.replace(/^\s*package\s+[a-zA-Z0-9_.]+;\s*/gm, "")
+        fs.writeFileSync(javaPath, cleanJavaCode, "utf-8")
         const exec = await runProcess(javaCmd, [javaPath], {
           stdin,
           timeout: timeoutMs,
@@ -639,7 +737,7 @@ async function executeLocally(code, lang, stdin = "", timeoutMs = 7000) {
     }
   }
 
-  // 10. R / RStudio Execution
+  // 10. R Execution
   if (norm === "r" || norm === "rscript" || norm === "rstudio") {
     const rCmd = checkBinaryExists("Rscript")
       ? (fs.existsSync("/usr/local/bin/Rscript") ? "/usr/local/bin/Rscript" : "Rscript")
@@ -654,15 +752,47 @@ async function executeLocally(code, lang, stdin = "", timeoutMs = 7000) {
         const args = rCmd.includes("Rscript") || rCmd === "Rscript"
           ? ["--vanilla", scriptPath]
           : ["CMD", "BATCH", "--vanilla", scriptPath]
-        const res = await runProcess(rCmd, args, {
+        let res = await runProcess(rCmd, args, {
           stdin,
           timeout: timeoutMs,
           cwd: tmpDir,
         })
+
+        // Auto-install missing R package
+        if (
+          res.exitCode !== 0 &&
+          res.stderr &&
+          res.stderr.includes("there is no package called '")
+        ) {
+          const match = res.stderr.match(/there is no package called '([^']+)'/)
+          if (match && match[1]) {
+            const rPkg = match[1]
+            const installRes = await runProcess(
+              rCmd,
+              ["-e", `install.packages('${rPkg}', repos='https://cloud.r-project.org')`],
+              { timeout: 60000, cwd: tmpDir }
+            )
+            if (installRes.exitCode === 0) {
+              res = await runProcess(rCmd, args, {
+                stdin,
+                timeout: timeoutMs,
+                cwd: tmpDir,
+              })
+              if (res.stdout) {
+                res.stdout = `[CodeForge Package Manager] 📦 Auto-installed R CRAN package '${rPkg}' ✓\n\n` + res.stdout
+              }
+            }
+          }
+        }
+
         const elapsed = ((Date.now() - startTime) / 1000).toFixed(3)
+        let cleanRStderr = res.stderr
+        if (res.exitCode === 0 && cleanRStderr && !cleanRStderr.includes("Error in") && !cleanRStderr.includes("Execution halted")) {
+          cleanRStderr = null
+        }
         return {
           stdout: res.stdout || null,
-          stderr: res.stderr || null,
+          stderr: cleanRStderr,
           compile_output: null,
           status: {
             id: res.timedOut ? 5 : res.exitCode === 0 ? 3 : 11,
@@ -675,7 +805,7 @@ async function executeLocally(code, lang, stdin = "", timeoutMs = 7000) {
           time: elapsed,
           memory: 4096,
           exit_code: res.exitCode,
-          engine: "⚡ Local R / RStudio Engine",
+          engine: "⚡ Local R Engine",
         }
       } finally {
         try {
@@ -807,6 +937,102 @@ export async function executeCodeServer(
     )
   }
 
+// Wandbox Free Online Compiler Configuration (Fallback Tier)
+const WANDBOX_COMPILERS = {
+  python: { compiler: "cpython-3.12.7" },
+  py: { compiler: "cpython-3.12.7" },
+  cpp: { compiler: "gcc-13.2.0", options: "warning,gnu++17" },
+  "c++": { compiler: "gcc-13.2.0", options: "warning,gnu++17" },
+  c: { compiler: "gcc-13.2.0-c" },
+  java: { compiler: "openjdk-jdk-21+35" },
+  rust: { compiler: "rust-1.82.0" },
+  rs: { compiler: "rust-1.82.0" },
+  go: { compiler: "go-1.23.2" },
+  csharp: { compiler: "mono-6.12.0.199" },
+  cs: { compiler: "mono-6.12.0.199" },
+  php: { compiler: "php-8.3.12" },
+  ruby: { compiler: "ruby-3.3.11" },
+  rb: { compiler: "ruby-3.3.11" },
+  bash: { compiler: "bash" },
+  sh: { compiler: "bash" },
+  shell: { compiler: "bash" },
+  perl: { compiler: "perl-5.40.0" },
+  pl: { compiler: "perl-5.40.0" },
+  lua: { compiler: "lua-5.4.7" },
+  haskell: { compiler: "ghc-9.10.1" },
+  hs: { compiler: "ghc-9.10.1" },
+}
+
+async function executeWandboxCloud(code, lang, stdin = "", timeoutMs = 4000) {
+  const norm = (lang || "").toLowerCase().trim()
+  const cfg = WANDBOX_COMPILERS[norm]
+  if (!cfg) return null
+
+  const startTime = Date.now()
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), timeoutMs)
+
+  try {
+    let codeToSubmit = code
+    if (norm === "java") {
+      codeToSubmit = code.replace(/\bpublic\s+class\s+(\w+)/g, "class $1")
+    }
+
+    const res = await fetch("https://wandbox.org/api/compile.json", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        compiler: cfg.compiler,
+        code: codeToSubmit,
+        stdin,
+        options: cfg.options,
+      }),
+      signal: controller.signal,
+    })
+    clearTimeout(timer)
+
+    if (res.ok) {
+      const data = await res.json()
+      const elapsed = ((Date.now() - startTime) / 1000).toFixed(3)
+      const exitCode =
+        data.status !== undefined && data.status !== ""
+          ? parseInt(data.status, 10)
+          : 0
+      const isSuccess = exitCode === 0 && !data.signal
+
+      const stdout = data.program_output || null
+      const stderr = data.program_error || null
+      const compile_output = data.compiler_error || data.compiler_output || null
+
+      let statusId = isSuccess ? 3 : 11
+      let statusDesc = isSuccess ? "Accepted" : "Runtime Error"
+
+      if (compile_output && !stdout && exitCode !== 0) {
+        statusId = 6
+        statusDesc = "Compilation Error"
+      } else if (!isSuccess && stderr) {
+        statusId = 11
+        statusDesc = "Runtime Error"
+      }
+
+      return {
+        stdout,
+        stderr,
+        compile_output,
+        status: { id: statusId, description: statusDesc },
+        time: elapsed,
+        memory: 4096,
+        exit_code: exitCode,
+        engine: "🟠 Wandbox Cloud Engine",
+      }
+    }
+  } catch (err) {
+    clearTimeout(timer)
+    console.warn("Wandbox cloud fallback failed:", err.message)
+  }
+  return null
+}
+
   // Tier 2: Try Cloud Judge0 CE
   try {
     const cloudRes = await executeJudge0Cloud(
@@ -823,7 +1049,15 @@ export async function executeCodeServer(
     )
   }
 
-  // Tier 3: Timeout or Graceful error report
+  // Tier 3: Try Wandbox Cloud Engine (for Rust, Go, PHP, etc.)
+  try {
+    const wandboxRes = await executeWandboxCloud(code, lang, stdin, timeoutMs)
+    if (wandboxRes) return wandboxRes
+  } catch (wandboxErr) {
+    console.warn("Wandbox fallback failed...", wandboxErr.message)
+  }
+
+  // Tier 4: Timeout or Graceful error report
   return {
     stdout: null,
     stderr:

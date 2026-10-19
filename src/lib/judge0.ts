@@ -221,7 +221,13 @@ export async function executeCode(
 
   // ── Tier 0: Client-side Browser Execution for Web Technologies ─────────────
   if (langKey === 'javascript' || langKey === 'js' || languageId === 63 || langKey === 'typescript' || langKey === 'ts' || languageId === 74) {
-    return runBrowserJS(params.sourceCode, langKey === 'typescript' || languageId === 74, params.stdin, startTime);
+    const hasExternalImportsOrNode = /require\s*\(|import\s+[\s\S]*?from|export\s+|process\.|__dirname|__filename|fs\.|path\.|http\./.test(params.sourceCode);
+    if (!hasExternalImportsOrNode) {
+      const browserRes = runBrowserJS(params.sourceCode, langKey === 'typescript' || languageId === 74, params.stdin, startTime);
+      if (browserRes.status.id === 3) {
+        return browserRes;
+      }
+    }
   }
 
   if (langKey === 'json') {

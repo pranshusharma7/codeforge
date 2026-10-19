@@ -125,8 +125,8 @@ const COMMANDS = [
   { id: 'themes', label: 'VS Code Themes', detail: 'Choose from 15 iconic VS Code themes', key: '', icon: '🎨' },
   { id: 'repos', label: 'GitHub Repositories', detail: 'Manage repositories and commit code', key: '', icon: '📦' },
   { id: 'packages', label: 'Package Installer', detail: 'Manage R (CRAN), Python (pip), and npm packages', key: '', icon: '📦' },
-  { id: 'new-r', label: 'New R Script (RStudio)', detail: 'Create a runnable R statistical computing file', key: '', icon: '🔵' },
-  { id: 'switch-r', label: 'Change Language: R (RStudio)', detail: 'Switch current file to R language', key: '', icon: '📊' },
+  { id: 'new-r', label: 'New R Script', detail: 'Create a runnable R data science file', key: '', icon: '📊' },
+  { id: 'switch-r', label: 'Change Language: R', detail: 'Switch current file to R language', key: '', icon: '📊' },
   { id: 'settings', label: 'Open Settings', detail: 'Configure the editor', key: '', icon: '⚙' },
   { id: 'shortcuts', label: 'Keyboard Shortcuts', detail: 'View all editor shortcuts', key: '?', icon: '⌨' },
 ]
@@ -2259,7 +2259,7 @@ export default function App() {
       case 'repos': openSettings('repos'); break
       case 'ai': setAiOpen(p => !p); break
       case 'packages': setPanel('packages'); setSideOpen(true); break
-      case 'switch-r': switchLang('r'); showToast('Switched to R (RStudio) ✨'); break
+      case 'switch-r': switchLang('r'); showToast('Switched to R ✨'); break
       case 'new-r': {
         let candidate = 'main.r'
         let idx = 1
@@ -2269,7 +2269,7 @@ export default function App() {
         }
         const rLang = getLangById('r')
         newTab(candidate, rLang.defaultCode)
-        showToast(`Created ${candidate} (RStudio) 📊`)
+        showToast(`Created ${candidate} (R) 📊`)
         break
       }
       case 'settings': setShowSettings(true); break
@@ -4566,35 +4566,6 @@ export default function App() {
                     }}
                   >
                     <FilePlusIcon size={15} /> New Empty File
-                  </button>
-                  <button
-                    onClick={() => {
-                      let candidate = 'main.r'
-                      let idx = 1
-                      while (tabs.some(t => t.name === candidate)) {
-                        idx++
-                        candidate = `script_${idx}.r`
-                      }
-                      const rLang = getLangById('r')
-                      newTab(candidate, rLang.defaultCode)
-                      showToast(`Created ${candidate} (R / RStudio) 📊`)
-                    }}
-                    className="btn btn-ghost"
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 8,
-                      padding: '10px 18px',
-                      borderRadius: 8,
-                      fontSize: 13,
-                      border: '1px solid rgba(39, 109, 195, 0.4)',
-                      background: 'rgba(39, 109, 195, 0.1)',
-                      color: '#38bdf8',
-                      cursor: 'pointer',
-                      fontWeight: 600,
-                    }}
-                  >
-                    <span>🔵</span> New R Script (RStudio)
                   </button>
                   <button
                     onClick={() => {
