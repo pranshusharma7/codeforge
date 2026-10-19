@@ -15,7 +15,7 @@ const J0_URL = import.meta.env.VITE_JUDGE0_URL as string | undefined
 const J0_KEY = import.meta.env.VITE_JUDGE0_KEY as string | undefined
 const REAL = Boolean(J0_URL && J0_KEY)
 
-// ── Real Judge0 ────────────────────────────────────────────────────────────
+// Remote Judge0 Client
 async function submitReal(lang: Language, code: string, stdin: string): Promise<ExecutionResult> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -69,7 +69,7 @@ function mapJ0Result(data: any): ExecutionResult {
   }
 }
 
-// ── Simulation ─────────────────────────────────────────────────────────────
+// Local Fallback Execution
 const SAMPLE_OUTPUTS: Record<string, (stdin: string) => { stdout: string; timeMs: number; memKb: number }> = {
   cpp: (stdin) => {
     const nums = parseNums(stdin)
@@ -147,7 +147,7 @@ async function simulateExec(lang: Language, code: string, stdin: string): Promis
   }
 }
 
-// ── Public API ─────────────────────────────────────────────────────────────
+// Public API
 export async function executeCode(lang: Language, code: string, stdin: string): Promise<ExecutionResult> {
   if (REAL) return submitReal(lang, code, stdin)
   return simulateExec(lang, code, stdin)

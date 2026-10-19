@@ -242,7 +242,7 @@ export async function executeCode(
         time: '0.001',
         memory: 1024,
         exit_code: 0,
-        engine: '⚡ In-Browser JSON Engine',
+        engine: 'In-Browser JSON Parser',
       };
     } catch (err: any) {
       return {
@@ -253,7 +253,7 @@ export async function executeCode(
         time: '0.001',
         memory: 1024,
         exit_code: 1,
-        engine: '⚡ In-Browser JSON Engine',
+        engine: 'In-Browser JSON Parser',
       };
     }
   }
@@ -292,7 +292,7 @@ export async function executeCode(
           time: data.time || ((performance.now() - startTime) / 1000).toFixed(3),
           memory: data.memory ?? 2048,
           exit_code: data.exit_code ?? 0,
-          engine: data.engine || '⚡ Local Server Engine',
+          engine: data.engine || 'Host Compiler Service',
         };
       }
     }
@@ -314,13 +314,13 @@ export async function executeCode(
     if (localErr?.name === 'AbortError') {
       return {
         stdout: null,
-        stderr: '⏱ Execution timed out (3.5s limit reached).\n💡 Tip: Check for infinite loops (e.g. while True). If your code asks for input (input() / cin), provide values in the "Standard Input (stdin)" tab before clicking Run.',
+        stderr: 'Execution timed out (3.5s limit reached).\nTip: Check for infinite loops or blocking calls. If your program reads from stdin, provide values in the "Standard Input (stdin)" tab prior to running.',
         compile_output: null,
         status: { id: 5, description: 'Time Limit Exceeded' },
         time: '3.500',
         memory: 4096,
         exit_code: 124,
-        engine: '⚡ Local Server Timeout Guard',
+        engine: 'Execution Timeout Guard',
       };
     }
     // Only continue to cloud fallback if endpoint failed with network error or 404
@@ -393,7 +393,7 @@ export async function executeCode(
         time: data.time || elapsed,
         memory: data.memory ?? 2048,
         exit_code: data.exit_code ?? 0,
-        engine: '🟢 Judge0 Cloud Engine',
+        engine: 'Judge0 Cloud Worker',
       };
     }
     clearTimeout(cloudTimeout);
@@ -472,7 +472,7 @@ export async function executeCode(
           time: elapsed,
           memory: 4096,
           exit_code: exitCode,
-          engine: '🟠 Wandbox Cloud Engine',
+          engine: 'Wandbox Sandbox Engine',
         };
       }
     } catch (wandboxErr: any) {
@@ -554,7 +554,7 @@ function runBrowserJS(code: string, isTypeScript: boolean, stdin?: string, start
       time,
       memory: 2048,
       exit_code: 0,
-      engine: '⚡ In-Browser JS Engine',
+      engine: 'Browser V8 Runtime',
     };
   } catch (err: any) {
     const time = ((performance.now() - startTime) / 1000).toFixed(3);
@@ -566,7 +566,7 @@ function runBrowserJS(code: string, isTypeScript: boolean, stdin?: string, start
       time,
       memory: 2048,
       exit_code: 1,
-      engine: '⚡ In-Browser JS Engine',
+      engine: 'Browser V8 Runtime',
     };
   } finally {
     console.log = originalLog;

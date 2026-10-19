@@ -1,10 +1,8 @@
 import type { ExtensionCompletionRule, GhostTextSuggestion } from './types'
 
 /**
- * AntiGravity AI Next-Line Code Predictor Engine (Advanced Copilot)
- * Automatically analyzes surrounding context, previous comments, open structures,
- * defined variables, and language semantics to predict what code comes next.
- * Renders as ghost text in Monaco editor — accepted when the user presses Tab.
+ * Monaco Inline Completion Provider
+ * Analyzes lexical context and indentation to generate tab completions.
  */
 export function getAINextCodeSuggestion(
   code: string,

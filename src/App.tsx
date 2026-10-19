@@ -322,7 +322,7 @@ export default function App() {
     try { return localStorage.getItem('cf_editor_comment_color') || 'default' } catch { return 'default' }
   })
   const [extensions, setExtensions]       = useState<Extension[]>(() => getInstalledExtensions())
-  const isAiHelperEnabled = useMemo(() => isExtensionEnabled('codeforge-ai-helper', extensions) || isExtensionEnabled('antigravity-ai-copilot', extensions), [extensions])
+  const isAiHelperEnabled = useMemo(() => isExtensionEnabled('codeforge-ai-helper', extensions), [extensions])
   const customCompletions = useMemo(() => extensions.filter(e => e.enabled).flatMap(e => e.completions || []), [extensions])
   const [fontLigatures, setFontLigatures] = useState<boolean>(() => {
     try {
@@ -590,7 +590,7 @@ export default function App() {
     monaco.editor.setTheme(activeMonacoTheme)
   }, [monaco, editorTheme, editorFontColor, editorCommentColor, activeMonacoTheme])
 
-  // ── AntiGravity AI Copilot: Next-Line Ghost Text Completions (Tab to Accept) ──
+  // ── Inline Code Completion: Tab Completion Provider ──
   const inlineProviderRef = useRef<any>(null)
 
   useEffect(() => {
@@ -3710,7 +3710,7 @@ export default function App() {
                     onChange={handleOpenFolder}
                   />
 
-                  {/* VS Code / Antigravity Workspace Section Header */}
+                  {/* Workspace Section Header */}
                   <div
                     style={{
                       display: 'flex',
@@ -3804,7 +3804,7 @@ export default function App() {
                         </div>
                       )}
 
-                      {/* Root inline creation row (VS Code / Antigravity style) */}
+                      {/* Root inline creation row */}
                       {inlineItem && !inlineItem.parentFolder && (
                         <div
                           style={{

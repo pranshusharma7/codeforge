@@ -22,7 +22,7 @@ export interface PackageInfo {
 }
 
 const CURATED_PACKAGES: PackageInfo[] = [
-  // ── R / CRAN Packages ───────────────────────────────────────────────────────
+  // CRAN Packages (R)
   {
     name: 'ggplot2',
     ecosystem: 'cran',
@@ -81,7 +81,7 @@ const CURATED_PACKAGES: PackageInfo[] = [
     name: 'data.table',
     ecosystem: 'cran',
     version: '1.16.2',
-    description: 'Ultra-fast memory-efficient data manipulation, fast aggregation, and rolling joins in pure C.',
+    description: 'High-performance data manipulation, in-place aggregation, and rolling joins written in C.',
     category: 'Data Wrangling',
     author: 'Matt Dowle',
     importSnippet: 'library(data.table)',
@@ -114,7 +114,7 @@ const CURATED_PACKAGES: PackageInfo[] = [
     importSnippet: 'library(stringr)',
   },
 
-  // ── Python / PyPI Packages ──────────────────────────────────────────────────
+  // PyPI Packages (Python)
   {
     name: 'numpy',
     ecosystem: 'pypi',
@@ -188,7 +188,7 @@ const CURATED_PACKAGES: PackageInfo[] = [
     importSnippet: 'from flask import Flask',
   },
 
-  // ── Node.js / npm Packages ──────────────────────────────────────────────────
+  // npm Packages (JavaScript / TypeScript)
   {
     name: 'lodash',
     ecosystem: 'npm',
@@ -226,7 +226,7 @@ const CURATED_PACKAGES: PackageInfo[] = [
     importSnippet: "import { format } from 'date-fns'",
   },
 
-  // ── Rust / Crates.io Packages ───────────────────────────────────────────────
+  // Crates.io Packages (Rust)
   {
     name: 'serde',
     ecosystem: 'crates',

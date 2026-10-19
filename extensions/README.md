@@ -8,10 +8,10 @@ This directory stores downloadable and uploadable extensions that users can inst
 
 ## 🚀 How Extensions Work
 
-1. **AntiGravity AI Copilot (Built-in & Custom)**:
+1. **Inline Code Completions (Built-in & Custom)**:
    - Detects code context and predicts the next lines as you type.
    - Shows a subtle inline ghost text prediction right beside the cursor.
-   - Press **`Tab`** to instantly accept and apply the suggested code (just like Anti Gravity).
+   - Press **`Tab`** to instantly accept and apply the suggested code.
    - Press **`Esc`** to dismiss.
 
 2. **Smart Auto-Correct & Linter**:

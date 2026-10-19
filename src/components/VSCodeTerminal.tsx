@@ -151,7 +151,7 @@ export default function VSCodeTerminal({
         {
           id: 'init-1',
           type: 'system',
-          text: 'Google Antigravity / CodeForge Interactive Terminal [Version 2.5.0-macos]',
+          text: 'CodeForge Interactive Terminal [Version 2.5.0-darwin]',
         },
         {
           id: 'init-2',
@@ -198,7 +198,7 @@ export default function VSCodeTerminal({
   const [gitCommits, setGitCommits] = useState<Array<{ hash: string; msg: string; date: string }>>([
     { hash: 'a3f92d1', msg: 'feat: initialize CodeForge workspace and compiler', date: 'Sun Sep 27 16:30:00 2026' },
     { hash: '7c81e4b', msg: 'feat: configure Vite 8 and Tailwind CSS v4', date: 'Sun Sep 27 17:15:00 2026' },
-    { hash: '9b2e04f', msg: 'feat: full Google Antigravity real working terminal engine', date: 'Sun Sep 27 17:55:00 2026' },
+    { hash: '9b2e04f', msg: 'feat: implement interactive pseudo-terminal and pty session manager', date: 'Sun Sep 27 17:55:00 2026' },
   ])
   const [stagedFiles, setStagedFiles] = useState<string[]>([])
   const [allCommandHistory, setAllCommandHistory] = useState<string[]>([])
@@ -302,7 +302,7 @@ export default function VSCodeTerminal({
       return
     }
 
-    appendLineToActive('system', `[Compiling & running ${targetFileName} via Google Antigravity engine...]`)
+    appendLineToActive('system', `[Compiling & running ${targetFileName} via execution runtime...]`)
 
     if (onExecuteCode) {
       try {
@@ -365,7 +365,7 @@ export default function VSCodeTerminal({
     setAllCommandHistory(prev => [...prev, cmd])
 
     // Prompt line rendering
-    let promptPrefix = `${envVars.USER || 'codeforge'}@antigravity:${activeSession.currentDir} (${currentBranch}) $ `
+    let promptPrefix = `${envVars.USER || 'codeforge'}@workspace:${activeSession.currentDir} (${currentBranch}) $ `
     if (activeSession.replMode === 'node') {
       promptPrefix = '> '
     } else if (activeSession.replMode === 'python') {
@@ -454,7 +454,7 @@ export default function VSCodeTerminal({
         case 'help':
         case 'man':
           appendLineToActive('system', '╔══════════════════════════════════════════════════════════════════════════════╗')
-          appendLineToActive('system', '║           GOOGLE ANTIGRAVITY & CODEFORGE REAL TERMINAL V2.5.0                ║')
+          appendLineToActive('system', '║                 CODEFORGE VIRTUAL TERMINAL SUBSYSTEM                         ║')
           appendLineToActive('system', '╚══════════════════════════════════════════════════════════════════════════════╝')
           appendLineToActive('output', '📦 PACKAGE MANAGERS:')
           appendLineToActive('output', '  npm install <pkg>       - Real npm registry lookup, installs & updates package.json')
@@ -496,7 +496,7 @@ export default function VSCodeTerminal({
           appendLineToActive('output', '  ping <host>             - Live ICMP network latency measurement')
           appendLineToActive('output', '  git status / add / commit / log / branch / checkout / diff / push')
           appendLineToActive('output', '\n💻 SYSTEM & DIAGNOSTICS:')
-          appendLineToActive('output', '  neofetch                - Display system specifications & Antigravity logo')
+          appendLineToActive('output', '  neofetch                - Display system specifications & hardware')
           appendLineToActive('output', '  whoami / date / uptime  - System details')
           appendLineToActive('output', '  top / ps aux / df / free- Process & resource monitoring')
           appendLineToActive('output', '  history                 - Command execution history')
@@ -1335,10 +1335,10 @@ export default function VSCodeTerminal({
           // ── System Utilities & Eye Candy ──────────────────────────────────
           if (main === 'neofetch' || main === 'fastfetch') {
             appendLineToActive('system', `
-        /\\           codeforge@antigravity
-       /  \\          ---------------------
-      / /\\ \\         OS: macOS Sequoia 15.3 (Antigravity Virtualized Kernel)
-     / /  \\ \\        Host: Google Antigravity Cloud Platform
+        /\\           codeforge@workspace
+       /  \\          -------------------
+      / /\\ \\         OS: macOS Sequoia 15.3 (Darwin arm64)
+     / /  \\ \\        Host: CodeForge Virtualized Workstation
     / /_/\\ \\ \\       Kernel: 24.3.0 Darwin Kernel ARM64
    / / /\\ \\ \\ \\      Uptime: 44 hours, 28 mins
   / / /  \\ \\ \\ \\     Packages: 124 (npm), 34 (pip), 18 (brew)
@@ -1733,7 +1733,7 @@ export default function VSCodeTerminal({
           ) : (
             <>
               <span style={{ color: '#34d399', fontWeight: 600 }}>
-                {envVars.USER || 'codeforge'}@antigravity
+                {envVars.USER || 'codeforge'}@workspace
               </span>
               <span style={{ color: 'var(--text-dim)' }}>:</span>
               <span style={{ color: '#38bdf8', fontWeight: 600 }}>{activeSession.currentDir}</span>

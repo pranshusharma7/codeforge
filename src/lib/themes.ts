@@ -2101,7 +2101,7 @@ export function applyThemeToDocument(
   root.setAttribute("data-theme", themeId)
   root.setAttribute("data-theme-category", theme.category)
 
-  // ── Critical Requirement: Output font color is ALWAYS black in light themes and ALWAYS white in dark themes ──
+  // Contrast adjustment for light/dark theme console output
   const outputFontColor = theme.category === "light" ? "#000000" : "#ffffff"
   root.style.setProperty("--output-font-color", outputFontColor)
 

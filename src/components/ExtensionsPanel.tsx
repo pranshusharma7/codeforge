@@ -266,7 +266,7 @@ export default function ExtensionsPanel({
   })()
 
   // Find CodeForge AI Helper
-  const aiHelperExt = extensions.find(e => e.id === 'codeforge-ai-helper' || e.id === 'antigravity-ai-copilot')
+  const aiHelperExt = extensions.find(e => e.id === 'codeforge-ai-helper')
   const isAiHelperActive = aiHelperExt?.enabled ?? false
 
   return (

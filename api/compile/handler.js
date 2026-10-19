@@ -273,7 +273,7 @@ async function executeLocally(code, lang, stdin = "", timeoutMs = 7000) {
                 cwd: tmpDir,
               })
               if (res.stdout) {
-                res.stdout = `[CodeForge Package Manager] 📦 Auto-installed '${pkgToInstall}' ✓\n\n` + res.stdout
+                res.stdout = `[codeforge-pm] Resolved missing dependency: '${pkgToInstall}' (installed)\n` + res.stdout
               }
             }
           }
@@ -295,7 +295,7 @@ async function executeLocally(code, lang, stdin = "", timeoutMs = 7000) {
           time: elapsed,
           memory: 4096,
           exit_code: res.exitCode,
-          engine: "⚡ Local Python Server",
+          engine: "Python 3 (Local Sandbox)",
         }
       } finally {
         try {
@@ -372,7 +372,7 @@ async function executeLocally(code, lang, stdin = "", timeoutMs = 7000) {
                   cwd: tmpDir,
                 })
                 if (res.stdout) {
-                  res.stdout = `[CodeForge Package Manager] 📦 Auto-installed npm package '${pkgName}' ✓\n\n` + res.stdout
+                  res.stdout = `[codeforge-pm] Resolved npm package: '${pkgName}' (installed)\n` + res.stdout
                 }
               }
             }
@@ -395,7 +395,7 @@ async function executeLocally(code, lang, stdin = "", timeoutMs = 7000) {
           time: elapsed,
           memory: 4096,
           exit_code: res.exitCode,
-          engine: "⚡ Local Node.js Server",
+          engine: "Node.js (Local Sandbox)",
         }
       } finally {
         try {
@@ -433,7 +433,7 @@ async function executeLocally(code, lang, stdin = "", timeoutMs = 7000) {
             time: elapsed,
             memory: 0,
             exit_code: comp.exitCode || 1,
-            engine: "⚡ Local C++ Server",
+            engine: "Clang++ (Local Sandbox)",
           }
         }
         const exec = await runProcess(binPath, [], {
@@ -457,7 +457,7 @@ async function executeLocally(code, lang, stdin = "", timeoutMs = 7000) {
           time: elapsed,
           memory: 2048,
           exit_code: exec.exitCode,
-          engine: "⚡ Local C++ Server",
+          engine: "Clang++ (Local Sandbox)",
         }
       } finally {
         try {
@@ -495,7 +495,7 @@ async function executeLocally(code, lang, stdin = "", timeoutMs = 7000) {
             time: elapsed,
             memory: 0,
             exit_code: comp.exitCode || 1,
-            engine: "⚡ Local C Server",
+            engine: "Clang (Local Sandbox)",
           }
         }
         const exec = await runProcess(binPath, [], {
@@ -519,7 +519,7 @@ async function executeLocally(code, lang, stdin = "", timeoutMs = 7000) {
           time: elapsed,
           memory: 2048,
           exit_code: exec.exitCode,
-          engine: "⚡ Local C Server",
+          engine: "Clang (Local Sandbox)",
         }
       } finally {
         try {
@@ -574,7 +574,7 @@ async function executeLocally(code, lang, stdin = "", timeoutMs = 7000) {
           time: elapsed,
           memory: 16384,
           exit_code: exec.exitCode,
-          engine: "⚡ Local Java Server",
+          engine: "OpenJDK (Local Sandbox)",
         }
       } finally {
         try {
@@ -612,7 +612,7 @@ async function executeLocally(code, lang, stdin = "", timeoutMs = 7000) {
         time: elapsed,
         memory: 1024,
         exit_code: exec.exitCode,
-        engine: "⚡ Local Shell Server",
+        engine: "POSIX Shell (Local Sandbox)",
       }
     } finally {
       try {
@@ -642,7 +642,7 @@ async function executeLocally(code, lang, stdin = "", timeoutMs = 7000) {
           time: elapsed,
           memory: 4096,
           exit_code: exec.exitCode,
-          engine: "⚡ Local Ruby Server",
+          engine: "Ruby (Local Sandbox)",
         }
       } finally {
         try { fs.rmSync(tmpDir, { recursive: true, force: true }) } catch {}
@@ -671,7 +671,7 @@ async function executeLocally(code, lang, stdin = "", timeoutMs = 7000) {
           time: elapsed,
           memory: 8192,
           exit_code: exec.exitCode,
-          engine: "⚡ Local Swift Server",
+          engine: "Swift (Local Sandbox)",
         }
       } finally {
         try { fs.rmSync(tmpDir, { recursive: true, force: true }) } catch {}
@@ -700,7 +700,7 @@ async function executeLocally(code, lang, stdin = "", timeoutMs = 7000) {
           time: elapsed,
           memory: 2048,
           exit_code: exec.exitCode,
-          engine: "⚡ Local Perl Server",
+          engine: "Perl (Local Sandbox)",
         }
       } finally {
         try { fs.rmSync(tmpDir, { recursive: true, force: true }) } catch {}
@@ -729,7 +729,7 @@ async function executeLocally(code, lang, stdin = "", timeoutMs = 7000) {
           time: elapsed,
           memory: 2048,
           exit_code: exec.exitCode,
-          engine: "⚡ Local SQLite Engine",
+          engine: "SQLite 3 Engine",
         }
       } finally {
         try { fs.rmSync(tmpDir, { recursive: true, force: true }) } catch {}
@@ -779,7 +779,7 @@ async function executeLocally(code, lang, stdin = "", timeoutMs = 7000) {
                 cwd: tmpDir,
               })
               if (res.stdout) {
-                res.stdout = `[CodeForge Package Manager] 📦 Auto-installed R CRAN package '${rPkg}' ✓\n\n` + res.stdout
+                res.stdout = `[codeforge-pm] Resolved R CRAN package: '${rPkg}' (installed)\n` + res.stdout
               }
             }
           }
@@ -805,7 +805,7 @@ async function executeLocally(code, lang, stdin = "", timeoutMs = 7000) {
           time: elapsed,
           memory: 4096,
           exit_code: res.exitCode,
-          engine: "⚡ Local R Engine",
+          engine: "R Runtime (Local Sandbox)",
         }
       } finally {
         try {
@@ -896,7 +896,7 @@ async function executeJudge0Cloud(
       time: data.time || elapsed,
       memory: data.memory ?? 2048,
       exit_code: data.exit_code ?? 0,
-      engine: "🟢 Judge0 Cloud Engine",
+      engine: "Judge0 Cloud Worker",
     }
   } catch (err) {
     clearTimeout(timeoutId)
@@ -926,7 +926,7 @@ export async function executeCodeServer(
     }
   }
 
-  // Tier 1: Try local execution first (lightning fast 30ms - 500ms)
+  // Tier 1: Host compiler execution sandbox
   try {
     const localRes = await executeLocally(code, lang, stdin, timeoutMs)
     if (localRes) return localRes
@@ -1023,7 +1023,7 @@ async function executeWandboxCloud(code, lang, stdin = "", timeoutMs = 4000) {
         time: elapsed,
         memory: 4096,
         exit_code: exitCode,
-        engine: "🟠 Wandbox Cloud Engine",
+        engine: "Wandbox Sandbox Engine",
       }
     }
   } catch (err) {

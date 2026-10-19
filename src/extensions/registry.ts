@@ -97,22 +97,7 @@ export function getInstalledExtensions(): Extension[] {
       saveInstalledExtensions(BUILT_IN_EXTENSIONS)
       return BUILT_IN_EXTENSIONS
     }
-    let parsed: Extension[] = JSON.parse(raw)
-
-    // Migration: If user had 'antigravity-ai-copilot', smoothly migrate to 'codeforge-ai-helper'
-    parsed = parsed.map(ext => {
-      if (ext.id === 'antigravity-ai-copilot') {
-        return {
-          ...ext,
-          id: 'codeforge-ai-helper',
-          name: 'CodeForge AI Helper',
-          displayName: 'CodeForge AI Helper & Next-Code Predictor',
-          author: 'CodeForge AI Team',
-          icon: '✨'
-        }
-      }
-      return ext
-    })
+    const parsed: Extension[] = JSON.parse(raw)
 
     // Merge any newly introduced built-in extensions
     const existingIds = new Set(parsed.map(e => e.id))
