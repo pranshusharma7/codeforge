@@ -165,6 +165,82 @@ export const LANG_TO_JUDGE0_ID: Record<string, number> = {
 };
 
 /**
+ * Execution result cache for deduplication — prevents redundant API calls
+ * for the same code+language+stdin combination within a short window.
+ */
+const executionCache = new Map<string, { result: ExecutionResult; timestamp: number }>();
+const CACHE_TTL_MS = 30_000; // 30 seconds
+
+function getCacheKey(sourceCode: string, lang: string, stdin: string): string {
+  // Simple hash-like key from content
+  const hash = `${lang}:${sourceCode.length}:${stdin.length}:${sourceCode.slice(0, 100)}:${sourceCode.slice(-50)}`;
+  return hash;
+}
+
+function getCachedResult(key: string): ExecutionResult | null {
+  const entry = executionCache.get(key);
+  if (entry && Date.now() - entry.timestamp < CACHE_TTL_MS) {
+    return { ...entry.result, engine: (entry.result.engine || '') + ' (Cached)' };
+  }
+  if (entry) executionCache.delete(key);
+  return null;
+}
+
+function setCachedResult(key: string, result: ExecutionResult) {
+  // Only cache successful results
+  if (result.status?.id === 3 || result.status?.id === 6 || (result.status?.id >= 7 && result.status?.id <= 12)) {
+    executionCache.set(key, { result, timestamp: Date.now() });
+    // Evict old entries to prevent memory leaks
+    if (executionCache.size > 50) {
+      const oldestKey = executionCache.keys().next().value;
+      if (oldestKey) executionCache.delete(oldestKey);
+    }
+  }
+}
+
+/**
+ * In-flight request tracker for deduplication — prevents sending the same
+ * code twice if the user double-clicks Run.
+ */
+const inflight = new Map<string, Promise<ExecutionResult>>();
+
+/**
+ * Retry helper with exponential backoff for transient network failures.
+ */
+async function fetchWithRetry(
+  url: string,
+  options: RequestInit,
+  maxRetries: number = 2,
+  baseDelay: number = 500,
+  userSignal?: AbortSignal,
+): Promise<Response> {
+  let lastError: Error | null = null;
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    if (userSignal?.aborted) throw new DOMException('Aborted', 'AbortError');
+    try {
+      const res = await fetch(url, options);
+      // Retry on 429 (rate limit) and 5xx server errors
+      if (res.status === 429 || res.status >= 500) {
+        if (attempt < maxRetries) {
+          const delay = baseDelay * Math.pow(2, attempt) + Math.random() * 200;
+          await new Promise(r => setTimeout(r, delay));
+          continue;
+        }
+      }
+      return res;
+    } catch (err: any) {
+      lastError = err;
+      if (err.name === 'AbortError') throw err;
+      if (attempt < maxRetries) {
+        const delay = baseDelay * Math.pow(2, attempt) + Math.random() * 200;
+        await new Promise(r => setTimeout(r, delay));
+      }
+    }
+  }
+  throw lastError || new Error('Fetch failed after retries');
+}
+
+/**
  * Universal Resilient Code Execution Engine
  * Multi-tier execution architecture:
  * 1. Client-side browser execution (JS/TS/JSON) - 0ms offline
@@ -172,6 +248,9 @@ export const LANG_TO_JUDGE0_ID: Record<string, number> = {
  * 3. Primary Cloud Engine (Judge0 CE) - 50+ languages with base64 encoding & polling
  * 4. Secondary Cloud Engine (Wandbox) - backup cloud compiler
  * 5. Full Timeout & Abort Cancellation safeguards - NEVER gets stuck
+ * 6. Retry with exponential backoff on transient failures
+ * 7. Execution result caching for identical code deduplication
+ * 8. In-flight request deduplication (prevents double-Run)
  */
 export async function executeCode(
   paramsOrCode:
@@ -218,6 +297,24 @@ export async function executeCode(
   const rawLang = (params.lang || (params.languageId ? JUDGE0_ID_TO_LANG[params.languageId] : ''))?.toLowerCase().trim() || '';
   const langKey = rawLang.replace(/^[.\s]+/, '');
   const languageId = params.languageId || LANG_TO_JUDGE0_ID[langKey] || 71;
+
+  // ── Check execution cache for identical requests ───────────────────────────
+  const cacheKey = getCacheKey(params.sourceCode, langKey, params.stdin || '');
+  const cached = getCachedResult(cacheKey);
+  if (cached) return cached;
+
+  // ── Deduplicate in-flight requests ─────────────────────────────────────────
+  const inflightKey = cacheKey;
+  const existingRequest = inflight.get(inflightKey);
+  if (existingRequest) {
+    try {
+      return await existingRequest;
+    } catch {
+      // If the existing request failed, proceed with a new one
+    }
+  }
+
+  const executeInternal = async (): Promise<ExecutionResult> => {
 
   // ── Tier 0: Client-side Browser Execution for Web Technologies ─────────────
   if (langKey === 'javascript' || langKey === 'js' || languageId === 63 || langKey === 'typescript' || langKey === 'ts' || languageId === 74) {
@@ -267,7 +364,7 @@ export async function executeCode(
     const onUserAbort = () => localController.abort();
     if (userSignal) userSignal.addEventListener('abort', onUserAbort, { once: true });
 
-    const localRes = await fetch('/api/compile', {
+    const localRes = await fetchWithRetry('/api/compile', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -277,7 +374,7 @@ export async function executeCode(
         stdin: params.stdin || '',
       }),
       signal: localController.signal,
-    });
+    }, 1, 300, userSignal);
     clearTimeout(localTimeout);
     if (userSignal) userSignal.removeEventListener('abort', onUserAbort);
 
@@ -293,7 +390,7 @@ export async function executeCode(
           memory: data.memory ?? 2048,
           exit_code: data.exit_code ?? 0,
           engine: data.engine || 'Host Compiler Service',
-        };
+        } as ExecutionResult;
       }
     }
   } catch (localErr: any) {
@@ -352,12 +449,12 @@ export async function executeCode(
       stdin: params.stdin ? encodeBase64(params.stdin) : '',
     };
 
-    const submitRes = await fetch(`${j0Url}/submissions?base64_encoded=true&wait=true`, {
+    const submitRes = await fetchWithRetry(`${j0Url}/submissions?base64_encoded=true&wait=true`, {
       method: 'POST',
       headers,
       body: JSON.stringify(payload),
       signal: cloudController.signal,
-    });
+    }, 1, 400, userSignal);
 
     if (submitRes.ok) {
       let data = await submitRes.json();
@@ -394,7 +491,7 @@ export async function executeCode(
         memory: data.memory ?? 2048,
         exit_code: data.exit_code ?? 0,
         engine: 'Judge0 Cloud Worker',
-      };
+      } as ExecutionResult;
     }
     clearTimeout(cloudTimeout);
     if (userSignal) userSignal.removeEventListener('abort', onUserAbort);
@@ -429,7 +526,7 @@ export async function executeCode(
         codeToSubmit = codeToSubmit.replace(/\bpublic\s+class\s+(\w+)/g, 'class $1');
       }
 
-      const res = await fetch('https://wandbox.org/api/compile.json', {
+      const res = await fetchWithRetry('https://wandbox.org/api/compile.json', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -439,7 +536,7 @@ export async function executeCode(
           options: wandboxConfig.options,
         }),
         signal: wandboxController.signal,
-      });
+      }, 1, 300, userSignal);
       clearTimeout(wandboxTimeout);
       if (userSignal) userSignal.removeEventListener('abort', onUserAbort);
 
@@ -503,6 +600,21 @@ export async function executeCode(
     exit_code: 1,
     engine: 'Failover Notification',
   };
+
+  }; // end executeInternal
+
+  // Wrap with deduplication and caching
+  const promise = executeInternal().then(result => {
+    setCachedResult(cacheKey, result);
+    inflight.delete(inflightKey);
+    return result;
+  }).catch(err => {
+    inflight.delete(inflightKey);
+    throw err;
+  });
+
+  inflight.set(inflightKey, promise);
+  return promise;
 }
 
 /**

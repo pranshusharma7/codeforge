@@ -62,6 +62,14 @@ import {
   executeToggleBlockComment,
   registerAllLanguageCommentConfigs,
 } from './lib/commentHelper'
+import {
+  persistWorkspace,
+  flushWorkspaceNow,
+  restoreWorkspace,
+  persistLayout,
+  restoreLayout,
+  type PersistedTab,
+} from './lib/sessionPersistence'
 
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -229,9 +237,28 @@ if __name__ == "__main__":
 export default function App() {
   const monaco = useMonaco()
 
+  // ── Restore persisted workspace on initial load ──────────────────────────
+  const restoredWorkspace = useMemo(() => restoreWorkspace(), [])
+
   // editor
-  const [tabs, setTabs]         = useState<Tab[]>([])
-  const [activeTab, setActiveTab] = useState('')
+  const [tabs, setTabs]         = useState<Tab[]>(() => {
+    if (restoredWorkspace && restoredWorkspace.tabs.length > 0) {
+      return restoredWorkspace.tabs.map(t => ({
+        id: t.id,
+        name: t.name,
+        lang: t.lang,
+        code: t.code,
+        modified: false,
+      }))
+    }
+    return []
+  })
+  const [activeTab, setActiveTab] = useState(() => {
+    if (restoredWorkspace && restoredWorkspace.activeTab) {
+      return restoredWorkspace.activeTab
+    }
+    return ''
+  })
   const [fontSize, setFontSize]   = useState(14)
   const [wordWrap, setWordWrap]   = useState<'on'|'off'>('off')
   const [showMini, setShowMini]   = useState(false)
@@ -264,16 +291,19 @@ export default function App() {
   const [aiW, setAiW]               = useState(340)
   const [consH, setConsH]           = useState(220)
   const [consTab, setConsTab]       = useState<ConsoleTab>('output')
-  const [bottomPanelOpen, setBottomPanelOpen] = useState(false)
+  const [bottomPanelOpen, setBottomPanelOpen] = useState(() => {
+    const layout = restoreLayout()
+    return layout?.bottomPanelOpen ?? false
+  })
   const [pendingTerminalCmd, setPendingTerminalCmd] = useState<string | null>(null)
   const [newFileOpen, setNewFileOpen] = useState(false)
   const [newFileName, setNewFileName] = useState('')
   const [newFolderOpen, setNewFolderOpen] = useState(false)
   const [newFolderName, setNewFolderName] = useState('')
   const [newFileParentFolder, setNewFileParentFolder] = useState('')
-  const [folders, setFolders] = useState<string[]>([])
+  const [folders, setFolders] = useState<string[]>(() => restoredWorkspace?.folders ?? [])
   const [collapsedFolders, setCollapsedFolders] = useState<Record<string, boolean>>({})
-  const [workspaceName, setWorkspaceName] = useState('CodeForge')
+  const [workspaceName, setWorkspaceName] = useState(() => restoredWorkspace?.workspaceName ?? 'CodeForge')
   const [workspaceExpanded, setWorkspaceExpanded] = useState(true)
   const [inlineItem, setInlineItem] = useState<{ type: 'file' | 'folder'; parentFolder: string } | null>(null)
   const [inlineName, setInlineName] = useState('')
@@ -285,7 +315,7 @@ export default function App() {
   const [folderContextMenu, setFolderContextMenu] = useState<{ x: number; y: number; folder: string } | null>(null)
 
   // execution
-  const [stdin, setStdin]     = useState('')
+  const [stdin, setStdin]     = useState(() => restoredWorkspace?.stdin ?? '')
   const [result, setResult]   = useState<ExecutionResult | null>(null)
   const [running, setRunning] = useState(false)
 
@@ -566,6 +596,7 @@ export default function App() {
       setRepositories([])
       setActiveRepo(null)
     }
+    // Only process share links — don't overwrite restored workspace
     const shared = decodeShare()
     if (shared) {
       const lang = getLangById(shared.lang)
@@ -573,8 +604,57 @@ export default function App() {
       setTabs([t]); setActiveTab(t.id)
       showToast('Opened shared snippet')
       window.history.replaceState({}, '', window.location.pathname)
+    } else if (restoredWorkspace && restoredWorkspace.tabs.length > 0) {
+      // Workspace was restored from session — show a subtle toast
+      showToast('♻️ Workspace restored! All your files are intact.')
     }
   }, [])
+
+  // ── Auto-Persist Workspace on State Changes ─────────────────────────────
+  useEffect(() => {
+    if (tabs.length === 0 && folders.length === 0) return
+    persistWorkspace(
+      tabs.map(t => ({
+        id: t.id,
+        name: t.name,
+        lang: t.lang,
+        code: t.code,
+        modified: t.modified,
+        localPath: t.localPath,
+      })),
+      activeTab,
+      folders,
+      workspaceName,
+      stdin,
+    )
+  }, [tabs, activeTab, folders, workspaceName, stdin])
+
+  // ── Flush Workspace on Page Unload (Refresh / Close) ────────────────────
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      // Flush any pending code changes into tabs state synchronously
+      const currentCode = activeCodeRef.current
+      const latestTabs = currentCode !== undefined
+        ? tabs.map(t => t.id === activeTab ? { ...t, code: currentCode } : t)
+        : tabs
+      flushWorkspaceNow(
+        latestTabs.map(t => ({
+          id: t.id,
+          name: t.name,
+          lang: t.lang,
+          code: t.code,
+          modified: t.modified,
+          localPath: t.localPath,
+        })),
+        activeTab,
+        folders,
+        workspaceName,
+        stdin,
+      )
+    }
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [tabs, activeTab, folders, workspaceName, stdin])
 
   // ── Dynamic Theme & Custom Font/Comment Color Theme Name ────────────────────────
   const activeMonacoTheme = useMemo(() => {
@@ -1687,12 +1767,13 @@ export default function App() {
     setRunStartTime(Date.now())
     setRunElapsedSec(0)
 
-    // Safety timeout: auto-abort if execution somehow takes > 5.5s to guarantee it NEVER hangs
+    // Safety timeout: auto-abort if execution somehow takes > 12s to guarantee it NEVER hangs
+    // Increased from 5.5s to account for retry logic with exponential backoff across tiers
     const safetyTimeout = setTimeout(() => {
       if (runAbortControllerRef.current === controller) {
         controller.abort()
       }
-    }, 5500)
+    }, 12000)
 
     try {
       let langToRun = getLangById(activeTabToUse.lang)
