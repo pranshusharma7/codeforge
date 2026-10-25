@@ -163,7 +163,7 @@ async function generateWithGemini({ prompt, code, lang, history, model: requeste
             parts: [{
               text: 'You are CodeForge AI, a programming copilot. Give accurate, useful answers, complete runnable code when requested, and concise explanations.',
             }],
-          },
+          }, 
           contents,
           generationConfig: { temperature: 0.2, maxOutputTokens: 3000 },
         }),
