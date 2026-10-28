@@ -133,6 +133,9 @@ const COMMANDS = [
   { id: 'themes', label: 'VS Code Themes', detail: 'Choose from 15 iconic VS Code themes', key: '', icon: '🎨' },
   { id: 'repos', label: 'GitHub Repositories', detail: 'Manage repositories and commit code', key: '', icon: '📦' },
   { id: 'packages', label: 'Package Installer', detail: 'Manage R (CRAN), Python (pip), and npm packages', key: '', icon: '📦' },
+  { id: 'new-csharp', label: 'New C# Program', detail: 'Create a runnable Program.cs with C# 10 boilerplate', key: '', icon: '🔷' },
+  { id: 'switch-csharp', label: 'Change Language: C#', detail: 'Switch current file to C# (.cs)', key: '', icon: '🔷' },
+  { id: 'select-language', label: 'Change Language Mode', detail: 'Configure programming language for active file', key: 'Ctrl K M', icon: '🌐' },
   { id: 'new-r', label: 'New R Script', detail: 'Create a runnable R data science file', key: '', icon: '📊' },
   { id: 'switch-r', label: 'Change Language: R', detail: 'Switch current file to R language', key: '', icon: '📊' },
   { id: 'settings', label: 'Open Settings', detail: 'Configure the editor', key: '', icon: '⚙' },
@@ -366,6 +369,8 @@ export default function App() {
   const [repositories, setRepositories]  = useState<GitHubRepository[]>([])
   const [showCommands, setShowCommands]   = useState(false)
   const [commandQuery, setCommandQuery]   = useState('')
+  const [showLanguagePicker, setShowLanguagePicker] = useState(false)
+  const [languageSearchQuery, setLanguageSearchQuery] = useState('')
   const [authUser, setAuthUserState]      = useState<AuthUser | null>(null)
   const [toast, setToast] = useState<string|null>(null)
 
@@ -1015,7 +1020,7 @@ export default function App() {
       }
 
       if (e.key === 'Escape') {
-        setShowSettings(false); setShowKeys(false); setShowSnipModal(false); setShowShare(false); setShowCommands(false)
+        setShowSettings(false); setShowKeys(false); setShowSnipModal(false); setShowShare(false); setShowCommands(false); setShowLanguagePicker(false)
         setInlineItem(null); setInlineName(''); setFileMenuOpen(false); setDownloadMenuOpen(false); setMoreActionsOpen(false); setBlankContextMenu(null); setFolderContextMenu(null)
       }
 
@@ -2340,6 +2345,20 @@ export default function App() {
       case 'repos': openSettings('repos'); break
       case 'ai': setAiOpen(p => !p); break
       case 'packages': setPanel('packages'); setSideOpen(true); break
+      case 'select-language': setShowLanguagePicker(true); break
+      case 'switch-csharp': switchLang('csharp'); showToast('Switched to C# 🚀'); break
+      case 'new-csharp': {
+        let candidate = 'Program.cs'
+        let idx = 1
+        while (tabs.some(t => t.name === candidate)) {
+          idx++
+          candidate = `Program_${idx}.cs`
+        }
+        const csLang = getLangById('csharp')
+        newTab(candidate, csLang.defaultCode)
+        showToast(`Created ${candidate} (C#) 🚀`)
+        break
+      }
       case 'switch-r': switchLang('r'); showToast('Switched to R ✨'); break
       case 'new-r': {
         let candidate = 'main.r'
@@ -3616,6 +3635,40 @@ export default function App() {
           </span>
         </button>
 
+        {/* Language Selector Button */}
+        <button
+          onClick={() => { setShowLanguagePicker(true); setLanguageSearchQuery('') }}
+          title="Select Language Mode (C#, Python, C++, etc.)"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            marginLeft: 10,
+            padding: '5px 11px',
+            background: 'var(--bg-card)',
+            border: `1px solid ${curLang.color ? `${curLang.color}40` : 'var(--border)'}`,
+            borderRadius: 6,
+            color: 'var(--text-base)',
+            fontSize: 12,
+            fontWeight: 500,
+            cursor: 'pointer',
+            transition: 'all 0.15s ease',
+            flexShrink: 0,
+          }}
+          onMouseEnter={e => {
+            e.currentTarget.style.borderColor = curLang.color || 'var(--accent)'
+            e.currentTarget.style.background = 'var(--bg-hover)'
+          }}
+          onMouseLeave={e => {
+            e.currentTarget.style.borderColor = curLang.color ? `${curLang.color}40` : 'var(--border)'
+            e.currentTarget.style.background = 'var(--bg-card)'
+          }}
+        >
+          <div style={{ width: 8, height: 8, borderRadius: '50%', background: curLang.color || '#10b981', flexShrink: 0 }} />
+          <span style={{ fontWeight: 600 }}>{curLang.label}</span>
+          <ChevronDown size={11} style={{ opacity: 0.6 }} />
+        </button>
+
         {/* Search Bar - nicely separated from Language and Contests */}
         <button onClick={() => setShowCommands(true)} className="top-search" style={{ marginLeft: 10 }} aria-label="Search files, commands, or ask AI">
           <span style={{ color: 'var(--accent)' }}>⌕</span> Search files, commands, or ask AI...
@@ -4428,17 +4481,26 @@ export default function App() {
                     💾 Local Disk File
                   </span>
                 )}
-                <span style={{
-                  background: `${curLang.color}15`,
-                  color: curLang.color,
-                  border: `1px solid ${curLang.color}30`,
-                  padding: '1px 6px',
-                  borderRadius: 4,
-                  fontSize: 10,
-                  fontWeight: 600,
-                  marginLeft: 4
-                }}>
+                <span
+                  style={{
+                    background: `${curLang.color}15`,
+                    color: curLang.color,
+                    border: `1px solid ${curLang.color}30`,
+                    padding: '1px 6px',
+                    borderRadius: 4,
+                    fontSize: 10,
+                    fontWeight: 600,
+                    marginLeft: 4,
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 3,
+                  }}
+                  onClick={() => { setShowLanguagePicker(true); setLanguageSearchQuery('') }}
+                  title="Click to change Language Mode"
+                >
                   {curLang.label}
+                  <ChevronDown size={9} style={{ opacity: 0.6 }} />
                 </span>
               </div>
             ) : (
@@ -5041,8 +5103,13 @@ export default function App() {
 
       {/* ── Premium Status bar ─────────────────────────────────────────────── */}
       <div className="status-bar">
-        <div className="status-item" style={{ borderRight: '1px solid rgba(255,255,255,0.15)' }}>
-          <div style={{ width: 7, height: 7, borderRadius: '50%', background: 'rgba(255,255,255,0.8)' }} />
+        <div
+          className="status-item"
+          style={{ borderRight: '1px solid rgba(255,255,255,0.15)', cursor: 'pointer' }}
+          onClick={() => { setShowLanguagePicker(true); setLanguageSearchQuery('') }}
+          title="Select Language Mode (Click to change language)"
+        >
+          <div style={{ width: 7, height: 7, borderRadius: '50%', background: curLang.color || 'rgba(255,255,255,0.8)' }} />
           {curLang.label}
         </div>
         {status && (
@@ -5157,6 +5224,136 @@ export default function App() {
                 ))}
             </div>
             <div className="command-footer"><span><kbd>↑↓</kbd> Navigate</span><span><kbd>Enter</kbd> Run</span><span><kbd>Esc</kbd> Close</span></div>
+          </div>
+        </div>
+      )}
+
+      {/* Language Mode Picker Modal */}
+      {showLanguagePicker && (
+        <div className="command-backdrop" onClick={() => setShowLanguagePicker(false)}>
+          <div className="command-palette" style={{ width: 520, maxHeight: 480 }} onClick={e => e.stopPropagation()}>
+            <div className="command-search-row">
+              <span className="command-search-icon">🌐</span>
+              <input
+                autoFocus
+                value={languageSearchQuery}
+                onChange={e => setLanguageSearchQuery(e.target.value)}
+                placeholder="Select Language Mode (e.g. C#, Python, C++, Java)..."
+                onKeyDown={e => {
+                  if (e.key === 'Escape') setShowLanguagePicker(false)
+                  if (e.key === 'Enter') {
+                    const filtered = LANGUAGES.filter(l =>
+                      l.label.toLowerCase().includes(languageSearchQuery.toLowerCase()) ||
+                      l.id.toLowerCase().includes(languageSearchQuery.toLowerCase()) ||
+                      l.ext.toLowerCase().includes(languageSearchQuery.toLowerCase())
+                    )
+                    if (filtered.length > 0) {
+                      switchLang(filtered[0].id)
+                      setShowLanguagePicker(false)
+                      showToast(`Switched to ${filtered[0].label} ✨`)
+                    }
+                  }
+                }}
+              />
+              <kbd>Esc</kbd>
+            </div>
+
+            {/* Quick Action bar: Quick switch to C# or New C# file */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: 'rgba(23, 134, 0, 0.08)', borderBottom: '1px solid var(--border)' }}>
+              <span style={{ fontSize: 11, color: '#22c55e', fontWeight: 600 }}>C# Shortcuts:</span>
+              <button
+                onClick={() => {
+                  switchLang('csharp')
+                  setShowLanguagePicker(false)
+                  showToast('Switched to C# 10 🚀')
+                }}
+                className="btn btn-ghost"
+                style={{ fontSize: 10, padding: '2px 8px', borderRadius: 4, background: 'rgba(23, 134, 0, 0.15)', color: '#22c55e', border: '1px solid rgba(23, 134, 0, 0.3)' }}
+              >
+                Switch file to C#
+              </button>
+              <button
+                onClick={() => {
+                  let candidate = 'Program.cs'
+                  let idx = 1
+                  while (tabs.some(t => t.name === candidate)) {
+                    idx++
+                    candidate = `Program_${idx}.cs`
+                  }
+                  const csLang = getLangById('csharp')
+                  newTab(candidate, csLang.defaultCode)
+                  setShowLanguagePicker(false)
+                  showToast(`Created ${candidate} (C#) 🚀`)
+                }}
+                className="btn btn-primary"
+                style={{ fontSize: 10, padding: '2px 8px', borderRadius: 4, background: '#178600', borderColor: '#178600' }}
+              >
+                + New Program.cs
+              </button>
+            </div>
+
+            <div className="command-list" style={{ maxHeight: 340 }}>
+              {LANGUAGES.filter(l =>
+                !languageSearchQuery.trim() ||
+                l.label.toLowerCase().includes(languageSearchQuery.toLowerCase()) ||
+                l.id.toLowerCase().includes(languageSearchQuery.toLowerCase()) ||
+                l.ext.toLowerCase().includes(languageSearchQuery.toLowerCase())
+              ).map(langItem => {
+                const isCurrent = curLang.id === langItem.id
+                return (
+                  <button
+                    key={langItem.id}
+                    className="command-item"
+                    onClick={() => {
+                      switchLang(langItem.id)
+                      setShowLanguagePicker(false)
+                      showToast(`Switched to ${langItem.label} ✨`)
+                    }}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      background: isCurrent ? 'rgba(56, 189, 248, 0.08)' : undefined,
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <div
+                        style={{
+                          width: 24,
+                          height: 24,
+                          borderRadius: 5,
+                          background: `${langItem.color}25`,
+                          color: langItem.color,
+                          display: 'grid',
+                          placeItems: 'center',
+                          fontSize: 10,
+                          fontWeight: 700,
+                        }}
+                      >
+                        {langItem.ext.toUpperCase()}
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                        <span style={{ fontWeight: 600, color: 'var(--text-base)', fontSize: 12 }}>
+                          {langItem.label}
+                        </span>
+                        <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>
+                          .{langItem.ext} • {langItem.version || 'Compiler'}
+                        </span>
+                      </div>
+                    </div>
+                    {isCurrent && (
+                      <span style={{ fontSize: 11, color: '#38bdf8', fontWeight: 700 }}>
+                        ✓ Active
+                      </span>
+                    )}
+                  </button>
+                )
+              })}
+            </div>
+            <div className="command-footer">
+              <span><kbd>Enter</kbd> Select</span>
+              <span><kbd>Esc</kbd> Close</span>
+            </div>
           </div>
         </div>
       )}

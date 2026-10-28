@@ -18,7 +18,14 @@ const COMMON_TYPOS: Record<string, string> = {
   'sturct': 'struct',
   'pubilc': 'public',
   'staic': 'static',
-  'vodi': 'void'
+  'vodi': 'void',
+  'cosnole.writeline': 'Console.WriteLine',
+  'console.writeline': 'Console.WriteLine',
+  'console.write': 'Console.Write',
+  'cosnole': 'Console',
+  'writeline': 'WriteLine',
+  'namesapce': 'namespace',
+  'usign': 'using',
 }
 
 /**

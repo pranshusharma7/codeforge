@@ -815,6 +815,110 @@ async function executeLocally(code, lang, stdin = "", timeoutMs = 7000) {
     }
   }
 
+  // 12. C# (.NET SDK or Mono mcs)
+  if (norm === "csharp" || norm === "cs" || norm === "c#") {
+    const hasMono = checkBinaryExists("mcs") && checkBinaryExists("mono")
+    const hasDotnet = checkBinaryExists("dotnet")
+
+    if (hasMono) {
+      const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "cf_cs_"))
+      const srcPath = path.join(tmpDir, "Program.cs")
+      const exePath = path.join(tmpDir, "Program.exe")
+      try {
+        fs.writeFileSync(srcPath, code, "utf-8")
+        const comp = await runProcess("mcs", ["-out:" + exePath, srcPath], {
+          timeout: timeoutMs,
+          cwd: tmpDir,
+        })
+        if (comp.exitCode !== 0) {
+          const elapsed = ((Date.now() - startTime) / 1000).toFixed(3)
+          return {
+            stdout: null,
+            stderr: comp.stderr || comp.stdout,
+            compile_output: comp.stderr || comp.stdout,
+            status: { id: 6, description: "Compilation Error" },
+            time: elapsed,
+            memory: 4096,
+            exit_code: comp.exitCode,
+            engine: "Mono C# (Host Compiler)",
+          }
+        }
+        const runRes = await runProcess("mono", [exePath], {
+          stdin,
+          timeout: timeoutMs,
+          cwd: tmpDir,
+        })
+        const elapsed = ((Date.now() - startTime) / 1000).toFixed(3)
+        return {
+          stdout: runRes.stdout || null,
+          stderr: runRes.stderr || null,
+          compile_output: null,
+          status: {
+            id: runRes.timedOut ? 5 : runRes.exitCode === 0 ? 3 : 11,
+            description: runRes.timedOut
+              ? "Time Limit Exceeded"
+              : runRes.exitCode === 0
+                ? "Accepted"
+                : "Runtime Error",
+          },
+          time: elapsed,
+          memory: 4096,
+          exit_code: runRes.exitCode,
+          engine: "Mono C# (Host Compiler)",
+        }
+      } finally {
+        try {
+          fs.rmSync(tmpDir, { recursive: true, force: true })
+        } catch {}
+      }
+    } else if (hasDotnet) {
+      const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "cf_cs_"))
+      const srcPath = path.join(tmpDir, "Program.cs")
+      const projPath = path.join(tmpDir, "run.csproj")
+      const projContent = `<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+</Project>`
+      try {
+        fs.writeFileSync(srcPath, code, "utf-8")
+        fs.writeFileSync(projPath, projContent, "utf-8")
+        const runRes = await runProcess("dotnet", ["run", "--project", projPath, "--nologo"], {
+          stdin,
+          timeout: timeoutMs,
+          cwd: tmpDir,
+        })
+        const elapsed = ((Date.now() - startTime) / 1000).toFixed(3)
+        return {
+          stdout: runRes.stdout || null,
+          stderr: runRes.stderr || null,
+          compile_output: runRes.exitCode !== 0 ? runRes.stderr : null,
+          status: {
+            id: runRes.timedOut ? 5 : runRes.exitCode === 0 ? 3 : runRes.stderr?.includes("error CS") ? 6 : 11,
+            description: runRes.timedOut
+              ? "Time Limit Exceeded"
+              : runRes.exitCode === 0
+                ? "Accepted"
+                : runRes.stderr?.includes("error CS")
+                  ? "Compilation Error"
+                  : "Runtime Error",
+          },
+          time: elapsed,
+          memory: 8192,
+          exit_code: runRes.exitCode,
+          engine: ".NET Core (Host Runtime)",
+        }
+      } finally {
+        try {
+          fs.rmSync(tmpDir, { recursive: true, force: true })
+        } catch {}
+      }
+    }
+  }
+
   return null // Local execution not available or unsupported for this language
 }
 
@@ -825,7 +929,7 @@ async function executeJudge0Cloud(
   code,
   languageId,
   stdin = "",
-  timeoutMs = 4000,
+  timeoutMs = 12000,
 ) {
   const startTime = Date.now()
   const controller = new AbortController()
@@ -863,11 +967,11 @@ async function executeJudge0Cloud(
 
     let data = await res.json()
 
-    // If still in queue/processing, fast-poll up to 2 times (500ms interval)
+    // If still in queue/processing, fast-poll up to 8 times (600ms interval)
     if (data.status?.id <= 2 && data.token) {
-      for (let i = 0; i < 2; i++) {
+      for (let i = 0; i < 8; i++) {
         if (controller.signal.aborted) break
-        await new Promise((r) => setTimeout(r, 500))
+        await new Promise((r) => setTimeout(r, 600))
         const pollRes = await fetch(
           `https://ce.judge0.com/submissions/${data.token}?base64_encoded=true`,
           {
@@ -911,7 +1015,7 @@ export async function executeCodeServer(
   code,
   langOrId,
   stdin = "",
-  timeoutMs = 8000,
+  timeoutMs = 12000,
 ) {
   let lang = typeof langOrId === "string" ? langOrId.toLowerCase() : ""
   let languageId =
@@ -950,6 +1054,7 @@ const WANDBOX_COMPILERS = {
   go: { compiler: "go-1.23.2" },
   csharp: { compiler: "mono-6.12.0.199" },
   cs: { compiler: "mono-6.12.0.199" },
+  "c#": { compiler: "mono-6.12.0.199" },
   php: { compiler: "php-8.3.12" },
   ruby: { compiler: "ruby-3.3.11" },
   rb: { compiler: "ruby-3.3.11" },
@@ -963,7 +1068,7 @@ const WANDBOX_COMPILERS = {
   hs: { compiler: "ghc-9.10.1" },
 }
 
-async function executeWandboxCloud(code, lang, stdin = "", timeoutMs = 4000) {
+async function executeWandboxCloud(code, lang, stdin = "", timeoutMs = 12000) {
   const norm = (lang || "").toLowerCase().trim()
   const cfg = WANDBOX_COMPILERS[norm]
   if (!cfg) return null

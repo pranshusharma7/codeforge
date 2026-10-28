@@ -22,6 +22,62 @@ export interface VSCodeSearchResult {
 // ── Curated Top Official VS Code Extensions with Real Snippets & Rules ───────
 export const OFFICIAL_VSCODE_CATALOG: Extension[] = [
   {
+    id: 'ms-dotnettools.csharp',
+    name: 'C#',
+    displayName: 'C# Dev Kit & Official Language Support',
+    version: '2.50.0',
+    author: 'Microsoft',
+    publisher: 'ms-dotnettools',
+    description: 'Official C# support for Visual Studio Code & CodeForge powered by Roslyn and OmniSharp. Includes IntelliSense, code completion, refactoring, LINQ support, and rapid execution.',
+    icon: '🔷',
+    category: 'tools',
+    enabled: true,
+    isBuiltIn: false,
+    isVSCodeOfficial: true,
+    verified: true,
+    downloads: 42000000,
+    rating: 4.8,
+    reviewCount: 3100,
+    tags: ['csharp', 'c#', 'dotnet', 'microsoft', 'roslyn', 'intellisense', 'official'],
+    completions: [
+      {
+        trigger: 'cw',
+        code: 'Console.WriteLine("Hello, World!");',
+        description: 'Console.WriteLine() shortcut (cw)'
+      },
+      {
+        trigger: 'cr',
+        code: 'Console.ReadLine();',
+        description: 'Console.ReadLine() shortcut (cr)'
+      },
+      {
+        trigger: 'main',
+        code: 'static void Main(string[] args)\n{\n    Console.WriteLine("Program Started");\n}',
+        description: 'C# Main Entry Point'
+      },
+      {
+        trigger: 'class',
+        code: 'public class ClassName\n{\n    public ClassName()\n    {\n    }\n}',
+        description: 'C# Class with Constructor'
+      },
+      {
+        trigger: 'prop',
+        code: 'public int PropertyName { get; set; }',
+        description: 'C# Auto-implemented Property'
+      },
+      {
+        trigger: 'foreach',
+        code: 'foreach (var item in collection)\n{\n    Console.WriteLine(item);\n}',
+        description: 'C# Foreach Loop'
+      },
+      {
+        trigger: 'linq',
+        code: 'var results = list.Where(x => x > 0).Select(x => x * 2).ToList();',
+        description: 'LINQ Query Expression'
+      }
+    ]
+  },
+  {
     id: 'ms-python.python',
     name: 'Python',
     displayName: 'Python Language Support & IntelliSense',

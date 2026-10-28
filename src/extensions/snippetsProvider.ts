@@ -228,7 +228,40 @@ export function registerLanguageSnippets(
     )
   }
 
-  // 7. Dynamic Custom & Uploaded VSIX Extension Snippets
+  // 7. Official C# / C# Dev Kit Language Snippets
+  const csharpSnippets = [
+    { label: 'cw', insertText: 'Console.WriteLine(${1:"Hello, World!"});', detail: 'Console.WriteLine() statement' },
+    { label: 'cr', insertText: 'Console.ReadLine();', detail: 'Console.ReadLine() statement' },
+    { label: 'main', insertText: 'static void Main(string[] args)\n{\n    ${0:Console.WriteLine("Hello World");}\n}', detail: 'C# Main Entry Method' },
+    { label: 'class', insertText: 'public class ${1:ClassName}\n{\n    public ${1:ClassName}()\n    {\n        ${0}\n    }\n}', detail: 'C# Class with Constructor' },
+    { label: 'prop', insertText: 'public ${1:int} ${2:MyProperty} { get; set; }', detail: 'C# Auto-implemented Property' },
+    { label: 'propg', insertText: 'public ${1:int} ${2:MyProperty} { get; private set; }', detail: 'C# Property with private setter' },
+    { label: 'foreach', insertText: 'foreach (var ${1:item} in ${2:collection})\n{\n    ${0:Console.WriteLine(item);}\n}', detail: 'C# Foreach Loop' },
+    { label: 'for', insertText: 'for (int ${1:i} = 0; ${1:i} < ${2:length}; ${1:i}++)\n{\n    ${0}\n}', detail: 'C# For Loop' },
+    { label: 'try', insertText: 'try\n{\n    ${1}\n}\ncatch (Exception ${2:ex})\n{\n    Console.WriteLine(${2:ex}.Message);\n}', detail: 'C# Try-Catch Block' },
+    { label: 'linq', insertText: 'var ${1:result} = ${2:list}.Where(x => ${3:x != null}).ToList();', detail: 'LINQ Query' },
+    { label: 'ctor', insertText: 'public ${1:ClassName}()\n{\n    ${0}\n}', detail: 'C# Class Constructor' },
+    { label: 'interface', insertText: 'public interface I${1:InterfaceName}\n{\n    ${0:void MethodName();}\n}', detail: 'C# Interface' },
+    { label: 'struct', insertText: 'public struct ${1:StructName}\n{\n    ${0}\n}', detail: 'C# Struct' },
+    { label: 'record', insertText: 'public record ${1:RecordName}(${2:string Name});', detail: 'C# Record' },
+    { label: 'async', insertText: 'public async Task<${1:int}> ${2:DoWorkAsync}()\n{\n    await Task.Delay(100);\n    return ${0:0};\n}', detail: 'C# Async Method' }
+  ]
+
+  disposables.push(
+    monacoInstance.languages.registerCompletionItemProvider('csharp', {
+      provideCompletionItems: () => ({
+        suggestions: csharpSnippets.map(s => ({
+          label: s.label,
+          kind: monacoInstance.languages.CompletionItemKind.Snippet,
+          insertText: s.insertText,
+          insertTextRules: monacoInstance.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+          detail: s.detail
+        }))
+      })
+    })
+  )
+
+  // 8. Dynamic Custom & Uploaded VSIX Extension Snippets
   const activeCustomCompletions = extensions.filter(e => e.enabled).flatMap(e => e.completions || [])
   if (activeCustomCompletions.length > 0) {
     disposables.push(

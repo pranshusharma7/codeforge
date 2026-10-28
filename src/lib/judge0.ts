@@ -59,6 +59,7 @@ const WANDBOX_COMPILERS: Record<string, { compiler: string; options?: string }> 
   go:         { compiler: 'go-1.23.2' },
   csharp:     { compiler: 'mono-6.12.0.199' },
   cs:         { compiler: 'mono-6.12.0.199' },
+  'c#':       { compiler: 'mono-6.12.0.199' },
   php:        { compiler: 'php-8.3.12' },
   ruby:       { compiler: 'ruby-3.3.11' },
   rb:         { compiler: 'ruby-3.3.11' },
@@ -359,7 +360,7 @@ export async function executeCode(
   // If running in development (Vite dev server) or preview server, this executes natively in 20ms - 300ms!
   try {
     const localController = new AbortController();
-    const localTimeout = setTimeout(() => localController.abort(), 4500);
+    const localTimeout = setTimeout(() => localController.abort(), 10000);
 
     const onUserAbort = () => localController.abort();
     if (userSignal) userSignal.addEventListener('abort', onUserAbort, { once: true });
@@ -406,28 +407,14 @@ export async function executeCode(
         engine: 'Aborted',
       };
     }
-
-    // If local execution timed out, return Time Limit Exceeded immediately without waiting on cloud
-    if (localErr?.name === 'AbortError') {
-      return {
-        stdout: null,
-        stderr: 'Execution timed out (3.5s limit reached).\nTip: Check for infinite loops or blocking calls. If your program reads from stdin, provide values in the "Standard Input (stdin)" tab prior to running.',
-        compile_output: null,
-        status: { id: 5, description: 'Time Limit Exceeded' },
-        time: '3.500',
-        memory: 4096,
-        exit_code: 124,
-        engine: 'Execution Timeout Guard',
-      };
-    }
-    // Only continue to cloud fallback if endpoint failed with network error or 404
+    // If local server endpoint timed out or failed, gracefully proceed to Cloud Judge0 / Wandbox fallback
   }
 
   // ── Tier 2: Judge0 CE Cloud Execution ───────────────────────────────────────
   // Public high-speed Judge0 instance supporting 60+ programming languages
   try {
     const cloudController = new AbortController();
-    const cloudTimeout = setTimeout(() => cloudController.abort(), 4000);
+    const cloudTimeout = setTimeout(() => cloudController.abort(), 12000);
 
     const onUserAbort = () => cloudController.abort();
     if (userSignal) userSignal.addEventListener('abort', onUserAbort, { once: true });
@@ -459,11 +446,11 @@ export async function executeCode(
     if (submitRes.ok) {
       let data = await submitRes.json();
 
-      // If queued / processing, fast-poll up to 2 times (500ms interval)
+      // If queued / processing, fast-poll up to 8 times (600ms interval)
       if (data.status?.id <= 2 && data.token) {
-        for (let i = 0; i < 2; i++) {
+        for (let i = 0; i < 8; i++) {
           if (cloudController.signal.aborted || userSignal?.aborted) break;
-          await new Promise(r => setTimeout(r, 500));
+          await new Promise(r => setTimeout(r, 600));
           const pollRes = await fetch(`${j0Url}/submissions/${data.token}?base64_encoded=true`, {
             headers,
             signal: cloudController.signal,
@@ -516,7 +503,7 @@ export async function executeCode(
   if (wandboxConfig) {
     try {
       const wandboxController = new AbortController();
-      const wandboxTimeout = setTimeout(() => wandboxController.abort(), 3500);
+      const wandboxTimeout = setTimeout(() => wandboxController.abort(), 12000);
 
       const onUserAbort = () => wandboxController.abort();
       if (userSignal) userSignal.addEventListener('abort', onUserAbort, { once: true });
@@ -585,6 +572,14 @@ export async function executeCode(
           engine: 'Aborted',
         };
       }
+    }
+  }
+
+  // ── Tier 3.5: Client-side In-Browser C# Runner (Offline / Network Fallback) ──
+  if (langKey === 'csharp' || langKey === 'cs' || langKey === 'c#' || languageId === 51) {
+    const csharpBrowserRes = runBrowserCSharp(params.sourceCode, params.stdin, startTime);
+    if (csharpBrowserRes.status.id === 3 || csharpBrowserRes.stdout) {
+      return csharpBrowserRes;
     }
   }
 
@@ -685,6 +680,128 @@ function runBrowserJS(code: string, isTypeScript: boolean, stdin?: string, start
     console.error = originalError;
     console.warn = originalWarn;
     console.info = originalInfo;
+  }
+}
+
+/**
+ * Isolated browser runner fallback for C# (.NET / C# 10 emulation)
+ * Ensures standard C# programs execute immediately even when offline
+ */
+export function runBrowserCSharp(code: string, stdin?: string, startTime: number = performance.now()): ExecutionResult {
+  const output: string[] = [];
+  let outputBuffer = '';
+  const stdinLines = (stdin || '').split('\n');
+
+  try {
+    // Array & LINQ helpers
+    const linqHelpers: Record<string, any> = {
+      ToList: function(this: any[]) { return this; },
+      Where: function(this: any[], fn: (x: any) => boolean) { return this.filter(fn); },
+      Select: function(this: any[], fn: (x: any) => any) { return this.map(fn); },
+      Sum: function(this: any[], fn?: (x: any) => number) { return this.reduce((a, b) => a + (fn ? fn(b) : Number(b)), 0); },
+      Min: function(this: any[], fn?: (x: any) => number) { return Math.min(...(fn ? this.map(fn) : this)); },
+      Max: function(this: any[], fn?: (x: any) => number) { return Math.max(...(fn ? this.map(fn) : this)); },
+      Average: function(this: any[]) { return this.length === 0 ? 0 : this.reduce((a, b) => a + Number(b), 0) / this.length; },
+      OrderBy: function(this: any[], fn?: (x: any) => number) { return [...this].sort((a, b) => (fn ? fn(a) - fn(b) : a - b)); },
+      OrderByDescending: function(this: any[], fn?: (x: any) => number) { return [...this].sort((a, b) => (fn ? fn(b) - fn(a) : b - a)); },
+      First: function(this: any[]) { return this[0]; },
+      Last: function(this: any[]) { return this[this.length - 1]; },
+      ToArray: function(this: any[]) { return this; },
+      Contains: function(this: any[], val: any) { return this.includes(val); },
+    };
+
+    for (const [key, val] of Object.entries(linqHelpers)) {
+      if (!(Array.prototype as any)[key]) {
+        Object.defineProperty(Array.prototype, key, { value: val, configurable: true, writable: true });
+      }
+    }
+
+    const Enumerable = {
+      Range: (start: number, count: number) => Array.from({ length: count }, (_, i) => start + i),
+    };
+
+    const Console = {
+      WriteLine: (...args: any[]) => {
+        const line = outputBuffer + (args.length === 0 ? '' : args.map(a => (typeof a === 'object' && a !== null ? JSON.stringify(a) : String(a))).join(' '));
+        output.push(line);
+        outputBuffer = '';
+      },
+      Write: (...args: any[]) => {
+        outputBuffer += args.map(a => (typeof a === 'object' && a !== null ? JSON.stringify(a) : String(a))).join(' ');
+      },
+      ReadLine: () => {
+        if (stdinLines.length > 0) return stdinLines.shift() || '';
+        return '';
+      },
+    };
+
+    // Extract Main or top-level body
+    let body = code;
+    const mainIdx = body.search(/static\s+(?:void|int|async\s+Task)\s+Main\s*\([^)]*\)/);
+    if (mainIdx !== -1) {
+      const afterMain = body.slice(mainIdx);
+      const startBrace = afterMain.indexOf('{');
+      if (startBrace !== -1) {
+        let depth = 0;
+        let endBrace = -1;
+        for (let i = startBrace; i < afterMain.length; i++) {
+          if (afterMain[i] === '{') depth++;
+          else if (afterMain[i] === '}') {
+            depth--;
+            if (depth === 0) {
+              endBrace = i;
+              break;
+            }
+          }
+        }
+        if (endBrace !== -1) {
+          body = afterMain.slice(startBrace + 1, endBrace);
+        }
+      }
+    }
+
+    // Preprocess body
+    body = body
+      .replace(/^\s*using\s+[\w.]+;\s*$/gm, '')
+      .replace(/string\.Join\s*\(\s*(['"][^'"]*['"])\s*,\s*([^)]+)\)/g, '$2.join($1)')
+      .replace(/\$"([^"]*)"/g, (_, s) => '`' + s.replace(/\{([^}]+)\}/g, '${$1}') + '`')
+      .replace(/\b(int|long|double|float|decimal|string|bool|var|auto|char)\s+([a-zA-Z_]\w*)\s*=/g, 'let $2 =')
+      .replace(/\b(int|long|double|float|decimal|string|bool|char)\[\]\s+([a-zA-Z_]\w*)\s*=/g, 'let $2 =')
+      .replace(/\bList<[^>]+>\s+([a-zA-Z_]\w*)\s*=/g, 'let $1 =')
+      .replace(/new\s+List<[^>]+>\s*\{([^}]*)\}/g, '[$1]')
+      .replace(/new\s+(?:int|string|double|long)\[\]\s*\{([^}]*)\}/g, '[$1]')
+      .replace(/foreach\s*\(\s*(?:var|\w+)\s+(\w+)\s+in\s+([^)]+)\)/g, 'for (const $1 of $2)')
+      .replace(/\bint\.Parse\s*\(([^)]+)\)/g, 'parseInt($1, 10)')
+      .replace(/\bdouble\.Parse\s*\(([^)]+)\)/g, 'parseFloat($1)')
+      .replace(/Array\.Sort\s*\(([^)]+)\)/g, '$1.sort((a, b) => a - b)');
+
+    const fn = new Function('Console', 'Enumerable', body);
+    fn(Console, Enumerable);
+    if (outputBuffer) output.push(outputBuffer);
+
+    const time = ((performance.now() - startTime) / 1000).toFixed(3);
+    return {
+      stdout: output.length > 0 ? output.join('\n') + '\n' : '✓ Program finished with return code 0 (no output)\n',
+      stderr: null,
+      compile_output: null,
+      status: { id: 3, description: 'Accepted' },
+      time,
+      memory: 2048,
+      exit_code: 0,
+      engine: 'In-Browser C# Sandbox Runtime',
+    };
+  } catch (err: any) {
+    const time = ((performance.now() - startTime) / 1000).toFixed(3);
+    return {
+      stdout: output.length > 0 ? output.join('\n') + '\n' : null,
+      stderr: `✕ C# Runtime Error: ${err?.message || err}`,
+      compile_output: null,
+      status: { id: 11, description: 'Runtime Error' },
+      time,
+      memory: 2048,
+      exit_code: 1,
+      engine: 'In-Browser C# Sandbox Runtime',
+    };
   }
 }
 

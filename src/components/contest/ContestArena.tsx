@@ -37,7 +37,7 @@ export const ContestArena: React.FC<ContestArenaProps> = ({
 }) => {
   const [session, setSession] = useState<ContestSession>(initialSession);
   const [activeProblemIndex, setActiveProblemIndex] = useState(0);
-  const [selectedLanguage, setSelectedLanguage] = useState<'python' | 'cpp' | 'javascript'>('python');
+  const [selectedLanguage, setSelectedLanguage] = useState<'python' | 'cpp' | 'javascript' | 'csharp'>('python');
 
   // Code state per problem
   const [codes, setCodes] = useState<Record<string, Record<string, string>>>(() => {
@@ -47,6 +47,16 @@ export const ContestArena: React.FC<ContestArenaProps> = ({
         python: p.starterCode.python || '# Write solution here\n',
         cpp: p.starterCode.cpp || '// Write solution here\n',
         javascript: p.starterCode.javascript || '// Write solution here\n',
+        csharp: p.starterCode.csharp || (p.starterCode as any)?.['c#'] || `using System;
+
+class Solution {
+    static void Main(string[] args) {
+        string line = Console.ReadLine();
+        // Write your solution here
+        Console.WriteLine(line);
+    }
+}
+`,
       };
     });
     return initial;
@@ -445,6 +455,7 @@ export const ContestArena: React.FC<ContestArenaProps> = ({
               >
                 <option value="python">Python 3.11</option>
                 <option value="cpp">C++20 (GCC 13)</option>
+                <option value="csharp">C# 10 (.NET / Mono)</option>
                 <option value="javascript">JavaScript (Node.js 20)</option>
               </select>
             </div>
@@ -474,7 +485,7 @@ export const ContestArena: React.FC<ContestArenaProps> = ({
           <div className="flex-1 relative">
             <MonacoEditor
               height="100%"
-              language={selectedLanguage === 'cpp' ? 'cpp' : selectedLanguage === 'javascript' ? 'javascript' : 'python'}
+              language={selectedLanguage === 'cpp' ? 'cpp' : selectedLanguage === 'javascript' ? 'javascript' : selectedLanguage === 'csharp' ? 'csharp' : 'python'}
               theme="vs-dark"
               value={currentCode}
               onChange={(val) => {

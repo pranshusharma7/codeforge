@@ -215,19 +215,18 @@ fn main() {
   {
     id: 'csharp', label: 'C#', monacoId: 'csharp', judge0Id: 51, ext: 'cs', icon: 'C#', color: '#cba6f7',
     starter: `using System;
+using System.Collections.Generic;
 using System.Linq;
 
 class Program {
-    static void Main() {
-        int n = int.Parse(Console.ReadLine()!);
-        int[] a = Console.ReadLine()!.Split(' ').Select(int.Parse).ToArray();
-
-        Array.Sort(a);
-
-        Console.WriteLine("Sorted: " + string.Join(" ", a));
-
-        // LINQ statistics
-        Console.WriteLine($"Min: {a.Min()}, Max: {a.Max()}, Sum: {a.Sum()}, Avg: {a.Average():F2}");
+    static void Main(string[] args) {
+        Console.WriteLine("Hello from C#!");
+        
+        var numbers = new List<int> { 64, 34, 25, 12, 22, 11, 90 };
+        var sorted = numbers.OrderBy(n => n).ToList();
+        
+        Console.WriteLine("Sorted: " + string.Join(", ", sorted));
+        Console.WriteLine($"Min: {sorted.Min()}, Max: {sorted.Max()}, Sum: {sorted.Sum()}, Avg: {sorted.Average():F2}");
     }
 }`,
   },
