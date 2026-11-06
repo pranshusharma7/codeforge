@@ -22,14 +22,8 @@ import {
 import {
   GitBranchIcon, RepoIcon, PaletteIcon, ShareIcon, DownloadIcon, SaveIcon,
   FolderIcon, FilePlusIcon, FolderPlusIcon, FileOpenIcon, FolderOpenIcon, TrashIcon, RefreshIcon, ChevronDown,
-  CollapseAllIcon, TerminalIcon, XIcon, TrophyIcon,
+  CollapseAllIcon, TerminalIcon, XIcon,
 } from './components/icons'
-import { ContestHubModal } from './components/contest/ContestHubModal'
-import { ContestPage } from './components/contest/ContestPage'
-import { EventsLandingPage } from './components/events/EventsLandingPage'
-import { PreContestCheckModal } from './components/contest/PreContestCheckModal'
-import { ContestArena } from './components/contest/ContestArena'
-import type { Contest, ContestProblem } from './lib/contestTypes'
 import { registerMonacoThemes, DEFAULT_THEME_ID, getThemeById, applyThemeToDocument, getThemeUIColors, getActiveMonacoThemeId } from './lib/themes'
 import {
   getSavedCodeHistory, saveCodeSnapshot, deleteSavedCode, getSnippets, saveSnippet, deleteSnippet,
@@ -48,6 +42,25 @@ import { getAINextCodeSuggestion } from './extensions/aiHelper'
 import type { Extension } from './extensions/types'
 import { getEditorFontById, DEFAULT_FONT_ID } from './lib/fonts'
 import logoImg from './assets/logo.png'
+import NavbarProfileDropdown from './components/profile/NavbarProfileDropdown'
+import DeveloperProfileModal from './components/profile/DeveloperProfileModal'
+import { LiveRoomsDashboard } from './components/collab/LiveRoomsDashboard'
+import { CollaborationToolbar } from './components/collab/CollaborationToolbar'
+import { LiveCollaborationSidePanel } from './components/collab/LiveCollaborationSidePanel'
+import { Users, Sparkles } from 'lucide-react'
+import { CollabMonacoSession } from './lib/collab/yjsMonaco'
+import type { CollabRoom, DeveloperProfile, RoomRole, DocumentSnapshot } from './lib/collab/types'
+import socketClient from './lib/collab/socketClient'
+import {
+  getDeveloperProfile,
+  saveDeveloperProfile,
+  subscribeToProfile,
+  joinCollabRoom,
+  getMyRole,
+  recordExecution,
+  recordCollaboration,
+  leaveCollabRoom,
+} from './lib/collab/collabStore'
 import PackageInstaller from './components/PackageInstaller'
 import {
   isFileSystemAccessSupported,
@@ -116,10 +129,9 @@ const ACTIONS: { label: string; action: AIAction; icon: string; color: string }[
 
 const COMMANDS = [
   { id: 'run', label: 'Run Code', detail: 'Execute the active file', key: 'Ctrl Enter', icon: '▶' },
-  { id: 'save', label: 'Save File (Ctrl+S)', detail: 'Directly save changes to computer disk file', key: 'Ctrl S', icon: '💾' },
-  { id: 'save-as', label: 'Save As... (Choose Location)', detail: 'Save code to a chosen file on local disk', key: 'Ctrl Shift S', icon: '📁' },
-  { id: 'toggle-autosave', label: 'Toggle Auto-Save to Disk (VS Code Style)', detail: 'Automatically save to local file on disk as you type', key: '', icon: '🔄' },
-  { id: 'link-disk', label: 'Link File to Local Disk (Auto-Save)', detail: 'Pick a location on your computer to auto-save this file', key: '', icon: '🔗' },
+  { id: 'save', label: 'Save File (Ctrl+S)', detail: 'Directly save code snapshot', key: 'Ctrl S', icon: '💾' },
+  { id: 'live-rooms', label: 'CodeForge Live Rooms', detail: 'Join or create private real-time collaboration rooms', key: '', icon: '👥' },
+  { id: 'dev-profile', label: 'Developer Profile', detail: 'View GitHub profile, stats, contributions, and badges', key: '', icon: '👤' },
   { id: 'new', label: 'New File', detail: 'Create a new editor tab', key: 'Ctrl N', icon: '+' },
   { id: 'new-folder', label: 'New Folder', detail: 'Create a new folder in workspace', key: '', icon: '🗂️' },
   { id: 'open-file', label: 'Open File from Computer', detail: 'Open code file with direct disk saving', key: 'Ctrl O', icon: '📄' },
@@ -130,7 +142,15 @@ const COMMANDS = [
   { id: 'history', label: 'Show Recent Saves', detail: 'Browse saved code snapshots', key: '', icon: '◷' },
   { id: 'ai', label: 'Toggle AI Panel', detail: 'Show or hide CodeForge AI', key: 'Ctrl Shift A', icon: '✧' },
   { id: 'source-control', label: 'Open Source Control', detail: 'Review changes and branches', key: '', icon: '⑂' },
-  { id: 'themes', label: 'VS Code Themes', detail: 'Choose from 15 iconic VS Code themes', key: '', icon: '🎨' },
+  { id: 'themes', label: 'VS Code Themes', detail: 'Choose from 25+ iconic themes & luxury editions', key: '', icon: '🎨' },
+  { id: 'theme-alvor', label: 'Theme: Alvor Titanium (Luxury Ring)', detail: 'Luxury frosted ivory, titanium silver & laser diode accents', key: '', icon: '💍' },
+  { id: 'theme-source', label: 'Theme: Source Cybernetic (Edge Dark)', detail: 'Obsidian slate, matrix wireframe grid & cyber-mint laser glow', key: '', icon: '⚡' },
+  { id: 'theme-forest', label: 'Theme: Alvor Forest (Bio-Sage)', detail: 'British racing green pine, forest slate & biometric waveform glow', key: '', icon: '🌲' },
+  { id: 'theme-omni', label: 'Theme: OmniAgent Lime (AI Studio)', detail: 'Velvet noir canvas, electric chartreuse & AI creator studio cards', key: '', icon: '🔋' },
+  { id: 'theme-revenue-x', label: 'Theme: RevenueX (Champagne Sunset)', detail: 'Warm champagne silk ivory, honey amber & sunset violet accents', key: '', icon: '🌅' },
+  { id: 'theme-revenue-x-noir', label: 'Theme: RevenueX Noir (Desert Midnight)', detail: 'Deep desert obsidian dunes, honey amber & violet aurora', key: '', icon: '🌌' },
+  { id: 'theme-apitex', label: 'Theme: Apitex (Peach Champagne & Midnight)', detail: 'Warm champagne peach silk, apricot platinum & midnight capsule dock', key: '', icon: '💳' },
+  { id: 'theme-apitex-noir', label: 'Theme: Apitex Noir (Swiss Midnight Gold)', detail: 'Swiss deep obsidian noir, warm apricot champagne glow & coral rose', key: '', icon: '✨' },
   { id: 'repos', label: 'GitHub Repositories', detail: 'Manage repositories and commit code', key: '', icon: '📦' },
   { id: 'packages', label: 'Package Installer', detail: 'Manage R (CRAN), Python (pip), and npm packages', key: '', icon: '📦' },
   { id: 'new-csharp', label: 'New C# Program', detail: 'Create a runnable Program.cs with C# 10 boilerplate', key: '', icon: '🔷' },
@@ -266,6 +286,17 @@ export default function App() {
   const [wordWrap, setWordWrap]   = useState<'on'|'off'>('off')
   const [showMini, setShowMini]   = useState(false)
 
+  // ── Developer Profile & Realtime Collaboration Rooms ──────────────────────
+  const [devProfile, setDevProfile] = useState<DeveloperProfile>(() => getDeveloperProfile())
+  const [showProfileModal, setShowProfileModal] = useState<boolean>(false)
+  const [showLiveRoomsModal, setShowLiveRoomsModal] = useState<boolean>(false)
+  const [activeRoom, setActiveRoom] = useState<CollabRoom | null>(null)
+  const [collabPanelOpen, setCollabPanelOpen] = useState<boolean>(true)
+  const [collabW, setCollabW] = useState<number>(320)
+  const collabResRef = useRef<{ x: number; w: number } | null>(null)
+  const collabSessionRef = useRef<CollabMonacoSession | null>(null)
+  const [followingUserId, setFollowingUserId] = useState<string | null>(null)
+
   // Auto-Save to Local Disk (VS Code Style)
   const [autoSaveDisk, setAutoSaveDisk] = useState<boolean>(() => {
     try {
@@ -343,7 +374,17 @@ export default function App() {
   const [showSettings, setShowSettings]   = useState(false)
   const [settingsTab, setSettingsTab]     = useState<'editor' | 'themes' | 'repos' | 'profile'>('editor')
   const [editorTheme, setEditorTheme]     = useState<string>(() => {
-    try { return localStorage.getItem('cf_editor_theme') || DEFAULT_THEME_ID } catch { return DEFAULT_THEME_ID }
+    try {
+      const initialized = localStorage.getItem('cf_alvor_theme_v1')
+      if (!initialized) {
+        localStorage.setItem('cf_alvor_theme_v1', 'true')
+        localStorage.setItem('cf_editor_theme', 'alvor-titanium')
+        return 'alvor-titanium'
+      }
+      return localStorage.getItem('cf_editor_theme') || DEFAULT_THEME_ID
+    } catch {
+      return DEFAULT_THEME_ID
+    }
   })
   const [editorFont, setEditorFont]       = useState<string>(() => {
     try { return localStorage.getItem('cf_editor_font') || DEFAULT_FONT_ID } catch { return DEFAULT_FONT_ID }
@@ -373,16 +414,6 @@ export default function App() {
   const [languageSearchQuery, setLanguageSearchQuery] = useState('')
   const [authUser, setAuthUserState]      = useState<AuthUser | null>(null)
   const [toast, setToast] = useState<string|null>(null)
-
-  // Contest & Assessment Proctoring state
-  const [viewMode, setViewMode] = useState<'editor' | 'contests'>('editor')
-  const [isContestHubOpen, setIsContestHubOpen] = useState(false)
-  const [selectedContestForCheck, setSelectedContestForCheck] = useState<Contest | null>(null)
-  const [activeContestArena, setActiveContestArena] = useState<{
-    contest: Contest
-    session: any
-    mediaTracks: { videoTrack: MediaStreamTrack | null; screenTrack: MediaStreamTrack | null; audioTrack: MediaStreamTrack | null }
-  } | null>(null)
 
   // Debugger states
   const [isDebugging, setIsDebugging]           = useState(false)
@@ -489,6 +520,149 @@ export default function App() {
       localStorage.setItem('cf_github_autosync_delay', sec.toString())
     } catch {}
   }
+
+  useEffect(() => {
+    const unsub = subscribeToProfile(setDevProfile)
+    return unsub
+  }, [])
+
+  // Auto-join via URL params: ?room=CF-XXXX-XXXX&token=...
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search)
+      const roomCode = params.get('room') || params.get('room_code')
+      const token = params.get('token')
+      if (roomCode) {
+        const res = joinCollabRoom(roomCode, devProfile, token || undefined)
+        if (res.success && res.room) {
+          setActiveRoom(res.room)
+          recordCollaboration()
+          showToast(`Joined private collaboration room: ${res.room.name} 👥`)
+        } else {
+          showToast(`⚠️ Could not join room: ${res.error || 'Authorization failed'}`)
+        }
+      }
+    } catch (e) {
+      console.warn('URL room check:', e)
+    }
+  }, [])
+
+  // Monaco CRDT Binding effect
+  useEffect(() => {
+    if (!activeRoom || !editorRef.current) {
+      if (collabSessionRef.current) {
+        collabSessionRef.current.dispose()
+        collabSessionRef.current = null
+      }
+      return
+    }
+
+    if (collabSessionRef.current) {
+      collabSessionRef.current.dispose()
+      collabSessionRef.current = null
+    }
+
+    const myRole = getMyRole(activeRoom, devProfile.id)
+    const session = new CollabMonacoSession({
+      roomId: activeRoom.id,
+      fileId: activeTab || 'main_file',
+      userId: devProfile.id,
+      username: devProfile.username,
+      color: devProfile.avatarUrl ? '#8b5cf6' : '#ec4899',
+      initialCode: getActiveCode(),
+      readOnly: myRole.toLowerCase() === 'viewer',
+      followingUserId,
+    })
+
+    session.bindEditor(editorRef.current)
+    collabSessionRef.current = session
+
+    return () => {
+      session.dispose()
+      collabSessionRef.current = null
+    }
+  }, [activeRoom, activeTab, devProfile])
+
+  // Update follow state when followingUserId changes
+  useEffect(() => {
+    collabSessionRef.current?.setFollowingUser(followingUserId)
+  }, [followingUserId])
+
+  // Real-Time Socket.IO Synchronization for Active Room
+  useEffect(() => {
+    if (!activeRoom) {
+      socketClient.leaveRoom()
+      return
+    }
+
+    // Connect to central collaboration server
+    socketClient.joinRoom(
+      activeRoom.id,
+      devProfile,
+      activeRoom.inviteToken,
+      activeRoom
+    ).catch(err => {
+      console.warn('Collab server join notice:', err)
+    })
+
+    // Listen to shared terminal stream events from peers
+    const unsubTerm = socketClient.on('terminal-stream', (streamEvent: any) => {
+      if (streamEvent.type === 'start') {
+        showToast(`⚡ @${streamEvent.username || 'Collaborator'} running code...`)
+      } else if (streamEvent.type === 'end') {
+        showToast(`✅ @${streamEvent.username || 'Collaborator'} execution completed (${streamEvent.executionTimeMs || 0}ms)`)
+      }
+    })
+
+    // Multi-file sync: remote collaborator created a file
+    const unsubFileCreated = socketClient.on('file-created', (data: any) => {
+      if (!data || !data.fileId) return
+      setTabs(prev => {
+        if (prev.some(t => t.id === data.fileId)) return prev
+        const detected = detectLanguage(data.name || 'untitled.js')
+        return [
+          ...prev,
+          {
+            id: data.fileId,
+            name: data.name,
+            lang: detected.id,
+            code: data.code || '',
+            modified: false,
+          },
+        ]
+      })
+      showToast(`📁 File created by collaborator: ${data.name}`)
+    })
+
+    // Multi-file sync: remote collaborator deleted a file
+    const unsubFileDeleted = socketClient.on('file-deleted', (data: any) => {
+      if (!data || !data.fileId) return
+      setTabs(prev => {
+        const remaining = prev.filter(t => t.id !== data.fileId)
+        setActiveTab(curr => {
+          if (curr === data.fileId) {
+            return remaining.length > 0 ? remaining[remaining.length - 1].id : ''
+          }
+          return curr
+        })
+        return remaining
+      })
+      showToast('🗑️ File deleted by collaborator')
+    })
+
+    // Multi-file sync: remote collaborator renamed a file
+    const unsubFileRenamed = socketClient.on('file-renamed', (data: any) => {
+      if (!data || !data.fileId) return
+      setTabs(prev => prev.map(t => t.id === data.fileId ? { ...t, name: data.name } : t))
+    })
+
+    return () => {
+      unsubTerm()
+      unsubFileCreated()
+      unsubFileDeleted()
+      unsubFileRenamed()
+    }
+  }, [activeRoom?.id, devProfile.id, devProfile.username, activeRoom?.inviteToken])
 
   useEffect(() => {
     const handleAIConfigChange = () => setAiConfigVersion(v => v + 1)
@@ -1313,6 +1487,9 @@ export default function App() {
     const language = detectLanguage(name)
     const t: Tab = { id: crypto.randomUUID(), name, lang: language.id, code: initialCode ?? '' }
     setTabs(p => [...p, t]); setActiveTab(t.id)
+    if (activeRoom) {
+      socketClient.emitFileCreate({ id: t.id, name: t.name, lang: t.lang, code: t.code })
+    }
   }
 
   const createFile = () => {
@@ -1686,6 +1863,9 @@ export default function App() {
     setTabs(rest)
     if (activeTab === id) setActiveTab(rest.length > 0 ? rest[rest.length - 1].id : '')
     showToast(`Deleted ${target?.name || 'file'}`)
+    if (activeRoom) {
+      socketClient.emitFileDelete(id)
+    }
   }
 
   // ── Stop Execution ──────────────────────────────────────────────────────
@@ -1721,6 +1901,15 @@ export default function App() {
   // ── Run ──────────────────────────────────────────────────────────────────
   const handleRun = useCallback(async () => {
     if (running) return
+
+    if (activeRoom) {
+      const myRole = getMyRole(activeRoom, devProfile.id)
+      if (myRole.toLowerCase() === 'viewer') {
+        showToast('⚠️ Viewers have read-only access. Only Owners and Editors can run code.')
+        return
+      }
+    }
+
     flushTabsSync()
     flushDiskSave()
     let activeTabToUse = curTab
@@ -1771,6 +1960,9 @@ export default function App() {
     setRunning(true); setResult(null); setConsTab('output'); setBottomPanelOpen(true)
     setRunStartTime(Date.now())
     setRunElapsedSec(0)
+    if (activeRoom) {
+      socketClient.emitTerminalRunStart(activeTabToUse.lang, activeTabToUse.name)
+    }
 
     // Safety timeout: auto-abort if execution somehow takes > 12s to guarantee it NEVER hangs
     // Increased from 5.5s to account for retry logic with exponential backoff across tiers
@@ -1854,9 +2046,49 @@ export default function App() {
       }
       setRunning(false)
       setRunStartTime(null)
+      recordExecution(curLang.label)
+      if (activeRoom) {
+        socketClient.emitTerminalRunEnd(0, Date.now() - (runStartTime || Date.now()))
+      }
     }
-  }, [running, hasOpenTab, curTab, getActiveCode, stdin])
+  }, [running, hasOpenTab, curTab, getActiveCode, stdin, activeRoom, devProfile.id, curLang.label])
   handleRunRef.current = handleRun
+
+  // ── Collaboration Handlers ───────────────────────────────────────────────
+  const handleCollabPingLine = useCallback(() => {
+    if (collabSessionRef.current) {
+      collabSessionRef.current.pingCurrentLine()
+      showToast('📍 Pinged current line to collaborators')
+    } else if (editorRef.current && activeRoom) {
+      const pos = editorRef.current.getPosition()
+      const line = pos ? pos.lineNumber : 1
+      socketClient.pingLine(activeTab || 'main_file', line, '#8b5cf6')
+      showToast(`📍 Pinged line ${line}`)
+    }
+  }, [activeRoom, activeTab])
+
+  const handleRestoreSnapshot = useCallback((snapshot: DocumentSnapshot) => {
+    if (!snapshot || !snapshot.files || snapshot.files.length === 0) return
+    const restoredTabs: Tab[] = snapshot.files.map(f => {
+      const detected = detectLanguage(f.name)
+      return {
+        id: crypto.randomUUID(),
+        name: f.name,
+        lang: f.lang || detected.id,
+        code: f.code || '',
+        modified: true,
+      }
+    })
+    setTabs(restoredTabs)
+    if (restoredTabs.length > 0) {
+      setActiveTab(restoredTabs[0].id)
+      if (editorRef.current) {
+        editorRef.current.setValue(restoredTabs[0].code)
+      }
+      activeCodeRef.current = restoredTabs[0].code
+    }
+    showToast(`↺ Restored checkpoint from ${new Date(snapshot.createdAt).toLocaleTimeString()} ("${snapshot.name}")`)
+  }, [])
 
   // ── AI ───────────────────────────────────────────────────────────────────
   const sendAI = async (action: AIAction, text: string) => {
@@ -2329,9 +2561,8 @@ export default function App() {
     switch (command) {
       case 'run': handleRun(); break
       case 'save': saveCurrentFile(); break
-      case 'save-as': handleSaveAsDisk(); break
-      case 'toggle-autosave': toggleAutoSaveDisk(); break
-      case 'link-disk': linkCurrentTabToDisk(); break
+      case 'live-rooms': setShowLiveRoomsModal(true); break
+      case 'dev-profile': setShowProfileModal(true); break
       case 'new': setPanel('explorer'); setSideOpen(true); setWorkspaceExpanded(true); setInlineItem({ type: 'file', parentFolder: '' }); setInlineName(''); break
       case 'new-folder': setPanel('explorer'); setSideOpen(true); setWorkspaceExpanded(true); setInlineItem({ type: 'folder', parentFolder: '' }); setInlineName(''); break
       case 'open-file': handleOpenFileWithPicker(); break
@@ -2342,6 +2573,14 @@ export default function App() {
       case 'history': setPanel('history'); setSideOpen(true); break
       case 'source-control': setPanel('source-control'); setSideOpen(true); break
       case 'themes': openSettings('themes'); break
+      case 'theme-alvor': handleThemeChange('alvor-titanium'); showToast('Switched to Alvor Titanium Pure 💍✨'); break
+      case 'theme-source': handleThemeChange('source-cybernetic'); showToast('Switched to Source Cybernetic ⚡💚'); break
+      case 'theme-forest': handleThemeChange('alvor-forest'); showToast('Switched to Alvor Forest Bio-Sage 🌲🌿'); break
+      case 'theme-omni': handleThemeChange('omni-agent'); showToast('Switched to OmniAgent Lime Studio 🔋⚡'); break
+      case 'theme-revenue-x': handleThemeChange('revenue-x'); showToast('Switched to RevenueX Champagne Sunset 🌅✨'); break
+      case 'theme-revenue-x-noir': handleThemeChange('revenue-x-noir'); showToast('Switched to RevenueX Noir Desert Midnight 🌌✨'); break
+      case 'theme-apitex': handleThemeChange('apitex-fintech'); showToast('Switched to Apitex Peach Champagne 💳✨'); break
+      case 'theme-apitex-noir': handleThemeChange('apitex-noir'); showToast('Switched to Apitex Noir Swiss Gold ✨💎'); break
       case 'repos': openSettings('repos'); break
       case 'ai': setAiOpen(p => !p); break
       case 'packages': setPanel('packages'); setSideOpen(true); break
@@ -2482,6 +2721,13 @@ export default function App() {
 
   const handleEditorMount = (ed: any, monacoInstance: any) => {
     editorRef.current = ed
+    try {
+      registerMonacoThemes(monacoInstance, editorFontColor, editorCommentColor)
+      registerAllLanguageCommentConfigs(monacoInstance)
+      monacoInstance.editor.setTheme(activeMonacoTheme)
+    } catch (e) {
+      console.warn('Monaco theme mount registration:', e)
+    }
     ed.onDidChangeCursorPosition((e: any) => {
       const text = `Ln ${e.position.lineNumber}, Col ${e.position.column}`
       const el1 = document.getElementById('editor-cursor-pos-header')
@@ -2768,7 +3014,8 @@ export default function App() {
     roundedSelection: true,
     accessibilitySupport: 'off' as const,
     automaticLayout: true,
-  }), [fontSize, wordWrap, showMini, editorFont, fontLigatures])
+    readOnly: activeRoom ? getMyRole(activeRoom, devProfile.id).toLowerCase() === 'viewer' : false,
+  }), [fontSize, wordWrap, showMini, editorFont, fontLigatures, activeRoom, devProfile.id])
 
   // ── Resize handlers ───────────────────────────────────────────────────────
   const mkSideResize = (e: React.MouseEvent) => {
@@ -2782,6 +3029,21 @@ export default function App() {
     const mv = (ev: MouseEvent) => { if (aiResRef.current) setAiW(Math.max(240, Math.min(520, aiResRef.current.w + aiResRef.current.x - ev.clientX))) }
     const up = () => { aiResRef.current = null; window.removeEventListener('mousemove', mv); window.removeEventListener('mouseup', up) }
     window.addEventListener('mousemove', mv); window.addEventListener('mouseup', up)
+  }
+  const mkCollabResize = (e: React.MouseEvent) => {
+    collabResRef.current = { x: e.clientX, w: collabW }
+    const mv = (ev: MouseEvent) => {
+      if (collabResRef.current) {
+        setCollabW(Math.max(260, Math.min(500, collabResRef.current.w + collabResRef.current.x - ev.clientX)))
+      }
+    }
+    const up = () => {
+      collabResRef.current = null
+      window.removeEventListener('mousemove', mv)
+      window.removeEventListener('mouseup', up)
+    }
+    window.addEventListener('mousemove', mv)
+    window.addEventListener('mouseup', up)
   }
   const mkConsResize = (e: React.MouseEvent) => {
     consResRef.current = { y: e.clientY, h: consH }
@@ -3231,71 +3493,8 @@ export default function App() {
         </>
       )}
 
-      {/* ── View Switcher: CodeForge Events Platform vs IDE Editor ───────────── */}
-      {viewMode === 'contests' ? (
-        <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
-          <EventsLandingPage
-            logoImg={logoImg}
-            authUser={authUser}
-            onBackToEditor={() => setViewMode('editor')}
-            onOpenAuth={() => setShowAuth(true)}
-            onLaunchArena={(event) => {
-              const convertedContest: Contest = {
-                id: event.id,
-                title: event.title,
-                slug: event.slug,
-                type: event.category === 'assessment' ? 'assessment' : 'competitive',
-                status: event.status === 'LIVE' ? 'live' : event.status === 'COMPLETED' ? 'ended' : 'upcoming',
-                description: event.description,
-                startTime: `${event.startDate}T${event.startTime}:00`,
-                endTime: `${event.endDate}T${event.endTime}:00`,
-                durationMinutes: event.durationMinutes,
-                totalPoints: event.rounds.reduce((acc, r) => acc + (r.maxScore || 100), 0),
-                registeredUsersCount: event.currentParticipantsCount,
-                proctoring: event.proctoring,
-                privacyNotice: {
-                  dataCollected: ['Webcam video snapshots', 'Screen capture stream', 'Window visibility & clipboard telemetry'],
-                  purpose: 'Contest integrity and fair competitive standing verification.',
-                  retentionPolicy: 'Stream frames processed ephemerally; security violation telemetry retained for audit.',
-                  whoHasAccess: 'Authorized contest administrators & anti-cheat audit panel only.',
-                  refusalConsequence: 'Proctored mode will not activate and submission privileges will remain locked.',
-                },
-                problems: event.rounds.flatMap((r) =>
-                  r.questions.map((q) => ({
-                    id: q.id,
-                    title: q.title,
-                    slug: q.slug,
-                    difficulty: q.difficulty,
-                    points: q.points,
-                    timeLimitMs: q.timeLimitMs,
-                    memoryLimitMb: q.memoryLimitMb,
-                    description: q.description,
-                    inputFormat: q.inputFormat,
-                    outputFormat: q.outputFormat,
-                    constraints: q.constraints,
-                    sampleTestCases: q.testCases.filter((tc) => !tc.isHidden).map((tc) => ({
-                      id: tc.id,
-                      input: tc.input,
-                      expectedOutput: tc.expectedOutput,
-                      explanation: tc.explanation,
-                    })),
-                    starterCode: {
-                      ...q.starterCode,
-                      python: q.starterCode?.python || '# Write code here\n',
-                      cpp: q.starterCode?.cpp || '// Write code here\n',
-                      javascript: q.starterCode?.javascript || '// Write code here\n',
-                    } as ContestProblem['starterCode'],
-                  }))
-                ),
-              };
-              setSelectedContestForCheck(convertedContest);
-            }}
-          />
-        </div>
-      ) : (
-        <>
-          {/* ── Header ────────────────────────────────────────────────────────── */}
-          <header className="app-header" style={{ height: 46, flexShrink: 0, display: 'flex', alignItems: 'center', zIndex: 40 }}>
+      {/* ── Header ────────────────────────────────────────────────────────── */}
+      <header className="app-header" style={{ height: 46, flexShrink: 0, display: 'flex', alignItems: 'center', zIndex: 40 }}>
         {/* Logo */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 16px', borderRight: '1px solid var(--border)', height: '100%', flexShrink: 0 }}>
           <img src={logoImg} alt="CodeForge" className="logo-img" />
@@ -3586,53 +3785,46 @@ export default function App() {
           </div>
         </div>
 
-        {/* Contests & Assessments Button (Placed after Download and before Search) */}
+        {/* CodeForge Live Collaboration Rooms */}
         <button
-          onClick={() => setViewMode('contests')}
+          onClick={() => setShowLiveRoomsModal(true)}
           style={{
             display: 'flex',
             alignItems: 'center',
             gap: 6,
-            marginLeft: 10,
+            marginLeft: 8,
             padding: '5px 12px',
-            background: 'linear-gradient(135deg, rgba(6, 182, 212, 0.12), rgba(59, 130, 246, 0.12))',
-            border: '1px solid rgba(6, 182, 212, 0.35)',
+            background: activeRoom ? 'rgba(139, 92, 246, 0.22)' : 'rgba(139, 92, 246, 0.12)',
+            border: activeRoom ? '1px solid rgba(139, 92, 246, 0.65)' : '1px solid rgba(139, 92, 246, 0.35)',
             borderRadius: 6,
-            color: '#38bdf8',
+            color: '#c4b5fd',
             fontSize: 12,
             fontWeight: 600,
             cursor: 'pointer',
             transition: 'all 0.15s ease',
-            boxShadow: '0 2px 8px rgba(6, 182, 212, 0.12)',
-            flexShrink: 0
+            boxShadow: activeRoom ? '0 0 14px rgba(139, 92, 246, 0.3)' : 'none',
+            flexShrink: 0,
           }}
-          onMouseEnter={e => {
-            e.currentTarget.style.borderColor = 'rgba(6, 182, 212, 0.6)'
-            e.currentTarget.style.background = 'linear-gradient(135deg, rgba(6, 182, 212, 0.22), rgba(59, 130, 246, 0.22))'
-            e.currentTarget.style.boxShadow = '0 2px 12px rgba(6, 182, 212, 0.25)'
-          }}
-          onMouseLeave={e => {
-            e.currentTarget.style.borderColor = 'rgba(6, 182, 212, 0.35)'
-            e.currentTarget.style.background = 'linear-gradient(135deg, rgba(6, 182, 212, 0.12), rgba(59, 130, 246, 0.12))'
-            e.currentTarget.style.boxShadow = '0 2px 8px rgba(6, 182, 212, 0.12)'
-          }}
-          title="Browse Contests, Assessments, and Anti-Cheat Proctor Arena"
+          title="CodeForge Live Rooms — End-to-end CRDT real-time collaboration with WebRTC voice"
         >
-          <TrophyIcon style={{ width: 14, height: 14, color: '#38bdf8' }} />
-          <span>Contests</span>
-          <span style={{
-            fontSize: 9,
-            fontWeight: 700,
-            background: 'rgba(239, 68, 68, 0.2)',
-            color: '#f87171',
-            border: '1px solid rgba(239, 68, 68, 0.4)',
-            padding: '1px 5px',
-            borderRadius: 10,
-            textTransform: 'uppercase',
-            letterSpacing: '0.04em'
-          }}>
-            Live
-          </span>
+          <span style={{ fontSize: 13 }}>👥</span>
+          <span>{activeRoom ? activeRoom.name : 'Live Rooms'}</span>
+          {activeRoom ? (
+            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#34d399', boxShadow: '0 0 8px #34d399' }} />
+          ) : (
+            <span style={{
+              fontSize: 9,
+              fontWeight: 700,
+              background: 'rgba(139, 92, 246, 0.2)',
+              color: '#c4b5fd',
+              border: '1px solid rgba(139, 92, 246, 0.4)',
+              padding: '1px 5px',
+              borderRadius: 10,
+              textTransform: 'uppercase',
+            }}>
+              P2P
+            </span>
+          )}
         </button>
 
         {/* Language Selector Button */}
@@ -3679,24 +3871,65 @@ export default function App() {
 
         {/* Header actions */}
         <div className="header-actions" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 8px' }}>
-          {/* AI Toggle */}
-          <button onClick={() => setAiOpen(p => !p)}
-            className={`header-ai-button${aiOpen ? ' active' : ''}`}
-            title={aiOpen ? 'Close CodeForge AI assistant' : 'Open CodeForge AI assistant'}
-            aria-label={aiOpen ? 'Close CodeForge AI assistant' : 'Open CodeForge AI assistant'}
-            aria-pressed={aiOpen}>
-            <span className="header-ai-icon" aria-hidden="true">✦</span>
-            <span>CodeForge AI</span>
+          {/* CodeForge AI Icon Toggle */}
+          <button
+            onClick={() => setAiOpen(p => !p)}
+            className="btn btn-ghost"
+            style={{
+              width: 32,
+              height: 32,
+              padding: 0,
+              borderRadius: 8,
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: aiOpen ? 'var(--accent)' : 'var(--text-muted)',
+              borderColor: aiOpen ? 'var(--accent)' : 'var(--border)',
+              background: aiOpen ? 'var(--accent-subtle)' : 'transparent',
+              transition: 'all 0.15s ease',
+            }}
+            title={aiOpen ? 'Close CodeForge AI' : 'Open CodeForge AI Assistant (Ctrl+I)'}
+            aria-label="CodeForge AI"
+          >
+            <Sparkles size={15} style={{ color: aiOpen ? 'var(--accent)' : 'inherit' }} />
           </button>
 
-          {/* Debugger */}
+          {/* Live Collaboration Icon Toggle */}
           <button
-            onClick={() => { if (isDebugging) { stopDebugging() } else { startDebugging() } }}
+            onClick={() => setCollabPanelOpen(p => !p)}
             className="btn btn-ghost"
-            style={{ padding: '4px 11px', fontSize: 12, fontWeight: 500, color: isDebugging ? 'var(--yellow)' : 'var(--text-muted)', borderColor: isDebugging ? 'var(--border-glow)' : 'var(--border)' }}
-            title={isDebugging ? 'Stop Debugger (Shift+F5)' : 'Start Interactive Debugger (F5)'}
+            style={{
+              width: 32,
+              height: 32,
+              padding: 0,
+              borderRadius: 8,
+              position: 'relative',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: collabPanelOpen ? '#a855f7' : 'var(--text-muted)',
+              borderColor: collabPanelOpen ? 'rgba(168, 85, 247, 0.45)' : 'var(--border)',
+              background: collabPanelOpen ? 'rgba(168, 85, 247, 0.12)' : 'transparent',
+              transition: 'all 0.15s ease',
+            }}
+            title={collabPanelOpen ? 'Close Live Collaboration Panel' : 'Open Live Collaboration Panel'}
+            aria-label="Live Collaboration"
           >
-            🐛 {isDebugging ? 'Debugging…' : 'Debug'}
+            <Users size={15} style={{ color: collabPanelOpen ? '#a855f7' : 'inherit' }} />
+            {activeRoom && (
+              <span
+                style={{
+                  position: 'absolute',
+                  top: 5,
+                  right: 5,
+                  width: 6,
+                  height: 6,
+                  borderRadius: '50%',
+                  background: '#22c55e',
+                  boxShadow: '0 0 6px #22c55e',
+                }}
+              />
+            )}
           </button>
 
           {/* Run / Stop Button */}
@@ -3741,9 +3974,23 @@ export default function App() {
             </div>
           ) : (
             <button onClick={handleRun} disabled={running} className="btn btn-primary" style={{ padding: '4px 16px', fontSize: 12, fontWeight: 600, gap: 6 }}>
-              <svg width="7" height="9" viewBox="0 0 7 9" fill="white"><polygon points="0,0 7,4.5 0,9"/></svg> Run
+              <svg width="7" height="9" viewBox="0 0 7 9" fill="currentColor"><polygon points="0,0 7,4.5 0,9"/></svg> Run
             </button>
           )}
+
+          {/* GitHub Developer Profile Dropdown */}
+          <div style={{ marginLeft: 6 }}>
+            <NavbarProfileDropdown
+              authUser={authUser}
+              onOpenProfile={() => setShowProfileModal(true)}
+              onOpenProjects={() => { setPanel('explorer'); setSideOpen(true) }}
+              onOpenCollaborations={() => setShowLiveRoomsModal(true)}
+              onOpenActivity={() => setShowProfileModal(true)}
+              onOpenSettings={() => setShowSettings(true)}
+              onSignIn={() => setShowAuth(true)}
+              onSignOut={signOut}
+            />
+          </div>
         </div>
       </header>
 
@@ -3761,11 +4008,27 @@ export default function App() {
             { id: 'packages' as Panel, tip: 'Package Installer', d: 'M2 4.5L8 1l6 3.5v7L8 15l-6-3.5v-7zm6-2.3L3.8 4.7 8 7.1l4.2-2.4L8 2.2zM3 5.6v5.8l4.5 2.6V8.2L3 5.6zm10 0l-4.5 2.6v5.8l4.5-2.6V5.6z' },
           ]).map(item => (
             <button key={item.id} data-tooltip={item.tip}
-              onClick={() => { setPanel(item.id); setSideOpen(true) }}
+              onClick={() => {
+                if (item.id === 'profile') {
+                  setShowProfileModal(true)
+                } else {
+                  setPanel(item.id)
+                  setSideOpen(true)
+                }
+              }}
               className={`activity-btn ${panel === item.id && sideOpen ? 'active' : ''}`}>
               <I d={item.d} s={16} sw={1.2} />
             </button>
           ))}
+          <button
+            data-tooltip="Live Collaboration"
+            onClick={() => setCollabPanelOpen(p => !p)}
+            className={`activity-btn ${collabPanelOpen ? 'active' : ''}`}
+            style={{ marginBottom: 4, color: collabPanelOpen ? '#a855f7' : 'var(--text-muted)' }}
+            aria-label="Live Collaboration"
+          >
+            <Users size={16} />
+          </button>
           <div style={{ flex: 1 }} />
           <button data-tooltip="Share Code" onClick={doShare} className="activity-btn" style={{ marginBottom: 4 }} aria-label="Share Code">
             <ShareIcon size={16} />
@@ -4387,6 +4650,22 @@ export default function App() {
         {/* ── Center: Editor + Console ────────────────────────────────────── */}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
 
+          {/* Live Collaboration Room Toolbar */}
+          {activeRoom && (
+            <CollaborationToolbar
+              room={activeRoom}
+              currentUser={devProfile}
+              onLeaveRoom={() => {
+                socketClient.leaveRoom()
+                leaveCollabRoom(activeRoom.id, devProfile.id)
+                setActiveRoom(null)
+                showToast('Left collaboration room')
+              }}
+              onToggleSidebar={() => setCollabPanelOpen(p => !p)}
+              isSidebarOpen={collabPanelOpen}
+            />
+          )}
+
           {/* Tab bar */}
           <div style={{ display: 'flex', alignItems: 'center', background: 'var(--bg-header)', borderBottom: '1px solid var(--border)', overflowX: 'auto', flexShrink: 0, height: 35 }}>
             {tabs.map(t => {
@@ -4395,20 +4674,6 @@ export default function App() {
                   <FileIcon fileName={t.name} size={14} />
                   {t.repoName && <span style={{ color: 'var(--accent)', fontSize: 10, marginRight: 2 }}>{t.repoName}:</span>}
                   <span>{t.name.split('/').pop()}</span>
-                  {t.isLocalDisk && (
-                    <span
-                      title="Direct Local Disk Sync (Ctrl+S saves directly to your computer file)"
-                      style={{
-                        fontSize: 10,
-                        color: '#38bdf8',
-                        marginLeft: 4,
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                      }}
-                    >
-                      💾
-                    </span>
-                  )}
                   {t.modified && <span style={{ color: 'var(--yellow)', fontSize: 14, marginLeft: 2 }}>•</span>}
                   <button onClick={e => closeTab(t.id, e)} title="Close tab" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', padding: '1px 2px', lineHeight: 1, opacity: .4 }}
                     onMouseEnter={e => (e.currentTarget.style.opacity = '1')} onMouseLeave={e => (e.currentTarget.style.opacity = '.4')}>
@@ -4462,25 +4727,6 @@ export default function App() {
                   <FileIcon fileName={curTab.name} size={14} />
                   {curTab.name}
                 </span>
-                {curTab.isLocalDisk && (
-                  <span
-                    style={{
-                      fontSize: 10,
-                      background: 'rgba(56, 189, 248, 0.12)',
-                      color: '#38bdf8',
-                      border: '1px solid rgba(56, 189, 248, 0.3)',
-                      borderRadius: 4,
-                      padding: '1px 6px',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: 4,
-                      fontWeight: 500,
-                    }}
-                    title="Direct Disk Save active: Ctrl+S writes directly to your computer file"
-                  >
-                    💾 Local Disk File
-                  </span>
-                )}
                 <span
                   style={{
                     background: `${curLang.color}15`,
@@ -4509,140 +4755,46 @@ export default function App() {
               </div>
             )}
 
-            {/* Right: Auto-Save Status, Disk Link, and Controls */}
+            {/* Right: Active Room / Status indicator */}
             {hasOpenTab && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-                {curTab.isLocalDisk ? (
-                  // File is already linked to local disk
-                  <>
-                    {diskSaveState.status === 'saving' && (
-                      <span
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: 6,
-                          fontSize: 10,
-                          fontWeight: 600,
-                          color: '#38bdf8',
-                          background: 'rgba(56, 189, 248, 0.12)',
-                          border: '1px solid rgba(56, 189, 248, 0.3)',
-                          padding: '2px 8px',
-                          borderRadius: 12,
-                        }}
-                      >
-                        <span
-                          style={{
-                            width: 6,
-                            height: 6,
-                            borderRadius: '50%',
-                            border: '1.5px solid #38bdf8',
-                            borderTopColor: 'transparent',
-                            animation: 'spin 0.8s linear infinite',
-                            display: 'inline-block',
-                          }}
-                        />
-                        Saving to disk...
-                      </span>
-                    )}
-
-                    {diskSaveState.status === 'error' && (
-                      <button
-                        onClick={grantDiskPermissionForCurrentTab}
-                        title="Permission needed. Click to allow writing directly to this disk file."
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: 5,
-                          fontSize: 10,
-                          fontWeight: 600,
-                          color: '#f87171',
-                          background: 'rgba(239, 68, 68, 0.15)',
-                          border: '1px solid rgba(239, 68, 68, 0.35)',
-                          padding: '2px 8px',
-                          borderRadius: 12,
-                          cursor: 'pointer',
-                        }}
-                      >
-                        ⚠️ Grant Disk Write Access
-                      </button>
-                    )}
-
-                    {diskSaveState.status !== 'saving' && diskSaveState.status !== 'error' && (
-                      <span
-                        title={
-                          curTab.modified
-                            ? 'Editing... Will auto-save to computer disk when you pause typing'
-                            : diskSaveState.lastSavedTime
-                            ? `All changes saved to your computer file at ${diskSaveState.lastSavedTime}. Open in VS Code or any compiler to view!`
-                            : 'All changes synced to local computer disk file'
-                        }
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: 5,
-                          fontSize: 10,
-                          fontWeight: 500,
-                          color: curTab.modified ? '#fbbf24' : '#4ade80',
-                          background: curTab.modified ? 'rgba(251, 191, 36, 0.1)' : 'rgba(74, 222, 128, 0.1)',
-                          border: `1px solid ${curTab.modified ? 'rgba(251, 191, 36, 0.3)' : 'rgba(74, 222, 128, 0.25)'}`,
-                          padding: '2px 8px',
-                          borderRadius: 12,
-                        }}
-                      >
-                        <span style={{ width: 5, height: 5, borderRadius: '50%', background: curTab.modified ? '#fbbf24' : '#4ade80' }} />
-                        {curTab.modified ? 'Auto-saving...' : 'Synced to Disk 💾'}
-                      </span>
-                    )}
-                  </>
-                ) : (
-                  // File not yet saved on disk
-                  <button
-                    onClick={linkCurrentTabToDisk}
-                    title="Save this file to your computer disk so all future edits automatically auto-save like in VS Code!"
+                {activeRoom && (
+                  <span
                     style={{
                       display: 'inline-flex',
                       alignItems: 'center',
                       gap: 5,
                       fontSize: 10,
                       fontWeight: 600,
-                      color: '#38bdf8',
-                      background: 'rgba(56, 189, 248, 0.1)',
-                      border: '1px solid rgba(56, 189, 248, 0.3)',
-                      padding: '2px 9px',
+                      color: '#a78bfa',
+                      background: 'rgba(139, 92, 246, 0.12)',
+                      border: '1px solid rgba(139, 92, 246, 0.3)',
+                      padding: '2px 8px',
                       borderRadius: 12,
-                      cursor: 'pointer',
-                      transition: 'all 0.15s ease',
                     }}
-                    onMouseEnter={e => (e.currentTarget.style.background = 'rgba(56, 189, 248, 0.2)')}
-                    onMouseLeave={e => (e.currentTarget.style.background = 'rgba(56, 189, 248, 0.1)')}
                   >
-                    <span>💾</span>
-                    <span>Link to Disk File</span>
-                  </button>
+                    <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#a78bfa' }} />
+                    Live Room: {activeRoom.name}
+                  </span>
                 )}
-
-                {/* Auto-Save Toggle pill */}
-                <button
-                  onClick={() => toggleAutoSaveDisk()}
-                  title={autoSaveDisk ? 'Auto-Save is ON. Keystrokes automatically save to computer disk file. Click to pause.' : 'Auto-Save is OFF. Click to enable automatic saving to disk.'}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 5,
-                    fontSize: 10,
-                    fontWeight: 600,
-                    padding: '2px 8px',
-                    borderRadius: 12,
-                    cursor: 'pointer',
-                    background: autoSaveDisk ? 'rgba(99, 102, 241, 0.12)' : 'rgba(255, 255, 255, 0.04)',
-                    border: autoSaveDisk ? '1px solid rgba(99, 102, 241, 0.35)' : '1px solid var(--border)',
-                    color: autoSaveDisk ? '#a5b4fc' : 'var(--text-muted)',
-                    transition: 'all 0.15s ease',
-                  }}
-                >
-                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: autoSaveDisk ? '#34d399' : '#64748b' }} />
-                  <span>Auto-Save: {autoSaveDisk ? 'ON' : 'OFF'}</span>
-                </button>
+                {curTab.modified && (
+                  <span
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 4,
+                      fontSize: 10,
+                      color: '#fbbf24',
+                      background: 'rgba(251, 191, 36, 0.1)',
+                      border: '1px solid rgba(251, 191, 36, 0.25)',
+                      padding: '2px 7px',
+                      borderRadius: 12,
+                    }}
+                  >
+                    <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#fbbf24' }} />
+                    Unsaved
+                  </span>
+                )}
               </div>
             )}
           </div>
@@ -5078,6 +5230,35 @@ export default function App() {
       )}
     </div>
 
+        {/* ── Live Collaboration Side Panel ───────────────────────────────────── */}
+        {collabPanelOpen && (
+          <>
+            <div className="resizer-v" onMouseDown={mkCollabResize} />
+            <LiveCollaborationSidePanel
+              room={activeRoom}
+              currentUser={devProfile}
+              isOpen={collabPanelOpen}
+              onClose={() => setCollabPanelOpen(false)}
+              width={collabW}
+              onRoomUpdated={(updated: CollabRoom) => setActiveRoom(updated)}
+              onOpenDashboard={() => setShowLiveRoomsModal(true)}
+              onOpenProfileModal={() => setShowProfileModal(true)}
+              onLeaveRoom={() => {
+                if (activeRoom) {
+                  socketClient.leaveRoom()
+                  leaveCollabRoom(activeRoom.id, devProfile.id)
+                  setActiveRoom(null)
+                  showToast('Left collaboration room')
+                }
+              }}
+              onPingLine={handleCollabPingLine}
+              followingUserId={followingUserId}
+              onToggleFollowUser={(targetId) => setFollowingUserId(p => p === targetId ? null : targetId)}
+              onRestoreSnapshot={handleRestoreSnapshot}
+            />
+          </>
+        )}
+
         {/* ── AI Panel ──────────────────────────────────────────────────────── */}
         {aiOpen && (
           <>
@@ -5105,18 +5286,18 @@ export default function App() {
       <div className="status-bar">
         <div
           className="status-item"
-          style={{ borderRight: '1px solid rgba(255,255,255,0.15)', cursor: 'pointer' }}
+          style={{ borderRight: '1px solid var(--border)', cursor: 'pointer' }}
           onClick={() => { setShowLanguagePicker(true); setLanguageSearchQuery('') }}
           title="Select Language Mode (Click to change language)"
         >
-          <div style={{ width: 7, height: 7, borderRadius: '50%', background: curLang.color || 'rgba(255,255,255,0.8)' }} />
+          <div style={{ width: 7, height: 7, borderRadius: '50%', background: curLang.color || 'var(--accent)' }} />
           {curLang.label}
         </div>
         {status && (
           <div
             className="status-item"
             onClick={() => { setConsTab('output'); setBottomPanelOpen(true) }}
-            style={{ borderRight: '1px solid rgba(255,255,255,0.15)', cursor: 'pointer' }}
+            style={{ borderRight: '1px solid var(--border)', cursor: 'pointer' }}
           >
             {status.label}
           </div>
@@ -5127,7 +5308,7 @@ export default function App() {
           <div
             className="status-item"
             onClick={() => { setPanel('source-control'); setSideOpen(true) }}
-            style={{ borderRight: '1px solid rgba(255,255,255,0.15)', cursor: 'pointer' }}
+            style={{ borderRight: '1px solid var(--border)', cursor: 'pointer' }}
           >
             <GitBranchIcon size={12} /> {activeRepo.name}
           </div>
@@ -5145,20 +5326,20 @@ export default function App() {
           }}
           title={bottomPanelOpen ? "Hide Output & Terminal Panel" : "Open Output Panel"}
           style={{
-            borderRight: '1px solid rgba(255,255,255,0.15)',
+            borderRight: '1px solid var(--border)',
             display: 'flex',
             alignItems: 'center',
             gap: 5,
             cursor: 'pointer',
-            background: bottomPanelOpen ? 'rgba(255,255,255,0.12)' : 'transparent',
-            color: bottomPanelOpen ? '#38bdf8' : 'inherit',
+            background: bottomPanelOpen ? 'var(--bg-hover)' : 'transparent',
+            color: bottomPanelOpen ? 'var(--accent)' : 'inherit',
             fontWeight: bottomPanelOpen ? 600 : 400,
           }}
         >
           <TerminalIcon size={11} />
           <span>Output / Terminal</span>
           {bottomPanelOpen && (
-            <div style={{ width: 5, height: 5, borderRadius: '50%', background: '#38bdf8' }} />
+            <div style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--accent)' }} />
           )}
         </div>
         <div style={{ flex: 1 }} />
@@ -5166,37 +5347,31 @@ export default function App() {
           Ln 1, Col 1
         </div>
         <div className="status-item" style={{ opacity: 0.7 }}>UTF-8</div>
-        <div
-          className="status-item"
-          onClick={() => toggleAutoSaveDisk()}
-          title={
-            autoSaveDisk
-              ? curTab?.isLocalDisk
-                ? `Auto-Save is ON: Automatically saves directly to computer disk file "${curTab.name}". Click to pause.`
-                : 'Auto-Save is ON. Link this file to computer disk to enable live auto-save. Click to pause.'
-              : 'Auto-Save is OFF. Click to enable automatic saving to disk.'
-          }
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 5,
-            cursor: 'pointer',
-            borderLeft: '1px solid rgba(255,255,255,0.15)',
-            color: autoSaveDisk ? (curTab?.isLocalDisk ? '#4ade80' : '#38bdf8') : 'rgba(255,255,255,0.5)',
-            fontWeight: autoSaveDisk ? 600 : 400,
-          }}
-        >
-          <span style={{ fontSize: 11 }}>💾</span>
-          <span>Auto-Save: {autoSaveDisk ? (curTab?.isLocalDisk ? 'Disk' : 'On') : 'Off'}</span>
-        </div>
-        <div className="status-item" onClick={() => openSettings('themes')} title="Change Theme" style={{ display: 'flex', alignItems: 'center', gap: 4, borderLeft: '1px solid rgba(255,255,255,0.15)' }}>
+        {activeRoom && (
+          <div
+            className="status-item"
+            onClick={() => setShowLiveRoomsModal(true)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 5,
+              cursor: 'pointer',
+              borderLeft: '1px solid var(--border)',
+              color: '#c4b5fd',
+              fontWeight: 600,
+            }}
+            title="Open Live Rooms Dashboard"
+          >
+            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#34d399' }} />
+            <span>Room: {activeRoom.roomCode}</span>
+          </div>
+        )}
+        <div className="status-item" onClick={() => openSettings('themes')} title="Change Theme" style={{ display: 'flex', alignItems: 'center', gap: 4, borderLeft: '1px solid var(--border)' }}>
           <PaletteIcon size={11} /> {getThemeById(editorTheme).name.split(' (')[0]}
         </div>
         <div className="status-item" onClick={() => setWordWrap(p => p === 'on' ? 'off' : 'on')} style={{ opacity: 0.75 }}>Wrap: {wordWrap}</div>
-        <div className="status-item" onClick={() => setShowKeys(true)} style={{ borderLeft: '1px solid rgba(255,255,255,0.15)', opacity: 0.75 }}>⌨ Shortcuts</div>
+        <div className="status-item" onClick={() => setShowKeys(true)} style={{ borderLeft: '1px solid var(--border)', opacity: 0.75 }}>⌨ Shortcuts</div>
       </div>
-        </>
-      )}
 
       {/* ── Modals ──────────────────────────────────────────────────────────── */}
 
@@ -5464,10 +5639,6 @@ export default function App() {
         wordWrap={wordWrap}
         showMini={showMini}
         aiOpen={aiOpen}
-        autoSaveDisk={autoSaveDisk}
-        onAutoSaveDiskToggle={toggleAutoSaveDisk}
-        autoSaveDelay={autoSaveDelay}
-        onAutoSaveDelayChange={changeAutoSaveDelay}
         onFontSizeChange={setFontSize}
         onWordWrapChange={setWordWrap}
         onMiniChange={setShowMini}
@@ -5518,68 +5689,39 @@ export default function App() {
         </div>
       )}
 
-      {/* Contest & Assessment Hub Modal */}
-      <ContestHubModal
-        isOpen={isContestHubOpen}
-        onClose={() => setIsContestHubOpen(false)}
-        user={authUser ? { id: String(authUser.id || authUser.login || 'usr_gh'), name: authUser.name || authUser.login || 'Contestant', email: authUser.email } : null}
-        onSelectContestToEnter={(contest) => {
-          setSelectedContestForCheck(contest)
-          setIsContestHubOpen(false)
-        }}
-        onOpenAuth={() => {
-          setShowAuth(true)
+      {/* ── Developer Profile Modal ── */}
+      <DeveloperProfileModal
+        isOpen={showProfileModal}
+        onClose={() => setShowProfileModal(false)}
+        profile={devProfile}
+      />
+
+      {/* ── Live Rooms Dashboard Modal ── */}
+      <LiveRoomsDashboard
+        isOpen={showLiveRoomsModal}
+        onClose={() => setShowLiveRoomsModal(false)}
+        currentUser={devProfile}
+        currentRoom={activeRoom}
+        onEnterRoom={(room) => {
+          setActiveRoom(room)
+          recordCollaboration()
+          showToast(`Entered live room: ${room.name} 🚀`)
         }}
       />
 
-      {/* Pre-Contest Device & Transparency Check Modal */}
-      {selectedContestForCheck && (
-        <PreContestCheckModal
-          contest={selectedContestForCheck}
-          user={authUser ? { id: String(authUser.id || authUser.login || 'usr_gh'), name: authUser.name || authUser.login || 'Contestant', email: authUser.email } : null}
-          isOpen={true}
-          onClose={() => setSelectedContestForCheck(null)}
-          onStartSession={(session, mediaTracks) => {
-            setActiveContestArena({
-              contest: selectedContestForCheck,
-              session,
-              mediaTracks,
-            })
-            setSelectedContestForCheck(null)
-          }}
-          onOpenAuth={() => {
-            setShowAuth(true)
-          }}
-        />
-      )}
-
-      {/* Secure Contest Arena Fullscreen Overlay */}
-      {activeContestArena && (
-        <ContestArena
-          contest={activeContestArena.contest}
-          session={activeContestArena.session}
-          user={authUser ? { id: String(authUser.id || authUser.login || 'usr_gh'), name: authUser.name || authUser.login || 'Contestant', email: authUser.email } : { id: 'usr_guest', name: 'Contestant' }}
-          mediaTracks={activeContestArena.mediaTracks}
-          onExitArena={() => {
-            setActiveContestArena(null)
-            setIsContestHubOpen(true)
-          }}
-        />
-      )}
-
       {/* Injected AI message styles */}
       <style>{`
-        .ai-msg { font-size: 12px; color: var(--text-muted); line-height: 1.7; flex: 1; min-width: 0; }
-        .ai-pre { background: rgba(0,0,0,0.35); border: 1px solid rgba(99,102,241,0.15); border-radius: 8px; padding: 10px 14px; overflow-x: auto; margin: 8px 0; font-family: 'JetBrains Mono',monospace; font-size: 11px; color: var(--text-base); white-space: pre; }
+        .ai-msg { font-size: 12px; color: var(--text-base); line-height: 1.7; flex: 1; min-width: 0; }
+        .ai-pre { background: var(--bg-hover); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; overflow-x: auto; margin: 8px 0; font-family: 'JetBrains Mono',monospace; font-size: 11px; color: var(--text-base); white-space: pre; }
         .ai-ic  { background: rgba(99,102,241,0.12); border: 1px solid rgba(99,102,241,0.2); border-radius: 4px; padding: 1px 5px; font-family: 'JetBrains Mono',monospace; font-size: 11px; color: #f87171; }
         .ai-h1  { font-size: 15px; font-weight: 800; color: var(--text-base); margin: 10px 0 5px; }
         .ai-h2  { font-size: 13px; font-weight: 700; color: var(--text-base); margin: 8px 0 4px; border-bottom: 1px solid rgba(99,102,241,0.15); padding-bottom: 4px; }
-        .ai-h3  { font-size: 12px; font-weight: 700; color: #a5b4fc; margin: 6px 0 3px; }
+        .ai-h3  { font-size: 12px; font-weight: 700; color: var(--accent); margin: 6px 0 3px; }
         .ai-ul  { margin: 5px 0 5px 16px; padding: 0; }
-        .ai-ul li { margin-bottom: 3px; }
+        .ai-ul li { margin-bottom: 3px; color: var(--text-base); }
         .ai-hr  { border: none; border-top: 1px solid var(--border); margin: 10px 0; }
         strong  { color: var(--text-base); }
-        em      { color: #a5b4fc; }
+        em      { color: var(--accent); }
       `}</style>
     </div>
   )

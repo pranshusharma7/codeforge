@@ -1585,8 +1585,8 @@ export default function VSCodeTerminal({
               style={{
                 padding: '2px 6px',
                 borderRadius: 4,
-                background: 'none',
-                border: '1px solid rgba(255,255,255,0.1)',
+                background: 'var(--bg-hover)',
+                border: '1px solid var(--border)',
                 color: 'var(--text-muted)',
                 fontSize: 10,
                 cursor: 'pointer',
@@ -1600,8 +1600,8 @@ export default function VSCodeTerminal({
               style={{
                 padding: '2px 6px',
                 borderRadius: 4,
-                background: 'none',
-                border: '1px solid rgba(255,255,255,0.1)',
+                background: 'var(--bg-hover)',
+                border: '1px solid var(--border)',
                 color: 'var(--text-muted)',
                 fontSize: 10,
                 cursor: 'pointer',
@@ -1615,8 +1615,8 @@ export default function VSCodeTerminal({
               style={{
                 padding: '2px 6px',
                 borderRadius: 4,
-                background: 'none',
-                border: '1px solid rgba(255,255,255,0.1)',
+                background: 'var(--bg-hover)',
+                border: '1px solid var(--border)',
                 color: 'var(--text-muted)',
                 fontSize: 10,
                 cursor: 'pointer',

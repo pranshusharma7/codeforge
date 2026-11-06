@@ -687,3 +687,1428 @@ html, body, #root {
 .ai-code-block:hover {
   border-color: var(--accent) !important;
 }
+
+/* ── 💍 ALVOR TITANIUM LUXURY MINIMAL THEME (Inspired by Alvor Ring Video) ── */
+[data-theme="alvor-titanium"] {
+  --bg-app: #f6f6f4;
+  --bg-main: #f6f6f4;
+  --bg-header: rgba(255, 255, 255, 0.88);
+  --bg-sidebar: #f2f2ef;
+  --bg-activity: #ebebe7;
+  --bg-panel: #ffffff;
+  --bg-card: #ffffff;
+  --bg-input: #f0f0ed;
+  --bg-hover: rgba(0, 0, 0, 0.045);
+  --border: #e2e2dc;
+  --border-subtle: #eaeae4;
+  --border-glow: #d0d0c8;
+  --text-base: #111815;
+  --text-main: #111815;
+  --text-muted: #5e625a;
+  --text-dim: #9aa097;
+  --accent: #059669;
+  --accent-hover: #047857;
+  --accent-subtle: rgba(5, 150, 105, 0.1);
+  --accent-border: rgba(5, 150, 105, 0.35);
+  --red: #dc2626;
+  --green: #059669;
+  --yellow: #d97706;
+  --output-font-color: #111815 !important;
+  background-color: #f6f6f4;
+  background-image:
+    radial-gradient(ellipse at 85% 0%, rgba(5, 150, 105, 0.035) 0%, transparent 55%),
+    radial-gradient(ellipse at 15% 95%, rgba(168, 162, 158, 0.07) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 50%, rgba(255, 255, 255, 0.6) 0%, transparent 100%) !important;
+}
+
+[data-theme="alvor-titanium"] body,
+[data-theme="alvor-titanium"] #root {
+  background: transparent !important;
+  color: #111815 !important;
+}
+
+/* Floating Frosted Glass Header */
+[data-theme="alvor-titanium"] .app-header {
+  background: rgba(255, 255, 255, 0.88) !important;
+  backdrop-filter: blur(20px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06) !important;
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.03) !important;
+}
+
+/* Brand Text in Alvor Theme */
+[data-theme="alvor-titanium"] .brand-text {
+  font-weight: 700 !important;
+  letter-spacing: -0.02em !important;
+  color: #111815 !important;
+}
+
+/* Iconic Run Button: Alvor "Pre-order" Luxury Pill */
+[data-theme="alvor-titanium"] .btn-primary {
+  background: #111815 !important;
+  color: #ffffff !important;
+  border: 1px solid #111815 !important;
+  border-radius: 9999px !important;
+  padding: 5px 18px !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.15) !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.02em !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+[data-theme="alvor-titanium"] .btn-primary:hover:not(:disabled) {
+  background: #1f2923 !important;
+  box-shadow: 0 4px 18px rgba(5, 150, 105, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.25) !important;
+  transform: translateY(-1px);
+}
+[data-theme="alvor-titanium"] .btn-primary:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+/* Pill Search bar */
+[data-theme="alvor-titanium"] .top-search {
+  border-radius: 9999px !important;
+  background: rgba(240, 240, 237, 0.75) !important;
+  border: 1px solid rgba(0, 0, 0, 0.07) !important;
+  color: #5e625a !important;
+  transition: all 0.2s ease !important;
+}
+[data-theme="alvor-titanium"] .top-search:hover,
+[data-theme="alvor-titanium"] .top-search:focus-visible {
+  border-color: #059669 !important;
+  background: #ffffff !important;
+  box-shadow: 0 0 0 2px rgba(5, 150, 105, 0.15) !important;
+}
+
+/* Minimalist Tabs */
+[data-theme="alvor-titanium"] .editor-tab {
+  border-radius: 7px 7px 0 0 !important;
+  margin-top: 3px !important;
+  margin-right: 2px !important;
+  border: 1px solid transparent !important;
+  font-weight: 500 !important;
+  color: #666962 !important;
+  transition: all 0.15s ease !important;
+}
+[data-theme="alvor-titanium"] .editor-tab:hover {
+  background: rgba(0, 0, 0, 0.035) !important;
+  color: #111815 !important;
+}
+[data-theme="alvor-titanium"] .editor-tab.active {
+  background: #ffffff !important;
+  color: #111815 !important;
+  font-weight: 600 !important;
+  border: 1px solid rgba(0, 0, 0, 0.06) !important;
+  border-bottom-color: #ffffff !important;
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.02) !important;
+}
+
+/* Activity Bar */
+[data-theme="alvor-titanium"] .activity-btn {
+  border-radius: 8px !important;
+  margin: 3px 4px !important;
+  width: 38px !important;
+  height: 38px !important;
+  color: #666962 !important;
+  border-left: none !important;
+  transition: all 0.15s ease !important;
+}
+[data-theme="alvor-titanium"] .activity-btn:hover {
+  background: rgba(0, 0, 0, 0.05) !important;
+  color: #111815 !important;
+}
+[data-theme="alvor-titanium"] .activity-btn.active {
+  background: #ffffff !important;
+  color: #059669 !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06) !important;
+}
+
+/* Status Bar with Biometric Laser Pulse */
+[data-theme="alvor-titanium"] .status-bar {
+  background: rgba(255, 255, 255, 0.95) !important;
+  backdrop-filter: blur(12px) !important;
+  color: #111815 !important;
+  border-top: 1px solid rgba(0, 0, 0, 0.06) !important;
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.02) !important;
+}
+[data-theme="alvor-titanium"] .status-item {
+  color: #111815 !important;
+  font-weight: 500 !important;
+}
+[data-theme="alvor-titanium"] .status-item:hover {
+  background: rgba(0, 0, 0, 0.04) !important;
+  border-radius: 4px;
+}
+[data-theme="alvor-titanium"] .status-bar .status-item:first-child div {
+  background: #059669 !important;
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.8) !important;
+  animation: alvor-pulse 2s infinite ease-in-out !important;
+}
+
+@keyframes alvor-pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+    box-shadow: 0 0 8px rgba(16, 185, 129, 0.85);
+  }
+  50% {
+    opacity: 0.55;
+    transform: scale(0.92);
+    box-shadow: 0 0 3px rgba(16, 185, 129, 0.4);
+  }
+}
+
+/* Modals & Command Palette in Alvor Theme */
+[data-theme="alvor-titanium"] .modal-box,
+[data-theme="alvor-titanium"] .command-palette {
+  background: rgba(255, 255, 255, 0.96) !important;
+  backdrop-filter: blur(28px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(28px) saturate(180%) !important;
+  border: 1px solid rgba(0, 0, 0, 0.08) !important;
+  box-shadow: 0 20px 45px -10px rgba(0, 0, 0, 0.12), 0 0 1px 1px rgba(255, 255, 255, 0.9) inset !important;
+  border-radius: 14px !important;
+}
+
+[data-theme="alvor-titanium"] .command-search-row {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06) !important;
+}
+
+[data-theme="alvor-titanium"] .command-search-row input {
+  color: #111815 !important;
+}
+
+[data-theme="alvor-titanium"] .command-footer {
+  background: #f7f7f5 !important;
+  border-top: 1px solid rgba(0, 0, 0, 0.06) !important;
+}
+
+/* Terminal & Console Output High Contrast */
+[data-theme="alvor-titanium"] .terminal-tab.active {
+  color: #111815 !important;
+  font-weight: 600 !important;
+  border-bottom-color: #059669 !important;
+}
+
+/* ── ⚡ 1. SOURCE CYBERNETIC THEME (Inspired by "Source" Edge-Native Video) ── */
+[data-theme="source-cybernetic"] {
+  --bg-app: #090b0c;
+  --bg-main: #090b0c;
+  --bg-header: rgba(13, 16, 18, 0.92);
+  --bg-sidebar: #0b0d0e;
+  --bg-activity: #070809;
+  --bg-panel: #090b0c;
+  --bg-card: #111517;
+  --bg-input: #0f1315;
+  --bg-hover: rgba(0, 229, 117, 0.08);
+  --border: #192225;
+  --border-subtle: #222f33;
+  --text-base: #eef2f3;
+  --text-muted: #8fa3a8;
+  --text-dim: #4a5d62;
+  --accent: #00e575;
+  --accent-hover: #00cc68;
+  --accent-subtle: rgba(0, 229, 117, 0.12);
+  --accent-border: rgba(0, 229, 117, 0.38);
+  --red: #f87171;
+  --green: #00e575;
+  --yellow: #fbbf24;
+  --output-font-color: #eef2f3 !important;
+  background-color: #090b0c;
+  background-image:
+    radial-gradient(ellipse at 85% 0%, rgba(0, 229, 117, 0.07) 0%, transparent 55%),
+    radial-gradient(ellipse at 15% 95%, rgba(56, 189, 248, 0.05) 0%, transparent 50%),
+    linear-gradient(180deg, #090b0c 0%, #060708 100%) !important;
+}
+
+[data-theme="source-cybernetic"] body,
+[data-theme="source-cybernetic"] #root {
+  background: transparent !important;
+  color: #eef2f3 !important;
+}
+
+[data-theme="source-cybernetic"] .app-header {
+  background: rgba(13, 16, 18, 0.92) !important;
+  backdrop-filter: blur(20px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+  border-bottom: 1px solid rgba(0, 229, 117, 0.18) !important;
+  box-shadow: 0 4px 24px -2px rgba(0, 0, 0, 0.6), 0 1px 0 rgba(0, 229, 117, 0.1) inset !important;
+}
+
+[data-theme="source-cybernetic"] .brand-text {
+  font-weight: 700 !important;
+  letter-spacing: -0.02em !important;
+  color: #eef2f3 !important;
+  text-shadow: 0 0 12px rgba(0, 229, 117, 0.35);
+}
+
+[data-theme="source-cybernetic"] .btn-primary {
+  background: #00e575 !important;
+  color: #07090a !important;
+  border: 1px solid #00e575 !important;
+  border-radius: 9999px !important;
+  padding: 5px 18px !important;
+  box-shadow: 0 0 16px rgba(0, 229, 117, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.4) !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.03em !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+[data-theme="source-cybernetic"] .btn-primary:hover:not(:disabled) {
+  background: #34d399 !important;
+  box-shadow: 0 0 24px rgba(0, 229, 117, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.6) !important;
+  transform: translateY(-1px);
+}
+
+[data-theme="source-cybernetic"] .top-search {
+  border-radius: 9999px !important;
+  background: rgba(15, 19, 21, 0.8) !important;
+  border: 1px solid rgba(0, 229, 117, 0.2) !important;
+  color: #8fa3a8 !important;
+  transition: all 0.2s ease !important;
+}
+
+[data-theme="source-cybernetic"] .top-search:hover,
+[data-theme="source-cybernetic"] .top-search:focus-visible {
+  border-color: #00e575 !important;
+  background: #111517 !important;
+  box-shadow: 0 0 12px rgba(0, 229, 117, 0.3) !important;
+}
+
+[data-theme="source-cybernetic"] .editor-tab {
+  border-radius: 7px 7px 0 0 !important;
+  margin-top: 3px !important;
+  margin-right: 2px !important;
+  border: 1px solid transparent !important;
+  color: #8fa3a8 !important;
+  transition: all 0.15s ease !important;
+}
+
+[data-theme="source-cybernetic"] .editor-tab:hover {
+  background: rgba(0, 229, 117, 0.05) !important;
+  color: #eef2f3 !important;
+}
+
+[data-theme="source-cybernetic"] .editor-tab.active {
+  background: #111517 !important;
+  color: #00e575 !important;
+  font-weight: 600 !important;
+  border: 1px solid #1f292d !important;
+  border-bottom-color: #111517 !important;
+  box-shadow: 0 -2px 10px rgba(0, 229, 117, 0.1) !important;
+}
+
+[data-theme="source-cybernetic"] .activity-btn {
+  border-radius: 8px !important;
+  margin: 3px 4px !important;
+  width: 38px !important;
+  height: 38px !important;
+  color: #8fa3a8 !important;
+  transition: all 0.15s ease !important;
+}
+
+[data-theme="source-cybernetic"] .activity-btn:hover {
+  background: rgba(0, 229, 117, 0.08) !important;
+  color: #eef2f3 !important;
+}
+
+[data-theme="source-cybernetic"] .activity-btn.active {
+  background: #111517 !important;
+  color: #00e575 !important;
+  box-shadow: 0 0 12px rgba(0, 229, 117, 0.25) !important;
+  border: 1px solid rgba(0, 229, 117, 0.3) !important;
+}
+
+[data-theme="source-cybernetic"] .status-bar {
+  background: rgba(13, 16, 18, 0.95) !important;
+  backdrop-filter: blur(12px) !important;
+  color: #eef2f3 !important;
+  border-top: 1px solid rgba(0, 229, 117, 0.18) !important;
+}
+
+[data-theme="source-cybernetic"] .status-bar .status-item:first-child div {
+  background: #00e575 !important;
+  box-shadow: 0 0 10px rgba(0, 229, 117, 0.9) !important;
+  animation: cyber-pulse 2s infinite ease-in-out !important;
+}
+
+@keyframes cyber-pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+    box-shadow: 0 0 12px rgba(0, 229, 117, 0.9);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(0.9);
+    box-shadow: 0 0 4px rgba(0, 229, 117, 0.4);
+  }
+}
+
+/* ── 🌲 2. ALVOR FOREST THEME (Inspired by Alvor Bio-App Readiness Video) ── */
+[data-theme="alvor-forest"] {
+  --bg-app: #0a170f;
+  --bg-main: #0a170f;
+  --bg-header: rgba(14, 32, 21, 0.92);
+  --bg-sidebar: #0d1c13;
+  --bg-activity: #08130c;
+  --bg-panel: #0a170f;
+  --bg-card: #132b1d;
+  --bg-input: #102418;
+  --bg-hover: rgba(74, 222, 128, 0.08);
+  --border: #1c3d28;
+  --border-subtle: #265236;
+  --text-base: #f0fdf4;
+  --text-muted: #86efac;
+  --text-dim: #4d785a;
+  --accent: #4ade80;
+  --accent-hover: #22c55e;
+  --accent-subtle: rgba(74, 222, 128, 0.12);
+  --accent-border: rgba(74, 222, 128, 0.38);
+  --red: #f87171;
+  --green: #4ade80;
+  --yellow: #facc15;
+  --output-font-color: #f0fdf4 !important;
+  background-color: #0a170f;
+  background-image:
+    radial-gradient(ellipse at 85% 0%, rgba(74, 222, 128, 0.08) 0%, transparent 60%),
+    radial-gradient(ellipse at 15% 95%, rgba(20, 83, 45, 0.24) 0%, transparent 55%),
+    linear-gradient(180deg, #0a170f 0%, #060e09 100%) !important;
+}
+
+[data-theme="alvor-forest"] body,
+[data-theme="alvor-forest"] #root {
+  background: transparent !important;
+  color: #f0fdf4 !important;
+}
+
+[data-theme="alvor-forest"] .app-header {
+  background: rgba(14, 32, 21, 0.92) !important;
+  backdrop-filter: blur(20px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+  border-bottom: 1px solid rgba(74, 222, 128, 0.16) !important;
+  box-shadow: 0 4px 24px -2px rgba(0, 0, 0, 0.6), 0 1px 0 rgba(74, 222, 128, 0.1) inset !important;
+}
+
+[data-theme="alvor-forest"] .brand-text {
+  font-weight: 700 !important;
+  letter-spacing: -0.02em !important;
+  color: #f0fdf4 !important;
+  text-shadow: 0 0 14px rgba(74, 222, 128, 0.3);
+}
+
+[data-theme="alvor-forest"] .btn-primary {
+  background: #4ade80 !important;
+  color: #08130c !important;
+  border: 1px solid #4ade80 !important;
+  border-radius: 9999px !important;
+  padding: 5px 18px !important;
+  box-shadow: 0 2px 14px rgba(74, 222, 128, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.4) !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.02em !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+[data-theme="alvor-forest"] .btn-primary:hover:not(:disabled) {
+  background: #86efac !important;
+  box-shadow: 0 4px 22px rgba(74, 222, 128, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.6) !important;
+  transform: translateY(-1px);
+}
+
+[data-theme="alvor-forest"] .top-search {
+  border-radius: 9999px !important;
+  background: rgba(16, 36, 24, 0.8) !important;
+  border: 1px solid rgba(74, 222, 128, 0.2) !important;
+  color: #86efac !important;
+  transition: all 0.2s ease !important;
+}
+
+[data-theme="alvor-forest"] .top-search:hover,
+[data-theme="alvor-forest"] .top-search:focus-visible {
+  border-color: #4ade80 !important;
+  background: #132b1d !important;
+  box-shadow: 0 0 12px rgba(74, 222, 128, 0.25) !important;
+}
+
+[data-theme="alvor-forest"] .editor-tab {
+  border-radius: 7px 7px 0 0 !important;
+  margin-top: 3px !important;
+  margin-right: 2px !important;
+  border: 1px solid transparent !important;
+  color: #86efac !important;
+  transition: all 0.15s ease !important;
+}
+
+[data-theme="alvor-forest"] .editor-tab:hover {
+  background: rgba(74, 222, 128, 0.06) !important;
+  color: #f0fdf4 !important;
+}
+
+[data-theme="alvor-forest"] .editor-tab.active {
+  background: #132b1d !important;
+  color: #4ade80 !important;
+  font-weight: 600 !important;
+  border: 1px solid #1c3d28 !important;
+  border-bottom-color: #132b1d !important;
+  box-shadow: 0 -2px 10px rgba(74, 222, 128, 0.1) !important;
+}
+
+[data-theme="alvor-forest"] .activity-btn {
+  border-radius: 8px !important;
+  margin: 3px 4px !important;
+  width: 38px !important;
+  height: 38px !important;
+  color: #86efac !important;
+  transition: all 0.15s ease !important;
+}
+
+[data-theme="alvor-forest"] .activity-btn:hover {
+  background: rgba(74, 222, 128, 0.08) !important;
+  color: #f0fdf4 !important;
+}
+
+[data-theme="alvor-forest"] .activity-btn.active {
+  background: #132b1d !important;
+  color: #4ade80 !important;
+  box-shadow: 0 0 12px rgba(74, 222, 128, 0.22) !important;
+  border: 1px solid rgba(74, 222, 128, 0.3) !important;
+}
+
+[data-theme="alvor-forest"] .status-bar {
+  background: rgba(14, 32, 21, 0.95) !important;
+  backdrop-filter: blur(12px) !important;
+  color: #f0fdf4 !important;
+  border-top: 1px solid rgba(74, 222, 128, 0.16) !important;
+}
+
+[data-theme="alvor-forest"] .status-bar .status-item:first-child div {
+  background: #4ade80 !important;
+  box-shadow: 0 0 10px rgba(74, 222, 128, 0.85) !important;
+  animation: forest-pulse 2.2s infinite ease-in-out !important;
+}
+
+@keyframes forest-pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+    box-shadow: 0 0 12px rgba(74, 222, 128, 0.85);
+  }
+  50% {
+    opacity: 0.55;
+    transform: scale(0.92);
+    box-shadow: 0 0 4px rgba(74, 222, 128, 0.35);
+  }
+}
+
+/* ── 🔋 3. OMNIAGENT LIME THEME (Inspired by OmniAgent AI Studio Video) ── */
+[data-theme="omni-agent"] {
+  --bg-app: #0a0c08;
+  --bg-main: #0a0c08;
+  --bg-header: rgba(15, 19, 12, 0.92);
+  --bg-sidebar: #0d100b;
+  --bg-activity: #060805;
+  --bg-panel: #0a0c08;
+  --bg-card: #151b11;
+  --bg-input: #11160e;
+  --bg-hover: rgba(200, 241, 53, 0.08);
+  --border: #202a18;
+  --border-subtle: #2d3b22;
+  --text-base: #f7fee7;
+  --text-muted: #d9f99d;
+  --text-dim: #60744c;
+  --accent: #c8f135;
+  --accent-hover: #b6dd2c;
+  --accent-subtle: rgba(200, 241, 53, 0.12);
+  --accent-border: rgba(200, 241, 53, 0.40);
+  --red: #f87171;
+  --green: #c8f135;
+  --yellow: #fde047;
+  --output-font-color: #f7fee7 !important;
+  background-color: #0a0c08;
+  background-image:
+    radial-gradient(ellipse at 85% 10%, rgba(200, 241, 53, 0.08) 0%, transparent 55%),
+    radial-gradient(ellipse at 10% 85%, rgba(63, 98, 18, 0.2) 0%, transparent 50%),
+    linear-gradient(180deg, #0a0c08 0%, #050604 100%) !important;
+}
+
+[data-theme="omni-agent"] body,
+[data-theme="omni-agent"] #root {
+  background: transparent !important;
+  color: #f7fee7 !important;
+}
+
+[data-theme="omni-agent"] .app-header {
+  background: rgba(15, 19, 12, 0.92) !important;
+  backdrop-filter: blur(20px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+  border-bottom: 1px solid rgba(200, 241, 53, 0.18) !important;
+  box-shadow: 0 4px 24px -2px rgba(0, 0, 0, 0.6), 0 1px 0 rgba(200, 241, 53, 0.1) inset !important;
+}
+
+[data-theme="omni-agent"] .brand-text {
+  font-weight: 700 !important;
+  letter-spacing: -0.02em !important;
+  color: #f7fee7 !important;
+  text-shadow: 0 0 14px rgba(200, 241, 53, 0.35);
+}
+
+[data-theme="omni-agent"] .btn-primary {
+  background: #c8f135 !important;
+  color: #060805 !important;
+  border: 1px solid #c8f135 !important;
+  border-radius: 9999px !important;
+  padding: 5px 18px !important;
+  box-shadow: 0 2px 14px rgba(200, 241, 53, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.5) !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.02em !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+[data-theme="omni-agent"] .btn-primary:hover:not(:disabled) {
+  background: #d9f99d !important;
+  box-shadow: 0 4px 24px rgba(200, 241, 53, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.7) !important;
+  transform: translateY(-1px);
+}
+
+[data-theme="omni-agent"] .top-search {
+  border-radius: 9999px !important;
+  background: rgba(17, 22, 14, 0.8) !important;
+  border: 1px solid rgba(200, 241, 53, 0.2) !important;
+  color: #d9f99d !important;
+  transition: all 0.2s ease !important;
+}
+
+[data-theme="omni-agent"] .top-search:hover,
+[data-theme="omni-agent"] .top-search:focus-visible {
+  border-color: #c8f135 !important;
+  background: #151b11 !important;
+  box-shadow: 0 0 12px rgba(200, 241, 53, 0.3) !important;
+}
+
+[data-theme="omni-agent"] .editor-tab {
+  border-radius: 7px 7px 0 0 !important;
+  margin-top: 3px !important;
+  margin-right: 2px !important;
+  border: 1px solid transparent !important;
+  color: #d9f99d !important;
+  transition: all 0.15s ease !important;
+}
+
+[data-theme="omni-agent"] .editor-tab:hover {
+  background: rgba(200, 241, 53, 0.06) !important;
+  color: #f7fee7 !important;
+}
+
+[data-theme="omni-agent"] .editor-tab.active {
+  background: #151b11 !important;
+  color: #c8f135 !important;
+  font-weight: 600 !important;
+  border: 1px solid #202a18 !important;
+  border-bottom-color: #151b11 !important;
+  box-shadow: 0 -2px 10px rgba(200, 241, 53, 0.12) !important;
+}
+
+[data-theme="omni-agent"] .activity-btn {
+  border-radius: 8px !important;
+  margin: 3px 4px !important;
+  width: 38px !important;
+  height: 38px !important;
+  color: #d9f99d !important;
+  transition: all 0.15s ease !important;
+}
+
+[data-theme="omni-agent"] .activity-btn:hover {
+  background: rgba(200, 241, 53, 0.08) !important;
+  color: #f7fee7 !important;
+}
+
+[data-theme="omni-agent"] .activity-btn.active {
+  background: #151b11 !important;
+  color: #c8f135 !important;
+  box-shadow: 0 0 12px rgba(200, 241, 53, 0.28) !important;
+  border: 1px solid rgba(200, 241, 53, 0.35) !important;
+}
+
+[data-theme="omni-agent"] .status-bar {
+  background: rgba(15, 19, 12, 0.95) !important;
+  backdrop-filter: blur(12px) !important;
+  color: #f7fee7 !important;
+  border-top: 1px solid rgba(200, 241, 53, 0.18) !important;
+}
+
+[data-theme="omni-agent"] .status-bar .status-item:first-child div {
+  background: #c8f135 !important;
+  box-shadow: 0 0 10px rgba(200, 241, 53, 0.9) !important;
+  animation: omni-pulse 1.9s infinite ease-in-out !important;
+}
+
+@keyframes omni-pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+    box-shadow: 0 0 12px rgba(200, 241, 53, 0.9);
+  }
+  50% {
+    opacity: 0.55;
+    transform: scale(0.92);
+    box-shadow: 0 0 4px rgba(200, 241, 53, 0.4);
+  }
+}
+
+/* ── 🌅 4. REVENUEX SUNSET THEME (Warm Champagne Ivory & Liquid Gold Amber) ── */
+[data-theme="revenue-x"] {
+  --bg-app: #f6f4ee;
+  --bg-main: #f6f4ee;
+  --bg-header: rgba(255, 255, 255, 0.94);
+  --bg-sidebar: #f1ece2;
+  --bg-activity: #e9e3d6;
+  --bg-panel: #ffffff;
+  --bg-card: #ffffff;
+  --bg-input: #f2ece0;
+  --bg-hover: rgba(245, 158, 11, 0.08);
+  --border: #e5dfd3;
+  --border-subtle: #eee9df;
+  --text-base: #18181b;
+  --text-muted: #6b7280;
+  --text-dim: #9ca3af;
+  --accent: #f59e0b;
+  --accent-hover: #d97706;
+  --accent-subtle: rgba(245, 158, 11, 0.12);
+  --accent-border: rgba(245, 158, 11, 0.38);
+  --red: #ef4444;
+  --green: #84cc16;
+  --yellow: #f59e0b;
+  --output-font-color: #18181b !important;
+  background-color: #f6f4ee;
+  background-image:
+    radial-gradient(ellipse at 88% 2%, rgba(245, 158, 11, 0.14) 0%, transparent 55%),
+    radial-gradient(ellipse at 12% 98%, rgba(217, 119, 6, 0.10) 0%, transparent 50%),
+    radial-gradient(ellipse at 60% 40%, rgba(139, 92, 246, 0.04) 0%, transparent 55%),
+    linear-gradient(180deg, #f9f8f4 0%, #f3eee4 100%) !important;
+}
+
+[data-theme="revenue-x"] body,
+[data-theme="revenue-x"] #root {
+  background: transparent !important;
+  color: #18181b !important;
+}
+
+[data-theme="revenue-x"] .app-header {
+  background: rgba(255, 255, 255, 0.94) !important;
+  backdrop-filter: blur(20px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+  border-bottom: 1px solid rgba(229, 223, 211, 0.9) !important;
+  box-shadow: 0 4px 20px -2px rgba(245, 158, 11, 0.06), 0 1px 0 rgba(255, 255, 255, 0.8) inset !important;
+}
+
+[data-theme="revenue-x"] .brand-text {
+  font-weight: 700 !important;
+  letter-spacing: -0.02em !important;
+  color: #18181b !important;
+}
+
+/* RevenueX Iconic Export/Run Button: High-Contrast Charcoal Obsidian Luxury Pill */
+[data-theme="revenue-x"] .btn-primary {
+  background: #111827 !important;
+  color: #ffffff !important;
+  border: 1px solid #111827 !important;
+  border-radius: 9999px !important;
+  padding: 5px 18px !important;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.02em !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+[data-theme="revenue-x"] .btn-primary:hover:not(:disabled) {
+  background: #1f2937 !important;
+  box-shadow: 0 5px 20px rgba(245, 158, 11, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.3) !important;
+  transform: translateY(-1px);
+}
+
+[data-theme="revenue-x"] .btn-primary:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+[data-theme="revenue-x"] .top-search {
+  border-radius: 9999px !important;
+  background: rgba(241, 237, 228, 0.85) !important;
+  border: 1px solid rgba(229, 223, 211, 0.9) !important;
+  color: #52525b !important;
+  transition: all 0.2s ease !important;
+}
+
+[data-theme="revenue-x"] .top-search:hover,
+[data-theme="revenue-x"] .top-search:focus-visible {
+  border-color: #f59e0b !important;
+  background: #ffffff !important;
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.22) !important;
+}
+
+[data-theme="revenue-x"] .editor-tab {
+  border-radius: 8px 8px 0 0 !important;
+  margin-top: 3px !important;
+  margin-right: 2px !important;
+  border: 1px solid transparent !important;
+  color: #6b7280 !important;
+  transition: all 0.15s ease !important;
+}
+
+[data-theme="revenue-x"] .editor-tab:hover {
+  background: rgba(245, 158, 11, 0.06) !important;
+  color: #18181b !important;
+}
+
+[data-theme="revenue-x"] .editor-tab.active {
+  background: #ffffff !important;
+  color: #18181b !important;
+  font-weight: 600 !important;
+  border: 1px solid #e5dfd3 !important;
+  border-bottom-color: #ffffff !important;
+  box-shadow: 0 -2px 10px rgba(245, 158, 11, 0.08) !important;
+}
+
+[data-theme="revenue-x"] .activity-btn {
+  border-radius: 8px !important;
+  margin: 3px 4px !important;
+  width: 38px !important;
+  height: 38px !important;
+  color: #71717a !important;
+  transition: all 0.15s ease !important;
+}
+
+[data-theme="revenue-x"] .activity-btn:hover {
+  background: rgba(245, 158, 11, 0.08) !important;
+  color: #18181b !important;
+}
+
+[data-theme="revenue-x"] .activity-btn.active {
+  background: #ffffff !important;
+  color: #d97706 !important;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06) !important;
+  border: 1px solid #e5dfd3 !important;
+}
+
+[data-theme="revenue-x"] .status-bar {
+  background: rgba(255, 255, 255, 0.95) !important;
+  backdrop-filter: blur(12px) !important;
+  color: #18181b !important;
+  border-top: 1px solid #e5dfd3 !important;
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.02) !important;
+}
+
+[data-theme="revenue-x"] .status-bar .status-item:first-child div {
+  background: #84cc16 !important;
+  box-shadow: 0 0 10px rgba(132, 204, 22, 0.85) !important;
+  animation: revenue-pulse 2s infinite ease-in-out !important;
+}
+
+@keyframes revenue-pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+    box-shadow: 0 0 10px rgba(132, 204, 22, 0.9);
+  }
+  50% {
+    opacity: 0.55;
+    transform: scale(0.92);
+    box-shadow: 0 0 3px rgba(132, 204, 22, 0.4);
+  }
+}
+
+[data-theme="revenue-x"] .modal-box,
+[data-theme="revenue-x"] .command-palette {
+  background: rgba(255, 255, 255, 0.97) !important;
+  backdrop-filter: blur(28px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(28px) saturate(180%) !important;
+  border: 1px solid #e5dfd3 !important;
+  box-shadow: 0 20px 45px -10px rgba(0, 0, 0, 0.12), 0 0 1px 1px rgba(255, 255, 255, 0.9) inset !important;
+  border-radius: 14px !important;
+}
+
+[data-theme="revenue-x"] .command-search-row {
+  border-bottom: 1px solid #e5dfd3 !important;
+}
+
+[data-theme="revenue-x"] .command-search-row input {
+  color: #18181b !important;
+}
+
+[data-theme="revenue-x"] .command-footer {
+  background: #f7f6f2 !important;
+  border-top: 1px solid #e5dfd3 !important;
+}
+
+[data-theme="revenue-x"] .terminal-tab.active {
+  color: #18181b !important;
+  font-weight: 600 !important;
+  border-bottom-color: #f59e0b !important;
+}
+
+/* ── Universal AI Bubble & Feedback Styles ── */
+.ai-bubble-user {
+  background: var(--accent-subtle);
+  border: 1px solid var(--accent-border);
+  color: var(--text-base);
+  border-radius: 10px 10px 2px 10px;
+  padding: 10px 12px;
+  margin-left: auto;
+  max-width: 90%;
+  word-break: break-word;
+}
+
+.ai-bubble-ai {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  color: var(--text-base);
+  border-radius: 10px 10px 10px 2px;
+  padding: 12px 14px;
+  margin-right: auto;
+  max-width: 95%;
+  word-break: break-word;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+/* Modals & Command Palette for Cybernetic, Forest & Omni Themes */
+[data-theme="source-cybernetic"] .modal-box,
+[data-theme="source-cybernetic"] .command-palette {
+  background: rgba(17, 21, 23, 0.96) !important;
+  backdrop-filter: blur(28px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(28px) saturate(180%) !important;
+  border: 1px solid rgba(0, 229, 117, 0.25) !important;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7), 0 0 16px rgba(0, 229, 117, 0.15) !important;
+  border-radius: 14px !important;
+}
+
+[data-theme="alvor-forest"] .modal-box,
+[data-theme="alvor-forest"] .command-palette {
+  background: rgba(19, 43, 29, 0.96) !important;
+  backdrop-filter: blur(28px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(28px) saturate(180%) !important;
+  border: 1px solid rgba(74, 222, 128, 0.25) !important;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7), 0 0 16px rgba(74, 222, 128, 0.15) !important;
+  border-radius: 14px !important;
+}
+
+[data-theme="omni-agent"] .modal-box,
+[data-theme="omni-agent"] .command-palette {
+  background: rgba(21, 27, 17, 0.96) !important;
+  backdrop-filter: blur(28px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(28px) saturate(180%) !important;
+  border: 1px solid rgba(200, 241, 53, 0.25) !important;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7), 0 0 16px rgba(200, 241, 53, 0.15) !important;
+  border-radius: 14px !important;
+}
+
+/* ── 💳 5. APITEX FINTECH THEME (Champagne Peach Silk & Midnight Capsule) ── */
+[data-theme="apitex-fintech"] {
+  --bg-app: #fdf6f0;
+  --bg-main: #fdf6f0;
+  --bg-header: rgba(255, 255, 255, 0.94);
+  --bg-sidebar: #fbf1e8;
+  --bg-activity: #f5e6d8;
+  --bg-panel: #ffffff;
+  --bg-card: #ffffff;
+  --bg-input: #f8ede3;
+  --bg-hover: rgba(251, 113, 133, 0.08);
+  --border: #eddcd0;
+  --border-subtle: #f5e9df;
+  --text-base: #0f172a;
+  --text-muted: #64748b;
+  --text-dim: #94a3b8;
+  --accent: #fb7185;
+  --accent-hover: #f43f5e;
+  --accent-subtle: rgba(251, 113, 133, 0.12);
+  --accent-border: rgba(251, 113, 133, 0.40);
+  --red: #f43f5e;
+  --green: #10b981;
+  --yellow: #f59e0b;
+  --output-font-color: #0f172a !important;
+  background-color: #fdf6f0;
+  background-image:
+    radial-gradient(ellipse at 85% 0%, rgba(254, 215, 170, 0.35) 0%, transparent 60%),
+    radial-gradient(ellipse at 15% 95%, rgba(251, 113, 133, 0.12) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 50%, rgba(255, 255, 255, 0.75) 0%, transparent 80%),
+    linear-gradient(180deg, #fdf6f0 0%, #faeee3 100%) !important;
+}
+
+[data-theme="apitex-fintech"] body,
+[data-theme="apitex-fintech"] #root {
+  background: transparent !important;
+  color: #0f172a !important;
+}
+
+[data-theme="apitex-fintech"] .app-header {
+  background: rgba(255, 255, 255, 0.94) !important;
+  backdrop-filter: blur(20px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+  border-bottom: 1px solid rgba(237, 220, 208, 0.9) !important;
+  box-shadow: 0 4px 20px -2px rgba(251, 113, 133, 0.06), 0 1px 0 rgba(255, 255, 255, 0.8) inset !important;
+}
+
+[data-theme="apitex-fintech"] .brand-text {
+  font-weight: 700 !important;
+  letter-spacing: -0.02em !important;
+  color: #0f172a !important;
+}
+
+/* Apitex Iconic Midnight Capsule "Run" Button */
+[data-theme="apitex-fintech"] .btn-primary {
+  background: #0f172a !important;
+  color: #ffffff !important;
+  border: 1px solid #0f172a !important;
+  border-radius: 9999px !important;
+  padding: 5px 18px !important;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.02em !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+[data-theme="apitex-fintech"] .btn-primary:hover:not(:disabled) {
+  background: #1e293b !important;
+  box-shadow: 0 6px 20px rgba(251, 113, 133, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.3) !important;
+  transform: translateY(-1px);
+}
+
+[data-theme="apitex-fintech"] .btn-primary:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+[data-theme="apitex-fintech"] .top-search {
+  border-radius: 9999px !important;
+  background: rgba(248, 237, 227, 0.85) !important;
+  border: 1px solid rgba(237, 220, 208, 0.9) !important;
+  color: #475569 !important;
+  transition: all 0.2s ease !important;
+}
+
+[data-theme="apitex-fintech"] .top-search:hover,
+[data-theme="apitex-fintech"] .top-search:focus-visible {
+  border-color: #fb7185 !important;
+  background: #ffffff !important;
+  box-shadow: 0 0 12px rgba(251, 113, 133, 0.22) !important;
+}
+
+[data-theme="apitex-fintech"] .editor-tab {
+  border-radius: 8px 8px 0 0 !important;
+  margin-top: 3px !important;
+  margin-right: 2px !important;
+  border: 1px solid transparent !important;
+  color: #64748b !important;
+  transition: all 0.15s ease !important;
+}
+
+[data-theme="apitex-fintech"] .editor-tab:hover {
+  background: rgba(251, 113, 133, 0.06) !important;
+  color: #0f172a !important;
+}
+
+[data-theme="apitex-fintech"] .editor-tab.active {
+  background: #ffffff !important;
+  color: #0f172a !important;
+  font-weight: 600 !important;
+  border: 1px solid #eddcd0 !important;
+  border-bottom-color: #ffffff !important;
+  box-shadow: 0 -2px 10px rgba(251, 113, 133, 0.06) !important;
+}
+
+[data-theme="apitex-fintech"] .activity-btn {
+  border-radius: 8px !important;
+  margin: 3px 4px !important;
+  width: 38px !important;
+  height: 38px !important;
+  color: #64748b !important;
+  transition: all 0.15s ease !important;
+}
+
+[data-theme="apitex-fintech"] .activity-btn:hover {
+  background: rgba(251, 113, 133, 0.08) !important;
+  color: #0f172a !important;
+}
+
+[data-theme="apitex-fintech"] .activity-btn.active {
+  background: #ffffff !important;
+  color: #f43f5e !important;
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.06) !important;
+  border: 1px solid #eddcd0 !important;
+}
+
+[data-theme="apitex-fintech"] .status-bar {
+  background: rgba(255, 255, 255, 0.95) !important;
+  backdrop-filter: blur(12px) !important;
+  color: #0f172a !important;
+  border-top: 1px solid #eddcd0 !important;
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.02) !important;
+}
+
+[data-theme="apitex-fintech"] .status-bar .status-item:first-child div {
+  background: #fb7185 !important;
+  box-shadow: 0 0 10px rgba(251, 113, 133, 0.9) !important;
+  animation: apitex-pulse 2s infinite ease-in-out !important;
+}
+
+@keyframes apitex-pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+    box-shadow: 0 0 10px rgba(251, 113, 133, 0.9);
+  }
+  50% {
+    opacity: 0.55;
+    transform: scale(0.92);
+    box-shadow: 0 0 3px rgba(251, 113, 133, 0.4);
+  }
+}
+
+[data-theme="apitex-fintech"] .modal-box,
+[data-theme="apitex-fintech"] .command-palette {
+  background: rgba(255, 255, 255, 0.97) !important;
+  backdrop-filter: blur(28px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(28px) saturate(180%) !important;
+  border: 1px solid #eddcd0 !important;
+  box-shadow: 0 20px 45px -10px rgba(15, 23, 42, 0.12), 0 0 1px 1px rgba(255, 255, 255, 0.9) inset !important;
+  border-radius: 14px !important;
+}
+
+[data-theme="apitex-fintech"] .command-search-row {
+  border-bottom: 1px solid #eddcd0 !important;
+}
+
+[data-theme="apitex-fintech"] .command-search-row input {
+  color: #0f172a !important;
+}
+
+[data-theme="apitex-fintech"] .command-footer {
+  background: #fdfaf7 !important;
+  border-top: 1px solid #eddcd0 !important;
+}
+
+[data-theme="apitex-fintech"] .terminal-tab.active {
+  color: #0f172a !important;
+  font-weight: 600 !important;
+  border-bottom-color: #fb7185 !important;
+}
+
+/* ── 🌌 6. REVENUEX NOIR THEME (Desert Midnight & Aurora Gold) ── */
+[data-theme="revenue-x-noir"] {
+  --bg-app: #0c0d12;
+  --bg-main: #0c0d12;
+  --bg-header: rgba(16, 18, 26, 0.94);
+  --bg-sidebar: #0e1017;
+  --bg-activity: #090a0e;
+  --bg-panel: #0c0d12;
+  --bg-card: #131622;
+  --bg-input: #151928;
+  --bg-hover: rgba(245, 158, 11, 0.09);
+  --border: #1f2433;
+  --border-subtle: #2a3247;
+  --text-base: #f4f4f5;
+  --text-muted: #a1a1aa;
+  --text-dim: #71717a;
+  --accent: #f59e0b;
+  --accent-hover: #d97706;
+  --accent-subtle: rgba(245, 158, 11, 0.15);
+  --accent-border: rgba(245, 158, 11, 0.40);
+  --red: #ef4444;
+  --green: #22c55e;
+  --yellow: #f59e0b;
+  --output-font-color: #f4f4f5 !important;
+  background-color: #0c0d12;
+  background-image:
+    radial-gradient(ellipse at 88% 2%, rgba(245, 158, 11, 0.16) 0%, transparent 60%),
+    radial-gradient(ellipse at 12% 98%, rgba(168, 85, 247, 0.13) 0%, transparent 55%),
+    linear-gradient(180deg, #0e1017 0%, #090a0e 100%) !important;
+}
+
+[data-theme="revenue-x-noir"] body,
+[data-theme="revenue-x-noir"] #root {
+  background: transparent !important;
+  color: #f4f4f5 !important;
+}
+
+[data-theme="revenue-x-noir"] .app-header {
+  background: rgba(16, 18, 26, 0.94) !important;
+  backdrop-filter: blur(20px) saturate(180%) !important;
+  border-bottom: 1px solid rgba(31, 36, 51, 0.9) !important;
+  box-shadow: 0 4px 20px -2px rgba(245, 158, 11, 0.1) !important;
+}
+
+[data-theme="revenue-x-noir"] .brand-text {
+  font-weight: 700 !important;
+  letter-spacing: -0.02em !important;
+  color: #f4f4f5 !important;
+}
+
+[data-theme="revenue-x-noir"] .btn-primary {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%) !important;
+  color: #0c0d12 !important;
+  border: 1px solid #f59e0b !important;
+  border-radius: 9999px !important;
+  padding: 5px 18px !important;
+  box-shadow: 0 4px 16px rgba(245, 158, 11, 0.35) !important;
+  font-weight: 700 !important;
+}
+
+[data-theme="revenue-x-noir"] .btn-primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%) !important;
+  box-shadow: 0 6px 24px rgba(245, 158, 11, 0.5) !important;
+  transform: translateY(-1px);
+}
+
+[data-theme="revenue-x-noir"] .editor-tab.active {
+  background: #131622 !important;
+  color: #f4f4f5 !important;
+  font-weight: 600 !important;
+  border: 1px solid #1f2433 !important;
+  border-bottom-color: #131622 !important;
+  box-shadow: 0 -2px 10px rgba(245, 158, 11, 0.12) !important;
+}
+
+[data-theme="revenue-x-noir"] .modal-box,
+[data-theme="revenue-x-noir"] .command-palette {
+  background: rgba(19, 22, 34, 0.96) !important;
+  backdrop-filter: blur(28px) saturate(180%) !important;
+  border: 1px solid #2a3247 !important;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7), 0 0 16px rgba(245, 158, 11, 0.15) !important;
+  border-radius: 14px !important;
+}
+
+/* ── ✨ 7. APITEX NOIR THEME (Swiss Midnight Gold & Coral Rose) ── */
+[data-theme="apitex-noir"] {
+  --bg-app: #080a10;
+  --bg-main: #080a10;
+  --bg-header: rgba(13, 16, 26, 0.94);
+  --bg-sidebar: #0a0d16;
+  --bg-activity: #06070c;
+  --bg-panel: #080a10;
+  --bg-card: #111625;
+  --bg-input: #141a2e;
+  --bg-hover: rgba(251, 113, 133, 0.09);
+  --border: #1c2438;
+  --border-subtle: #27334f;
+  --text-base: #f1f5f9;
+  --text-muted: #94a3b8;
+  --text-dim: #64748b;
+  --accent: #fb7185;
+  --accent-hover: #f43f5e;
+  --accent-subtle: rgba(251, 113, 133, 0.15);
+  --accent-border: rgba(251, 113, 133, 0.42);
+  --red: #f43f5e;
+  --green: #10b981;
+  --yellow: #fb923c;
+  --output-font-color: #f1f5f9 !important;
+  background-color: #080a10;
+  background-image:
+    radial-gradient(ellipse at 85% 0%, rgba(251, 146, 60, 0.16) 0%, transparent 60%),
+    radial-gradient(ellipse at 15% 95%, rgba(251, 113, 133, 0.14) 0%, transparent 55%),
+    linear-gradient(180deg, #0b0e17 0%, #06070c 100%) !important;
+}
+
+[data-theme="apitex-noir"] body,
+[data-theme="apitex-noir"] #root {
+  background: transparent !important;
+  color: #f1f5f9 !important;
+}
+
+[data-theme="apitex-noir"] .app-header {
+  background: rgba(13, 16, 26, 0.94) !important;
+  backdrop-filter: blur(20px) saturate(180%) !important;
+  border-bottom: 1px solid rgba(28, 36, 56, 0.9) !important;
+  box-shadow: 0 4px 20px -2px rgba(251, 113, 133, 0.1) !important;
+}
+
+[data-theme="apitex-noir"] .brand-text {
+  font-weight: 700 !important;
+  letter-spacing: -0.02em !important;
+  color: #f1f5f9 !important;
+}
+
+[data-theme="apitex-noir"] .btn-primary {
+  background: linear-gradient(135deg, #fb7185 0%, #f43f5e 100%) !important;
+  color: #ffffff !important;
+  border: 1px solid #fb7185 !important;
+  border-radius: 9999px !important;
+  padding: 5px 18px !important;
+  box-shadow: 0 4px 16px rgba(251, 113, 133, 0.35) !important;
+  font-weight: 700 !important;
+}
+
+[data-theme="apitex-noir"] .btn-primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, #fda4af 0%, #fb7185 100%) !important;
+  box-shadow: 0 6px 24px rgba(251, 113, 133, 0.5) !important;
+  transform: translateY(-1px);
+}
+
+[data-theme="apitex-noir"] .editor-tab.active {
+  background: #111625 !important;
+  color: #f1f5f9 !important;
+  font-weight: 600 !important;
+  border: 1px solid #1c2438 !important;
+  border-bottom-color: #111625 !important;
+  box-shadow: 0 -2px 10px rgba(251, 113, 133, 0.12) !important;
+}
+
+[data-theme="apitex-noir"] .modal-box,
+[data-theme="apitex-noir"] .command-palette {
+  background: rgba(17, 22, 37, 0.96) !important;
+  backdrop-filter: blur(28px) saturate(180%) !important;
+  border: 1px solid #27334f !important;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7), 0 0 16px rgba(251, 113, 133, 0.15) !important;
+  border-radius: 14px !important;
+}
+
+/* ── 👥 LIVE COLLABORATION SIDE PANEL & MODALS CROSS-THEME HARMONY ── */
+.collab-side-panel {
+  background: var(--bg-panel) !important;
+  border-left: 1px solid var(--border) !important;
+  color: var(--text-base) !important;
+}
+
+/* ── 💬 CHAT SYSTEM: HIGH CONTRAST & VISIBILITY IN ALL THEMES ── */
+.collab-chat-msg-me {
+  background: linear-gradient(135deg, #7c3aed 0%, #6366f1 100%) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.22) !important;
+  box-shadow: 0 4px 14px rgba(124, 58, 237, 0.28) !important;
+}
+
+.collab-chat-msg-me * {
+  color: #ffffff !important;
+}
+
+.collab-chat-msg-me .collab-chat-time {
+  color: rgba(255, 255, 255, 0.8) !important;
+}
+
+.collab-chat-msg-peer {
+  background: var(--bg-card) !important;
+  border: 1px solid var(--border) !important;
+  color: var(--text-base) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05) !important;
+}
+
+.collab-chat-msg-peer p {
+  color: var(--text-base) !important;
+}
+
+.collab-chat-peer-username {
+  color: #a78bfa;
+  font-weight: 700;
+}
+
+[data-theme-category="light"] .collab-chat-peer-username {
+  color: #6d28d9 !important;
+}
+
+[data-theme-category="dark"] .collab-chat-peer-username {
+  color: #c4b5fd !important;
+}
+
+[data-theme-category="light"] .collab-chat-msg-peer {
+  background: #ffffff !important;
+  border-color: rgba(0, 0, 0, 0.12) !important;
+  color: #0f172a !important;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06) !important;
+}
+
+[data-theme-category="light"] .collab-chat-msg-peer p {
+  color: #0f172a !important;
+}
+
+[data-theme-category="light"] .collab-chat-system {
+  background: rgba(124, 58, 237, 0.06) !important;
+  border-color: rgba(124, 58, 237, 0.18) !important;
+  color: #334155 !important;
+}
+
+[data-theme-category="light"] .collab-side-panel .bg-\[\#0c0e14\],
+[data-theme-category="light"] .collab-side-panel .bg-\[\#10131c\],
+[data-theme-category="light"] .collab-side-panel .bg-\[\#0e111a\],
+[data-theme-category="light"] .collab-side-panel .bg-\[\#111520\],
+[data-theme-category="light"] .collab-side-panel .bg-\[\#121622\],
+[data-theme-category="light"] .collab-side-panel .bg-\[\#141824\] {
+  background: var(--bg-card) !important;
+  border-color: var(--border) !important;
+  color: var(--text-base) !important;
+}
+
+[data-theme-category="light"] .collab-side-panel .text-slate-100,
+[data-theme-category="light"] .collab-side-panel .text-slate-200,
+[data-theme-category="light"] .collab-side-panel .text-slate-300 {
+  color: var(--text-base) !important;
+}
+
+[data-theme-category="light"] .collab-side-panel .text-slate-400,
+[data-theme-category="light"] .collab-side-panel .text-slate-500 {
+  color: var(--text-muted) !important;
+}
+
+[data-theme-category="light"] .collab-side-panel .border-\[\#1c2230\],
+[data-theme-category="light"] .collab-side-panel .border-\[\#1e2536\],
+[data-theme-category="light"] .collab-side-panel .border-\[\#1e2538\],
+[data-theme-category="light"] .collab-side-panel .border-\[\#20283b\],
+[data-theme-category="light"] .collab-side-panel .border-\[\#22293b\],
+[data-theme-category="light"] .collab-side-panel .border-\[\#232a3d\],
+[data-theme-category="light"] .collab-side-panel .border-\[\#232b3d\],
+[data-theme-category="light"] .collab-side-panel .border-\[\#263147\],
+[data-theme-category="light"] .collab-side-panel .border-\[\#273045\] {
+  border-color: var(--border) !important;
+}
+
+/* Modals Light Mode Overrides */
+[data-theme-category="light"] .collab-modal {
+  background: var(--bg-card) !important;
+  border-color: var(--border) !important;
+  color: var(--text-base) !important;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.12) !important;
+}
+
+[data-theme-category="light"] .collab-modal .bg-\[\#0d0f14\],
+[data-theme-category="light"] .collab-modal .bg-\[\#0e111a\],
+[data-theme-category="light"] .collab-modal .bg-\[\#11151f\]\/80,
+[data-theme-category="light"] .collab-modal .bg-\[\#111522\],
+[data-theme-category="light"] .collab-modal .bg-\[\#121622\],
+[data-theme-category="light"] .collab-modal .bg-\[\#141824\],
+[data-theme-category="light"] .collab-modal .bg-\[\#141924\],
+[data-theme-category="light"] .collab-modal .bg-\[\#1a2030\],
+[data-theme-category="light"] .collab-modal .bg-\[\#1a2032\] {
+  background: var(--bg-card) !important;
+  border-color: var(--border) !important;
+  color: var(--text-base) !important;
+}
+
+[data-theme-category="light"] .collab-modal .text-slate-100,
+[data-theme-category="light"] .collab-modal .text-slate-200,
+[data-theme-category="light"] .collab-modal .text-slate-300 {
+  color: var(--text-base) !important;
+}
+
+[data-theme-category="light"] .collab-modal .text-slate-400,
+[data-theme-category="light"] .collab-modal .text-slate-500 {
+  color: var(--text-muted) !important;
+}
+
+[data-theme-category="light"] .collab-modal .border-\[\#1c2230\],
+[data-theme-category="light"] .collab-modal .border-\[\#222736\],
+[data-theme-category="light"] .collab-modal .border-\[\#22293b\],
+[data-theme-category="light"] .collab-modal .border-\[\#232b3d\],
+[data-theme-category="light"] .collab-modal .border-\[\#2b354d\] {
+  border-color: var(--border) !important;
+}
+
+/* 📍 Ping Line ("Look Here") Ripple Animation */
+.collab-ping-line {
+  background: rgba(139, 92, 246, 0.25) !important;
+  border-left: 3px solid #8b5cf6 !important;
+  animation: collab-ping-pulse 1.2s infinite ease-in-out !important;
+}
+
+@keyframes collab-ping-pulse {
+  0%, 100% {
+    background: rgba(139, 92, 246, 0.35);
+    box-shadow: 0 0 16px rgba(139, 92, 246, 0.4);
+  }
+  50% {
+    background: rgba(139, 92, 246, 0.12);
+    box-shadow: 0 0 4px rgba(139, 92, 246, 0.1);
+  }
+}

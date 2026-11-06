@@ -19,6 +19,129 @@ interface Props {
   showToast: (msg: string) => void
 }
 
+const CINEMATIC_THEMES = [
+  {
+    id: 'source-cybernetic',
+    name: 'Source Cybernetic (Edge Dark)',
+    label: '⚡ Source Edge',
+    subtitle: 'Obsidian slate, matrix hairlines & vivid cyber-mint accents (Video 1 Edition)',
+    badge: '⚡ Video 1 Edition',
+    badgeColor: '#00e575',
+    cardBg: 'linear-gradient(135deg, #111517 0%, #090b0c 100%)',
+    borderColor: '#00e575',
+    textColor: '#eef2f3',
+    subTextColor: '#8fa3a8',
+    pillBg: '#00e575',
+    pillColor: '#090b0c',
+    dots: ['#090b0c', '#00e575', '#38bdf8', '#1f292d'],
+  },
+  {
+    id: 'alvor-forest',
+    name: 'Alvor Forest (Botanical Sage)',
+    label: '🌲 Alvor Bio-Sage',
+    subtitle: 'British racing green pine, forest glass & biometric waveform glow (Video 2 Edition)',
+    badge: '🌲 Video 2 Edition',
+    badgeColor: '#4ade80',
+    cardBg: 'linear-gradient(135deg, #132b1d 0%, #0a170f 100%)',
+    borderColor: '#4ade80',
+    textColor: '#f0fdf4',
+    subTextColor: '#86efac',
+    pillBg: '#4ade80',
+    pillColor: '#08130c',
+    dots: ['#0a170f', '#4ade80', '#1c3d28', '#f0fdf4'],
+  },
+  {
+    id: 'omni-agent',
+    name: 'OmniAgent Lime (AI Studio)',
+    label: '🔋 OmniAgent Lime',
+    subtitle: 'Velvet noir canvas, electric chartreuse & creator studio cards (Video 3 Edition)',
+    badge: '🔋 Video 3 Edition',
+    badgeColor: '#c8f135',
+    cardBg: 'linear-gradient(135deg, #151b11 0%, #0a0c08 100%)',
+    borderColor: '#c8f135',
+    textColor: '#f7fee7',
+    subTextColor: '#d9f99d',
+    pillBg: '#c8f135',
+    pillColor: '#060805',
+    dots: ['#0a0c08', '#c8f135', '#202a18', '#f7fee7'],
+  },
+  {
+    id: 'alvor-titanium',
+    name: 'Alvor Titanium (Luxury Minimal)',
+    label: '💍 Alvor Titanium',
+    subtitle: 'Frosted ivory glass, titanium silver & laser diode emerald pulse (Flagship Ring Edition)',
+    badge: '💍 Flagship Edition',
+    badgeColor: '#059669',
+    cardBg: 'linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(245, 245, 243, 0.90))',
+    borderColor: '#059669',
+    textColor: '#111815',
+    subTextColor: '#575b54',
+    pillBg: '#111815',
+    pillColor: '#ffffff',
+    dots: ['#f5f5f3', '#059669', '#111815', '#78716c'],
+  },
+  {
+    id: 'revenue-x',
+    name: 'RevenueX (Champagne Sunset)',
+    label: '🌅 RevenueX Sunset',
+    subtitle: 'Warm champagne silk ivory, glowing honey amber, sunset violet & obsidian pill (Editorial Luxury)',
+    badge: '🌅 RevenueX Edition',
+    badgeColor: '#f59e0b',
+    cardBg: 'linear-gradient(135deg, rgba(255, 255, 255, 0.98), #f8f6f0 60%, #fef3c7 100%)',
+    borderColor: '#f59e0b',
+    textColor: '#18181b',
+    subTextColor: '#78716c',
+    pillBg: '#111827',
+    pillColor: '#ffffff',
+    dots: ['#f6f4ee', '#f59e0b', '#7c3aed', '#111827'],
+  },
+  {
+    id: 'apitex-fintech',
+    name: 'Apitex (Peach Champagne & Midnight)',
+    label: '💳 Apitex Fintech',
+    subtitle: 'Warm champagne peach silk, apricot platinum card glow, midnight capsule dock & coral rose',
+    badge: '💳 Apitex Fintech Edition',
+    badgeColor: '#fb7185',
+    cardBg: 'linear-gradient(135deg, rgba(255, 255, 255, 0.98), #fff7ed 50%, #fed7aa 100%)',
+    borderColor: '#fb7185',
+    textColor: '#0f172a',
+    subTextColor: '#64748b',
+    pillBg: '#0f172a',
+    pillColor: '#ffffff',
+    dots: ['#fdf6f0', '#fb7185', '#0f172a', '#fed7aa'],
+  },
+  {
+    id: 'revenue-x-noir',
+    name: 'RevenueX Noir (Desert Midnight)',
+    label: '🌌 RevenueX Noir',
+    subtitle: 'Deep desert obsidian dunes, glowing honey amber, violet aurora & laser emerald indicators',
+    badge: '🌌 RevenueX Noir Edition',
+    badgeColor: '#f59e0b',
+    cardBg: 'linear-gradient(135deg, #131622 0%, #0c0d12 100%)',
+    borderColor: '#f59e0b',
+    textColor: '#f4f4f5',
+    subTextColor: '#a1a1aa',
+    pillBg: '#f59e0b',
+    pillColor: '#0c0d12',
+    dots: ['#0c0d12', '#f59e0b', '#a855f7', '#f4f4f5'],
+  },
+  {
+    id: 'apitex-noir',
+    name: 'Apitex Noir (Swiss Midnight Gold)',
+    label: '✨ Apitex Noir',
+    subtitle: 'Deep Swiss obsidian noir, warm apricot champagne glow, coral rose lasers & platinum highlights',
+    badge: '✨ Apitex Noir Edition',
+    badgeColor: '#fb7185',
+    cardBg: 'linear-gradient(135deg, #111625 0%, #080a10 100%)',
+    borderColor: '#fb7185',
+    textColor: '#f1f5f9',
+    subTextColor: '#94a3b8',
+    pillBg: '#fb7185',
+    pillColor: '#080a10',
+    dots: ['#080a10', '#fb7185', '#fb923c', '#f1f5f9'],
+  },
+]
+
 export default function ThemeGalleryTab({
   currentThemeId,
   onSelectTheme,
@@ -30,6 +153,9 @@ export default function ThemeGalleryTab({
 }: Props) {
   const [search, setSearch] = useState('')
   const [filterCategory, setFilterCategory] = useState<'all' | 'dark' | 'light' | 'extensions'>('all')
+  const [selectedCinematicId, setSelectedCinematicId] = useState<string>(() => {
+    return CINEMATIC_THEMES.some(c => c.id === currentThemeId) ? currentThemeId : 'source-cybernetic'
+  })
   const [customHex, setCustomHex] = useState(currentFontColor.startsWith('#') ? currentFontColor : '#00f0ff')
   const [customCommentHex, setCustomCommentHex] = useState(
     currentCommentColor.startsWith('#') ? currentCommentColor : '#6a9955'
@@ -164,6 +290,216 @@ export default function ThemeGalleryTab({
         </div>
       </div>
 
+      {/* ── Featured Flagship Themes: Cinematic Video Editions Showcase ── */}
+      {!search && (
+        <div style={{ marginBottom: 18 }}>
+          {/* Top Pill Switcher for 4 Cinematic Video Themes */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              marginBottom: 10,
+              overflowX: 'auto',
+              paddingBottom: 2,
+            }}
+          >
+            <span
+              style={{
+                fontSize: 11,
+                fontWeight: 700,
+                color: 'var(--text-muted)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+                whiteSpace: 'nowrap',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 4,
+              }}
+            >
+              🎬 Video Editions:
+            </span>
+            {CINEMATIC_THEMES.map(ct => {
+              const isSelected = selectedCinematicId === ct.id
+              const isThemeActive = currentThemeId === ct.id
+              return (
+                <button
+                  key={ct.id}
+                  onClick={() => setSelectedCinematicId(ct.id)}
+                  style={{
+                    background: isSelected ? 'var(--bg-hover)' : 'var(--bg-card)',
+                    border: '1px solid',
+                    borderColor: isSelected ? ct.borderColor : 'var(--border)',
+                    color: isSelected ? 'var(--text-base)' : 'var(--text-muted)',
+                    borderRadius: 9999,
+                    padding: '4px 10px',
+                    fontSize: 11,
+                    fontWeight: isSelected ? 700 : 500,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 5,
+                    whiteSpace: 'nowrap',
+                    transition: 'all 0.15s ease',
+                    boxShadow: isSelected ? `0 0 10px ${ct.borderColor}33` : 'none',
+                  }}
+                >
+                  <span>{ct.label}</span>
+                  {isThemeActive && (
+                    <span
+                      style={{
+                        width: 6,
+                        height: 6,
+                        borderRadius: '50%',
+                        background: ct.borderColor,
+                        boxShadow: `0 0 6px ${ct.borderColor}`,
+                      }}
+                    />
+                  )}
+                </button>
+              )
+            })}
+          </div>
+
+          {/* Active Featured Showcase Card */}
+          {(() => {
+            const featured =
+              CINEMATIC_THEMES.find(c => c.id === selectedCinematicId) || CINEMATIC_THEMES[0]
+            const targetTheme = allThemes.find(t => t.id === featured.id)
+            const isCurrentlyActive = currentThemeId === featured.id
+
+            return (
+              <div
+                onClick={() => {
+                  if (targetTheme) handlePickTheme(targetTheme)
+                }}
+                style={{
+                  background: featured.cardBg,
+                  border: `2px solid ${isCurrentlyActive ? featured.borderColor : 'var(--border)'}`,
+                  borderRadius: 14,
+                  padding: '16px 20px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 16,
+                  boxShadow: isCurrentlyActive
+                    ? `0 12px 36px -6px ${featured.borderColor}33, 0 0 0 1px ${featured.borderColor}`
+                    : '0 4px 20px -2px rgba(0, 0, 0, 0.15)',
+                  position: 'relative',
+                  overflow: 'hidden',
+                  transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 14, zIndex: 1 }}>
+                  <div
+                    style={{
+                      width: 44,
+                      height: 44,
+                      borderRadius: 12,
+                      background: 'rgba(0, 0, 0, 0.35)',
+                      border: `1.5px solid ${featured.borderColor}66`,
+                      boxShadow: `0 0 16px ${featured.borderColor}33`,
+                      display: 'grid',
+                      placeItems: 'center',
+                      fontSize: 22,
+                      flexShrink: 0,
+                    }}
+                  >
+                    {featured.label.split(' ')[0]}
+                  </div>
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: 14, fontWeight: 700, color: featured.textColor }}>
+                        {featured.name}
+                      </span>
+                      <span
+                        style={{
+                          fontSize: 9,
+                          fontWeight: 700,
+                          background: `${featured.badgeColor}22`,
+                          color: featured.badgeColor,
+                          border: `1px solid ${featured.badgeColor}55`,
+                          padding: '2px 8px',
+                          borderRadius: 9999,
+                          letterSpacing: '0.04em',
+                          textTransform: 'uppercase',
+                        }}
+                      >
+                        {featured.badge}
+                      </span>
+                    </div>
+                    <div style={{ fontSize: 11.5, color: featured.subTextColor, marginTop: 3 }}>
+                      {featured.subtitle}
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0, zIndex: 1 }}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      gap: 6,
+                      padding: '5px 9px',
+                      background: 'rgba(0,0,0,0.3)',
+                      borderRadius: 20,
+                      border: '1px solid rgba(255,255,255,0.08)',
+                    }}
+                  >
+                    {featured.dots.map((dot, idx) => (
+                      <div
+                        key={idx}
+                        style={{
+                          width: 10,
+                          height: 10,
+                          borderRadius: '50%',
+                          background: dot,
+                          border: '1px solid rgba(255,255,255,0.2)',
+                          boxShadow: idx === 1 ? `0 0 8px ${dot}` : 'none',
+                        }}
+                      />
+                    ))}
+                  </div>
+
+                  {isCurrentlyActive ? (
+                    <span
+                      style={{
+                        background: featured.badgeColor,
+                        color: featured.pillColor,
+                        fontSize: 11,
+                        fontWeight: 700,
+                        padding: '5px 12px',
+                        borderRadius: 9999,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 5,
+                        boxShadow: `0 2px 12px ${featured.badgeColor}66`,
+                      }}
+                    >
+                      <CheckIcon size={12} /> Active
+                    </span>
+                  ) : (
+                    <span
+                      style={{
+                        background: featured.pillBg,
+                        color: featured.pillColor,
+                        borderRadius: 9999,
+                        padding: '5px 14px',
+                        fontSize: 11,
+                        fontWeight: 700,
+                        boxShadow: `0 2px 10px ${featured.borderColor}44`,
+                      }}
+                    >
+                      Apply Theme
+                    </span>
+                  )}
+                </div>
+              </div>
+            )
+          })()}
+        </div>
+      )}
+
       {/* ── Themes Grid ─────────────────────────────────────────────── */}
       <div
         style={{
@@ -223,6 +559,150 @@ export default function ThemeGalleryTab({
                           }}
                         >
                           🧩 Extension
+                        </span>
+                      )}
+                      {theme.id === 'alvor-titanium' && (
+                        <span
+                          style={{
+                            fontSize: 8.5,
+                            fontWeight: 700,
+                            background: 'linear-gradient(135deg, rgba(5, 150, 105, 0.15), rgba(16, 185, 129, 0.25))',
+                            color: '#059669',
+                            border: '1px solid rgba(5, 150, 105, 0.4)',
+                            padding: '1px 6px',
+                            borderRadius: 4,
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 3,
+                          }}
+                        >
+                          💍 Alvor Video Edition
+                        </span>
+                      )}
+                      {theme.id === 'source-cybernetic' && (
+                        <span
+                          style={{
+                            fontSize: 8.5,
+                            fontWeight: 700,
+                            background: 'rgba(0, 229, 117, 0.15)',
+                            color: '#00e575',
+                            border: '1px solid rgba(0, 229, 117, 0.4)',
+                            padding: '1px 6px',
+                            borderRadius: 4,
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 3,
+                          }}
+                        >
+                          ⚡ Source Video Edition
+                        </span>
+                      )}
+                      {theme.id === 'alvor-forest' && (
+                        <span
+                          style={{
+                            fontSize: 8.5,
+                            fontWeight: 700,
+                            background: 'rgba(74, 222, 128, 0.15)',
+                            color: '#4ade80',
+                            border: '1px solid rgba(74, 222, 128, 0.4)',
+                            padding: '1px 6px',
+                            borderRadius: 4,
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 3,
+                          }}
+                        >
+                          🌲 Alvor Bio-Sage Edition
+                        </span>
+                      )}
+                      {theme.id === 'omni-agent' && (
+                        <span
+                          style={{
+                            fontSize: 8.5,
+                            fontWeight: 700,
+                            background: 'rgba(200, 241, 53, 0.15)',
+                            color: '#c8f135',
+                            border: '1px solid rgba(200, 241, 53, 0.4)',
+                            padding: '1px 6px',
+                            borderRadius: 4,
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 3,
+                          }}
+                        >
+                          🔋 OmniAgent Studio Edition
+                        </span>
+                      )}
+                      {theme.id === 'revenue-x' && (
+                        <span
+                          style={{
+                            fontSize: 8.5,
+                            fontWeight: 700,
+                            background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(217, 119, 6, 0.25))',
+                            color: '#d97706',
+                            border: '1px solid rgba(245, 158, 11, 0.45)',
+                            padding: '1px 6px',
+                            borderRadius: 4,
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 3,
+                          }}
+                        >
+                          🌅 RevenueX Sunset Edition
+                        </span>
+                      )}
+                      {theme.id === 'apitex-fintech' && (
+                        <span
+                          style={{
+                            fontSize: 8.5,
+                            fontWeight: 700,
+                            background: 'linear-gradient(135deg, rgba(251, 113, 133, 0.15), rgba(244, 63, 94, 0.25))',
+                            color: '#f43f5e',
+                            border: '1px solid rgba(251, 113, 133, 0.45)',
+                            padding: '1px 6px',
+                            borderRadius: 4,
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 3,
+                          }}
+                        >
+                          💳 Apitex Fintech Edition
+                        </span>
+                      )}
+                      {theme.id === 'revenue-x-noir' && (
+                        <span
+                          style={{
+                            fontSize: 8.5,
+                            fontWeight: 700,
+                            background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(168, 85, 247, 0.25))',
+                            color: '#fbbf24',
+                            border: '1px solid rgba(245, 158, 11, 0.5)',
+                            padding: '1px 6px',
+                            borderRadius: 4,
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 3,
+                          }}
+                        >
+                          🌌 RevenueX Noir Edition
+                        </span>
+                      )}
+                      {theme.id === 'apitex-noir' && (
+                        <span
+                          style={{
+                            fontSize: 8.5,
+                            fontWeight: 700,
+                            background: 'linear-gradient(135deg, rgba(251, 113, 133, 0.2), rgba(251, 146, 60, 0.25))',
+                            color: '#fb7185',
+                            border: '1px solid rgba(251, 113, 133, 0.5)',
+                            padding: '1px 6px',
+                            borderRadius: 4,
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 3,
+                          }}
+                        >
+                          ✨ Apitex Noir Edition
                         </span>
                       )}
                     </div>
