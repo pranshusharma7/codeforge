@@ -11,6 +11,45 @@
  * - Blockquotes, inline code, badges, images, links, strikethrough
  */
 
+export interface HeadingItem {
+  level: number;
+  text: string;
+  id: string;
+}
+
+export function slugifyHeading(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/<[^>]*>/g, '') // strip HTML tags
+    .replace(/[^\w\s-]/g, '') // strip special punctuation
+    .trim()
+    .replace(/\s+/g, '-');
+}
+
+export function extractHeadings(md: string): HeadingItem[] {
+  if (!md) return [];
+  const lines = md.split('\n');
+  const headings: HeadingItem[] = [];
+  const counts: Record<string, number> = {};
+
+  for (const line of lines) {
+    const match = line.match(/^(#{1,6})\s+(.+)$/);
+    if (match) {
+      const level = match[1].length;
+      const text = match[2].trim();
+      let slug = slugifyHeading(text) || `heading-${level}`;
+      if (counts[slug]) {
+        const count = counts[slug]++;
+        slug = `${slug}-${count}`;
+      } else {
+        counts[slug] = 1;
+      }
+      headings.push({ level, text, id: slug });
+    }
+  }
+  return headings;
+}
+
 export function parseGitHubMarkdown(md: string): string {
   if (!md) return '';
 
@@ -102,7 +141,6 @@ export function parseGitHubMarkdown(md: string): string {
       const lines = tableBlock.trim().split('\n').map(l => l.trim()).filter(Boolean);
       if (lines.length < 2) return tableBlock;
 
-      // Check if second line is a delimiter line |---|---|
       const isDelimiter = lines[1].match(/^\|(?:\s*:?-+:?\s*\|)+$/);
       if (!isDelimiter) return tableBlock;
 
@@ -141,7 +179,6 @@ export function parseGitHubMarkdown(md: string): string {
 
   // ── 4. Blockquotes ────────────────────────────────────────────────────────
   html = html.replace(/((?:^>.*(?:\n|$))+)/gm, (block) => {
-    // Avoid re-wrapping alert callouts
     if (block.includes('class="gh-alert"')) return block;
     const content = block
       .split('\n')
@@ -151,13 +188,26 @@ export function parseGitHubMarkdown(md: string): string {
     return `<blockquote class="gh-blockquote">${content}</blockquote>`;
   });
 
-  // ── 5. Headings with Anchors & Borders ─────────────────────────────────────
-  html = html.replace(/^######\s+(.+)$/gm, '<h6 class="gh-h6">$1</h6>');
-  html = html.replace(/^#####\s+(.+)$/gm, '<h5 class="gh-h5">$1</h5>');
-  html = html.replace(/^####\s+(.+)$/gm, '<h4 class="gh-h4">$1</h4>');
-  html = html.replace(/^###\s+(.+)$/gm, '<h3 class="gh-h3">$1</h3>');
-  html = html.replace(/^##\s+(.+)$/gm, '<h2 class="gh-h2">$1</h2>');
-  html = html.replace(/^#\s+(.+)$/gm, '<h1 class="gh-h1">$1</h1>');
+  // ── 5. Headings with Unique Anchor IDs & Icons ────────────────────────────
+  const headingCounts: Record<string, number> = {};
+  function makeHeadingHtml(level: number, text: string): string {
+    let slug = slugifyHeading(text) || `heading-${level}`;
+    if (headingCounts[slug]) {
+      const count = headingCounts[slug]++;
+      slug = `${slug}-${count}`;
+    } else {
+      headingCounts[slug] = 1;
+    }
+    const anchor = `<a class="gh-header-anchor" href="#${slug}" aria-hidden="true" title="Direct link to heading"><svg class="gh-octicon-link" viewBox="0 0 16 16" width="16" height="16" fill="currentColor"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a2.002 2.002 0 0 0 2.83 2.83Z"></path></svg></a>`;
+    return `<h${level} id="${slug}" class="gh-h gh-h${level}">${anchor}<span class="gh-heading-text">${text}</span></h${level}>`;
+  }
+
+  html = html.replace(/^######\s+(.+)$/gm, (_, t) => makeHeadingHtml(6, t));
+  html = html.replace(/^#####\s+(.+)$/gm, (_, t) => makeHeadingHtml(5, t));
+  html = html.replace(/^####\s+(.+)$/gm, (_, t) => makeHeadingHtml(4, t));
+  html = html.replace(/^###\s+(.+)$/gm, (_, t) => makeHeadingHtml(3, t));
+  html = html.replace(/^##\s+(.+)$/gm, (_, t) => makeHeadingHtml(2, t));
+  html = html.replace(/^#\s+(.+)$/gm, (_, t) => makeHeadingHtml(1, t));
 
   // ── 6. Horizontal Rules ───────────────────────────────────────────────────
   html = html.replace(/^(?:---|\*\*\*|___)\s*$/gm, '<hr class="gh-hr" />');

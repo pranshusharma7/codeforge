@@ -1968,19 +1968,8 @@ export default function App() {
 
     if (isMarkdownFile) {
       setRunning(false)
-      setResult({
-        stdout: codeToRun,
-        stderr: null,
-        compile_output: null,
-        status: { id: 3, description: 'Rendered' },
-        time: '0.001',
-        memory: Math.round(codeToRun.length / 1024),
-        exit_code: 0,
-        engine: '🐙 GitHub Flavored Markdown (GFM)',
-      })
-      setConsTab('output')
-      setBottomPanelOpen(true)
-      showToast(`🐙 Rendered ${activeTabToUse.name} with GitHub Markdown!`)
+      setMarkdownPreviewMode(true)
+      showToast(`👁️ Showing GitHub Preview for ${activeTabToUse.name}`)
       return
     }
 
@@ -4800,15 +4789,15 @@ export default function App() {
             {/* Right: Active Room / Status indicator */}
             {hasOpenTab && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-                {/* Markdown Preview Mode Toggle */}
+                {/* GitHub Preview Button */}
                 {(curTab.lang === 'markdown' || curTab.name.toLowerCase().endsWith('.md') || curTab.name.toLowerCase().endsWith('.markdown')) && (
                   <button
                     onClick={() => setMarkdownPreviewMode(p => !p)}
                     style={{
                       display: 'inline-flex',
                       alignItems: 'center',
-                      gap: 5,
-                      padding: '2px 9px',
+                      gap: 6,
+                      padding: '3px 10px',
                       borderRadius: 6,
                       border: '1px solid',
                       borderColor: markdownPreviewMode ? 'var(--accent)' : 'var(--border)',
@@ -4819,7 +4808,7 @@ export default function App() {
                       cursor: 'pointer',
                       transition: 'all 0.15s ease',
                     }}
-                    title={markdownPreviewMode ? 'Switch to Monaco Code Editor' : 'Switch to Live GitHub Markdown Preview'}
+                    title={markdownPreviewMode ? 'Switch to Monaco Code Editor' : 'Show GitHub Markdown Preview'}
                   >
                     <Eye size={12} />
                     <span>{markdownPreviewMode ? 'Edit Code' : 'GitHub Preview'}</span>
@@ -5258,16 +5247,10 @@ export default function App() {
                       </div>
                     )}
                     {result.stdout && (
-                      result.engine?.includes('Markdown') || curTab.lang === 'markdown' || curTab.name.toLowerCase().endsWith('.md') || curTab.name.toLowerCase().endsWith('.markdown') ? (
-                        <div style={{ marginTop: 6, minHeight: 320, display: 'flex', flexDirection: 'column' }}>
-                          <GitHubMarkdownPreview markdown={result.stdout} fileName={curTab.name} />
-                        </div>
-                      ) : (
-                        <div>
-                          <div style={{ color: 'var(--green)', fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', marginBottom: 4 }}>STDOUT</div>
-                          <pre style={{ color: 'var(--output-font-color)', whiteSpace: 'pre-wrap', margin: 0, fontWeight: 500 }}>{result.stdout}</pre>
-                        </div>
-                      )
+                      <div>
+                        <div style={{ color: 'var(--green)', fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', marginBottom: 4 }}>STDOUT</div>
+                        <pre style={{ color: 'var(--output-font-color)', whiteSpace: 'pre-wrap', margin: 0, fontWeight: 500 }}>{result.stdout}</pre>
+                      </div>
                     )}
                     {!result.stdout && !result.stderr && !result.compile_output && (
                       <div style={{ color: 'var(--green)', display: 'flex', alignItems: 'center', gap: 6 }}>

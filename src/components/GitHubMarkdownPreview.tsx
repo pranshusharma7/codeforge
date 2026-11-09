@@ -8,12 +8,17 @@ import {
   ExternalLink,
   BookOpen,
   Sparkles,
+  Globe,
 } from 'lucide-react';
 import { parseGitHubMarkdown } from '../lib/githubMarkdown';
+import { openGitHubWebpage } from '../lib/githubWebpageGenerator';
 
 interface GitHubMarkdownPreviewProps {
   markdown: string;
   fileName?: string;
+  repoName?: string;
+  username?: string;
+  avatarUrl?: string;
   onOpenRawEditor?: () => void;
   className?: string;
 }
@@ -21,6 +26,9 @@ interface GitHubMarkdownPreviewProps {
 export const GitHubMarkdownPreview: React.FC<GitHubMarkdownPreviewProps> = ({
   markdown,
   fileName = 'README.md',
+  repoName = 'codeforge-project',
+  username = 'developer',
+  avatarUrl = 'https://github.com/identicons/app.png',
   onOpenRawEditor,
   className = '',
 }) => {
@@ -54,46 +62,15 @@ export const GitHubMarkdownPreview: React.FC<GitHubMarkdownPreviewProps> = ({
     }
   };
 
-  // Handle popout to full page view
+  // Handle popout to full authentic GitHub web page in a new browser tab
   const handlePopout = () => {
-    const previewWindow = window.open('', '_blank');
-    if (!previewWindow) return;
-
-    previewWindow.document.write(`
-      <!DOCTYPE html>
-      <html lang="en">
-      <head>
-        <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>${fileName} — GitHub Markdown Preview</title>
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.5.0/github-markdown-dark.min.css" />
-        <style>
-          body {
-            box-sizing: border-box;
-            min-width: 200px;
-            max-width: 980px;
-            margin: 0 auto;
-            padding: 45px;
-            background-color: #0d1117;
-            color: #e6edf3;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
-          }
-          .gh-box {
-            border: 1px solid #30363d;
-            border-radius: 8px;
-            padding: 32px;
-            background-color: #0d1117;
-          }
-        </style>
-      </head>
-      <body>
-        <div class="gh-box markdown-body">
-          ${parsedHtml}
-        </div>
-      </body>
-      </html>
-    `);
-    previewWindow.document.close();
+    openGitHubWebpage({
+      markdown,
+      fileName,
+      repoName,
+      username,
+      avatarUrl,
+    });
   };
 
   // Wire up code block copy buttons inside the rendered HTML
@@ -232,18 +209,20 @@ export const GitHubMarkdownPreview: React.FC<GitHubMarkdownPreviewProps> = ({
             )}
           </button>
 
-          {/* Popout button */}
+          {/* Open in Dedicated New Web Page */}
           <button
             onClick={handlePopout}
             style={{
-              background: 'var(--bg-hover)',
-              borderColor: 'var(--border)',
-              color: 'var(--text-muted)',
+              background: 'var(--accent)',
+              borderColor: 'var(--accent)',
+              color: '#ffffff',
             }}
-            className="p-1 rounded-lg border hover:text-white transition-all"
-            title="Open in Standalone Preview Window"
+            className="px-2.5 py-1 rounded-lg border font-semibold flex items-center gap-1.5 transition-all hover:opacity-95 active:scale-95 shadow-xs"
+            title="Open in a clean, dedicated new web page (New Tab)"
           >
-            <ExternalLink className="w-3.5 h-3.5" />
+            <Globe className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Open in Web Page</span>
+            <ExternalLink className="w-3 h-3" />
           </button>
         </div>
       </div>
