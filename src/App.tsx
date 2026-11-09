@@ -47,7 +47,8 @@ import DeveloperProfileModal from './components/profile/DeveloperProfileModal'
 import { LiveRoomsDashboard } from './components/collab/LiveRoomsDashboard'
 import { CollaborationToolbar } from './components/collab/CollaborationToolbar'
 import { LiveCollaborationSidePanel } from './components/collab/LiveCollaborationSidePanel'
-import { Users, Sparkles } from 'lucide-react'
+import { Users, Sparkles, Eye, BookOpen } from 'lucide-react'
+import GitHubMarkdownPreview from './components/GitHubMarkdownPreview'
 import { CollabMonacoSession } from './lib/collab/yjsMonaco'
 import type { CollabRoom, DeveloperProfile, RoomRole, DocumentSnapshot } from './lib/collab/types'
 import socketClient from './lib/collab/socketClient'
@@ -296,6 +297,7 @@ export default function App() {
   const collabResRef = useRef<{ x: number; w: number } | null>(null)
   const collabSessionRef = useRef<CollabMonacoSession | null>(null)
   const [followingUserId, setFollowingUserId] = useState<string | null>(null)
+  const [markdownPreviewMode, setMarkdownPreviewMode] = useState<boolean>(false)
 
   // Auto-Save to Local Disk (VS Code Style)
   const [autoSaveDisk, setAutoSaveDisk] = useState<boolean>(() => {
@@ -1485,7 +1487,11 @@ export default function App() {
 
   const newTab = (name = 'untitled.py', initialCode?: string) => {
     const language = detectLanguage(name)
-    const t: Tab = { id: crypto.randomUUID(), name, lang: language.id, code: initialCode ?? '' }
+    let code = initialCode
+    if (code === undefined && (name.toLowerCase() === 'readme.md' || name.toLowerCase().endsWith('.md'))) {
+      code = `# Project Title 🚀\n\n[![CodeForge](https://img.shields.io/badge/CodeForge-Online%20IDE-8b5cf6)](https://codeforge.dev)\n[![Build](https://img.shields.io/badge/build-passing-brightgreen)](https://github.com)\n\nA high-performance project built with CodeForge.\n\n> [!NOTE]\n> This is a GitHub Flavored Markdown (GFM) document. Click **Run (⌃↵)** or **GitHub Preview** to preview this document live!\n\n> [!TIP]\n> You can add tables, task lists, alerts, and code blocks with syntax highlighting.\n\n## ✨ Features\n\n- [x] Real-time code execution\n- [x] GitHub Flavored Markdown Preview\n- [x] Multi-user live collaboration\n\n## 📦 Quick Start\n\n\`\`\`bash\n# Run the application\nnpm install\nnpm run dev\n\`\`\`\n\n## 📊 Overview\n\n| Feature | Status | Notes |\n| :--- | :---: | ---: |\n| Markdown Preview | ✅ Supported | GitHub Style |\n| Task Lists | ✅ Interactive | Instant |\n\n---\n*Rendered with GitHub Flavored Markdown.*`
+    }
+    const t: Tab = { id: crypto.randomUUID(), name, lang: language.id, code: code ?? '' }
     setTabs(p => [...p, t]); setActiveTab(t.id)
     if (activeRoom) {
       socketClient.emitFileCreate({ id: t.id, name: t.name, lang: t.lang, code: t.code })
@@ -1954,6 +1960,30 @@ export default function App() {
       return
     }
 
+    // ── Check if running a Markdown file (.md, .markdown, README.md) ──────
+    const isMarkdownFile =
+      activeTabToUse.lang === 'markdown' ||
+      fileName.endsWith('.md') ||
+      fileName.endsWith('.markdown')
+
+    if (isMarkdownFile) {
+      setRunning(false)
+      setResult({
+        stdout: codeToRun,
+        stderr: null,
+        compile_output: null,
+        status: { id: 3, description: 'Rendered' },
+        time: '0.001',
+        memory: Math.round(codeToRun.length / 1024),
+        exit_code: 0,
+        engine: '🐙 GitHub Flavored Markdown (GFM)',
+      })
+      setConsTab('output')
+      setBottomPanelOpen(true)
+      showToast(`🐙 Rendered ${activeTabToUse.name} with GitHub Markdown!`)
+      return
+    }
+
     // For all other languages (Python, Java, JS, C++, Rust, Go, etc.), output appears in the bottom terminal
     const controller = new AbortController()
     runAbortControllerRef.current = controller
@@ -2001,6 +2031,18 @@ export default function App() {
               engine: '⚡ In-Browser JSON Engine',
             })
           }
+          return
+        } else if (langToRun.id === 'markdown') {
+          setResult({
+            stdout: codeToRun,
+            stderr: null,
+            compile_output: null,
+            status: { id: 3, description: 'Accepted' },
+            time: '0.001',
+            memory: Math.round(codeToRun.length / 1024),
+            exit_code: 0,
+            engine: '🐙 GitHub Flavored Markdown (GFM)',
+          })
           return
         } else {
           // Fallback plain text with code: execute with Python 3
@@ -4758,6 +4800,31 @@ export default function App() {
             {/* Right: Active Room / Status indicator */}
             {hasOpenTab && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                {/* Markdown Preview Mode Toggle */}
+                {(curTab.lang === 'markdown' || curTab.name.toLowerCase().endsWith('.md') || curTab.name.toLowerCase().endsWith('.markdown')) && (
+                  <button
+                    onClick={() => setMarkdownPreviewMode(p => !p)}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 5,
+                      padding: '2px 9px',
+                      borderRadius: 6,
+                      border: '1px solid',
+                      borderColor: markdownPreviewMode ? 'var(--accent)' : 'var(--border)',
+                      background: markdownPreviewMode ? 'var(--accent-subtle)' : 'var(--bg-hover)',
+                      color: markdownPreviewMode ? 'var(--accent)' : 'var(--text-base)',
+                      fontSize: 11,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
+                    }}
+                    title={markdownPreviewMode ? 'Switch to Monaco Code Editor' : 'Switch to Live GitHub Markdown Preview'}
+                  >
+                    <Eye size={12} />
+                    <span>{markdownPreviewMode ? 'Edit Code' : 'GitHub Preview'}</span>
+                  </button>
+                )}
                 {activeRoom && (
                   <span
                     style={{
@@ -4948,6 +5015,11 @@ export default function App() {
                   ))}
                 </div>
               </div>
+            ) : markdownPreviewMode && (curTab.lang === 'markdown' || curTab.name.toLowerCase().endsWith('.md') || curTab.name.toLowerCase().endsWith('.markdown')) ? (
+              <GitHubMarkdownPreview
+                markdown={curTab.code}
+                fileName={curTab.name}
+              />
             ) : (
               <>
                 <FloatingDebugBar
@@ -5186,10 +5258,16 @@ export default function App() {
                       </div>
                     )}
                     {result.stdout && (
-                      <div>
-                        <div style={{ color: 'var(--green)', fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', marginBottom: 4 }}>STDOUT</div>
-                        <pre style={{ color: 'var(--output-font-color)', whiteSpace: 'pre-wrap', margin: 0, fontWeight: 500 }}>{result.stdout}</pre>
-                      </div>
+                      result.engine?.includes('Markdown') || curTab.lang === 'markdown' || curTab.name.toLowerCase().endsWith('.md') || curTab.name.toLowerCase().endsWith('.markdown') ? (
+                        <div style={{ marginTop: 6, minHeight: 320, display: 'flex', flexDirection: 'column' }}>
+                          <GitHubMarkdownPreview markdown={result.stdout} fileName={curTab.name} />
+                        </div>
+                      ) : (
+                        <div>
+                          <div style={{ color: 'var(--green)', fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', marginBottom: 4 }}>STDOUT</div>
+                          <pre style={{ color: 'var(--output-font-color)', whiteSpace: 'pre-wrap', margin: 0, fontWeight: 500 }}>{result.stdout}</pre>
+                        </div>
+                      )
                     )}
                     {!result.stdout && !result.stderr && !result.compile_output && (
                       <div style={{ color: 'var(--green)', display: 'flex', alignItems: 'center', gap: 6 }}>

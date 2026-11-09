@@ -2112,3 +2112,319 @@ html, body, #root {
     box-shadow: 0 0 4px rgba(139, 92, 246, 0.1);
   }
 }
+
+/* ── 🐙 GITHUB FLAVORED MARKDOWN (GFM) AUTHENTIC PREVIEW STYLING ── */
+.gh-readme-wrapper {
+  background: var(--bg-app);
+}
+
+.gh-readme-header {
+  background: var(--bg-header);
+  border-bottom: 1px solid var(--border);
+}
+
+.gh-readme-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
+.markdown-body.gh-markdown-content {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-base);
+  word-wrap: break-word;
+}
+
+.markdown-body .gh-h1 {
+  font-size: 2em;
+  font-weight: 600;
+  padding-bottom: 0.3em;
+  border-bottom: 1px solid var(--border);
+  margin-top: 24px;
+  margin-bottom: 16px;
+  color: var(--text-base);
+}
+
+.markdown-body .gh-h2 {
+  font-size: 1.5em;
+  font-weight: 600;
+  padding-bottom: 0.3em;
+  border-bottom: 1px solid var(--border);
+  margin-top: 24px;
+  margin-bottom: 16px;
+  color: var(--text-base);
+}
+
+.markdown-body .gh-h3 {
+  font-size: 1.25em;
+  font-weight: 600;
+  margin-top: 24px;
+  margin-bottom: 16px;
+  color: var(--text-base);
+}
+
+.markdown-body .gh-h4 {
+  font-size: 1em;
+  font-weight: 600;
+  margin-top: 24px;
+  margin-bottom: 16px;
+  color: var(--text-base);
+}
+
+.markdown-body .gh-h5 {
+  font-size: 0.875em;
+  font-weight: 600;
+  margin-top: 24px;
+  margin-bottom: 16px;
+  color: var(--text-base);
+}
+
+.markdown-body .gh-h6 {
+  font-size: 0.85em;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-top: 24px;
+  margin-bottom: 16px;
+}
+
+.markdown-body .gh-p {
+  margin-top: 0;
+  margin-bottom: 16px;
+  line-height: 1.7;
+}
+
+.markdown-body .gh-blockquote {
+  margin: 16px 0;
+  padding: 0 1em;
+  color: var(--text-muted);
+  border-left: 0.25em solid var(--accent);
+  background: var(--bg-hover);
+  border-radius: 0 6px 6px 0;
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+
+/* GitHub Alerts / Callouts */
+.markdown-body .gh-alert {
+  padding: 10px 14px;
+  margin: 16px 0;
+  border-left: 4px solid;
+  border-radius: 6px;
+  font-size: 13.5px;
+}
+
+.markdown-body .gh-alert-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+
+.markdown-body .gh-alert-body {
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--text-base);
+}
+
+.markdown-body .gh-alert-note {
+  border-left-color: #2f81f7;
+  background: rgba(47, 129, 247, 0.1);
+  color: #58a6ff;
+}
+
+.markdown-body .gh-alert-tip {
+  border-left-color: #3fb950;
+  background: rgba(63, 185, 80, 0.1);
+  color: #3fb950;
+}
+
+.markdown-body .gh-alert-important {
+  border-left-color: #a371f7;
+  background: rgba(163, 113, 247, 0.1);
+  color: #bc8cff;
+}
+
+.markdown-body .gh-alert-warning {
+  border-left-color: #d29922;
+  background: rgba(210, 153, 34, 0.1);
+  color: #d29922;
+}
+
+.markdown-body .gh-alert-caution {
+  border-left-color: #f85149;
+  background: rgba(248, 81, 73, 0.1);
+  color: #f85149;
+}
+
+/* GitHub Tables */
+.markdown-body .gh-table-wrapper {
+  overflow-x: auto;
+  margin: 16px 0;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+}
+
+.markdown-body .gh-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.markdown-body .gh-table th,
+.markdown-body .gh-table td {
+  padding: 8px 14px;
+  border: 1px solid var(--border);
+}
+
+.markdown-body .gh-table th {
+  font-weight: 600;
+  background: var(--bg-hover);
+  color: var(--text-base);
+}
+
+.markdown-body .gh-table tr:nth-child(2n) {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+[data-theme-category="light"] .markdown-body .gh-table tr:nth-child(2n) {
+  background: rgba(0, 0, 0, 0.02);
+}
+
+/* GitHub Code Blocks */
+.markdown-body .gh-code-block {
+  margin: 16px 0;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: var(--bg-hover);
+}
+
+.markdown-body .gh-code-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 12px;
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border);
+  font-size: 11px;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--text-muted);
+}
+
+.markdown-body .gh-copy-code-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 2px 8px;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10.5px;
+  transition: all 0.15s ease;
+}
+
+.markdown-body .gh-copy-code-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-base);
+  border-color: var(--accent);
+}
+
+.markdown-body .gh-pre {
+  margin: 0;
+  padding: 12px 14px;
+  overflow-x: auto;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  background: transparent;
+}
+
+.markdown-body .gh-token-keyword {
+  color: #ff7b72;
+  font-weight: 600;
+}
+
+.markdown-body .gh-token-string {
+  color: #a5d6ff;
+}
+
+.markdown-body .gh-token-comment {
+  color: #8b949e;
+  font-style: italic;
+}
+
+.markdown-body .gh-token-number {
+  color: #79c0ff;
+}
+
+/* Task lists */
+.markdown-body .gh-task-list {
+  list-style: none;
+  padding-left: 0;
+  margin: 12px 0;
+}
+
+.markdown-body .gh-task-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 5px 0;
+  font-size: 13.5px;
+}
+
+.markdown-body .gh-task-checkbox {
+  width: 14px;
+  height: 14px;
+  accent-color: #238636;
+  cursor: default;
+}
+
+.markdown-body .gh-task-checked {
+  color: var(--text-muted);
+  text-decoration: line-through;
+}
+
+/* Inline code & links */
+.markdown-body .gh-inline-code {
+  padding: 2px 6px;
+  border-radius: 5px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  background: var(--bg-hover);
+  border: 1px solid var(--border);
+  color: var(--accent);
+}
+
+.markdown-body .gh-link {
+  color: #58a6ff;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.markdown-body .gh-link:hover {
+  text-decoration: underline;
+}
+
+.markdown-body .gh-hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 24px 0;
+}
+
+.markdown-body .gh-img {
+  max-width: 100%;
+  border-radius: 6px;
+}
+
+.markdown-body .gh-badge-img {
+  vertical-align: middle;
+  display: inline-block;
+  margin: 2px 4px 2px 0;
+}
+
