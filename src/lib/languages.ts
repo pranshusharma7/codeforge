@@ -831,6 +831,13 @@ puts "Sum: $sum"
     defaultCode: ``,
   },
   {
+    id: 'dotenv', judge0Id: 0, label: '.env (Environment Variables)', monacoId: 'ini', ext: 'env', color: '#ecd53f', version: 'Environment variables',
+    defaultCode: `# Environment variables
+APP_NAME=CodeForge
+NODE_ENV=development
+`,
+  },
+  {
     id: 'plaintext', judge0Id: 0, label: 'Plain Text', monacoId: 'plaintext', ext: 'txt', color: '#888888', version: 'Text',
     defaultCode: ``,
   },

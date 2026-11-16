@@ -229,6 +229,8 @@ const EXT_MAP: Record<string, string> = {
 const detectLanguage = (filename: string): RuntimeLanguage => {
   const lower = filename.trim().toLowerCase()
   if (lower === 'dockerfile') return getLangById('dockerfile')
+  const basename = lower.split(/[\\/]/).pop() ?? ''
+  if (basename === '.env' || basename.startsWith('.env.')) return getLangById('dotenv')
   const ext = lower.split('.').pop() ?? ''
   const mappedId = EXT_MAP[ext]
   if (mappedId) return getLangById(mappedId)
