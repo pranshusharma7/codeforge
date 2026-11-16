@@ -2016,6 +2016,230 @@
         }
       ],
       "activeFileId": "file_main"
+    },
+    "room_3d324db2f40be21a": {
+      "id": "room_3d324db2f40be21a",
+      "name": "Alpha Team Room",
+      "description": "Collaborative C# development",
+      "roomCode": "CF-4R94-3XGH",
+      "ownerId": "usr_owner_1",
+      "ownerUsername": "pranshusharma7",
+      "language": "csharp",
+      "createdAt": 1794815039536,
+      "updatedAt": 1794815039537,
+      "isPrivate": true,
+      "inviteToken": "cf_inv_fcecb360cd7c8a11d80692407ae3e76d",
+      "members": [
+        {
+          "id": "mem_d3f951fe78cd",
+          "userId": "usr_owner_1",
+          "githubUsername": "pranshusharma7",
+          "avatarUrl": "https://github.com/pranshusharma7.png",
+          "role": "owner",
+          "joinedAt": 1794815039536,
+          "isOnline": true,
+          "color": "#8b5cf6"
+        }
+      ],
+      "files": [
+        {
+          "id": "file_main",
+          "name": "Program.cs",
+          "lang": "csharp",
+          "code": "// CodeForge Collaborative Workspace\nconsole.log(\"Hello from live collaboration!\");\n"
+        }
+      ],
+      "activeFileId": "file_main"
+    },
+    "room_637221ead0bfde90": {
+      "id": "room_637221ead0bfde90",
+      "name": "Owner Room",
+      "description": "",
+      "roomCode": "CF-TFLN-GAUS",
+      "ownerId": "usr_owner_2",
+      "ownerUsername": "coder_owner",
+      "language": "python",
+      "createdAt": 1794815039537,
+      "updatedAt": 1794815039538,
+      "isPrivate": true,
+      "inviteToken": "cf_inv_36e8107a57c01010cf5684ebedd11b2c",
+      "members": [
+        {
+          "id": "mem_9d19af055a3d",
+          "userId": "usr_owner_2",
+          "githubUsername": "coder_owner",
+          "avatarUrl": "https://github.com/coder_owner.png",
+          "role": "owner",
+          "joinedAt": 1794815039537,
+          "isOnline": true,
+          "color": "#8b5cf6"
+        }
+      ],
+      "files": [
+        {
+          "id": "file_main",
+          "name": "main.py",
+          "lang": "python",
+          "code": "// CodeForge Collaborative Workspace\nconsole.log(\"Hello from live collaboration!\");\n"
+        }
+      ],
+      "activeFileId": "file_main"
+    },
+    "room_510e15f2443d5a58": {
+      "id": "room_510e15f2443d5a58",
+      "name": "Secure Vault",
+      "description": "",
+      "roomCode": "CF-CHEN-RGL8",
+      "ownerId": "usr_owner_3",
+      "ownerUsername": "alice",
+      "language": "javascript",
+      "createdAt": 1794815039539,
+      "updatedAt": 1794815039539,
+      "isPrivate": true,
+      "inviteToken": "cf_inv_d652b00f575fc12b3bd1d39dba368d99",
+      "members": [
+        {
+          "id": "mem_031a22b27d45",
+          "userId": "usr_owner_3",
+          "githubUsername": "alice",
+          "avatarUrl": "https://github.com/alice.png",
+          "role": "owner",
+          "joinedAt": 1794815039539,
+          "isOnline": true,
+          "color": "#8b5cf6"
+        }
+      ],
+      "files": [
+        {
+          "id": "file_main",
+          "name": "main.js",
+          "lang": "javascript",
+          "code": "// CodeForge Collaborative Workspace\nconsole.log(\"Hello from live collaboration!\");\n"
+        }
+      ],
+      "activeFileId": "file_main"
+    },
+    "room_cd88c09b365d45d8": {
+      "id": "room_cd88c09b365d45d8",
+      "name": "Pair Room",
+      "description": "",
+      "roomCode": "CF-MCMB-YNYH",
+      "ownerId": "usr_owner_4",
+      "ownerUsername": "alice",
+      "language": "csharp",
+      "createdAt": 1794815039539,
+      "updatedAt": 1794815039540,
+      "isPrivate": true,
+      "inviteToken": "cf_inv_944c4483c989643b46611b899caca851",
+      "members": [
+        {
+          "id": "mem_efba58b52bd8",
+          "userId": "usr_owner_4",
+          "githubUsername": "alice",
+          "avatarUrl": "https://github.com/alice.png",
+          "role": "owner",
+          "joinedAt": 1794815039539,
+          "isOnline": true,
+          "color": "#8b5cf6"
+        },
+        {
+          "id": "mem_b8156b0f5b4c",
+          "userId": "usr_bob",
+          "githubUsername": "bob",
+          "avatarUrl": "https://github.com/bob.png",
+          "role": "editor",
+          "joinedAt": 1794815039540,
+          "isOnline": true,
+          "color": "#38bdf8"
+        }
+      ],
+      "files": [
+        {
+          "id": "file_main",
+          "name": "Program.cs",
+          "lang": "csharp",
+          "code": "// CodeForge Collaborative Workspace\nconsole.log(\"Hello from live collaboration!\");\n"
+        }
+      ],
+      "activeFileId": "file_main"
+    },
+    "room_8836612358e19f71": {
+      "id": "room_8836612358e19f71",
+      "name": "Role Test Room",
+      "description": "",
+      "roomCode": "CF-6LEA-TN7G",
+      "ownerId": "usr_owner_5",
+      "ownerUsername": "alice",
+      "language": "cpp",
+      "createdAt": 1794815039540,
+      "updatedAt": 1794815039541,
+      "isPrivate": true,
+      "inviteToken": "cf_inv_218fe953c26578cb3d43ea63e917415e",
+      "members": [
+        {
+          "id": "mem_dc8d14fb2d8c",
+          "userId": "usr_owner_5",
+          "githubUsername": "alice",
+          "avatarUrl": "https://github.com/alice.png",
+          "role": "owner",
+          "joinedAt": 1794815039540,
+          "isOnline": true,
+          "color": "#8b5cf6"
+        },
+        {
+          "id": "mem_f8973b8b3495",
+          "userId": "usr_guest",
+          "githubUsername": "charlie",
+          "avatarUrl": "https://github.com/charlie.png",
+          "role": "viewer",
+          "joinedAt": 1794815039541,
+          "isOnline": true,
+          "color": "#38bdf8"
+        }
+      ],
+      "files": [
+        {
+          "id": "file_main",
+          "name": "main.js",
+          "lang": "cpp",
+          "code": "// CodeForge Collaborative Workspace\nconsole.log(\"Hello from live collaboration!\");\n"
+        }
+      ],
+      "activeFileId": "file_main"
+    },
+    "room_918d56a0613b4906": {
+      "id": "room_918d56a0613b4906",
+      "name": "Snapshot Test Room",
+      "description": "",
+      "roomCode": "CF-FZY8-3QZY",
+      "ownerId": "usr_owner_6",
+      "ownerUsername": "dave",
+      "language": "python",
+      "createdAt": 1794815039542,
+      "updatedAt": 1794815039542,
+      "isPrivate": true,
+      "inviteToken": "cf_inv_e606464bd942930267494d4d7c4c570f",
+      "members": [
+        {
+          "id": "mem_391fdce1973f",
+          "userId": "usr_owner_6",
+          "githubUsername": "dave",
+          "avatarUrl": "https://github.com/dave.png",
+          "role": "owner",
+          "joinedAt": 1794815039542,
+          "isOnline": true,
+          "color": "#8b5cf6"
+        }
+      ],
+      "files": [
+        {
+          "id": "file_main",
+          "name": "main.py",
+          "lang": "python",
+          "code": "// CodeForge Collaborative Workspace\nconsole.log(\"Hello from live collaboration!\");\n"
+        }
+      ],
+      "activeFileId": "file_main"
     }
   },
   "members": {},
@@ -2613,6 +2837,72 @@
       "isSingleUse": false,
       "usedCount": 0,
       "isRevoked": false
+    },
+    "cf_inv_fcecb360cd7c8a11d80692407ae3e76d": {
+      "id": "inv_55d64f809167",
+      "roomId": "room_3d324db2f40be21a",
+      "token": "cf_inv_fcecb360cd7c8a11d80692407ae3e76d",
+      "createdBy": "usr_owner_1",
+      "createdAt": 1794815039536,
+      "expiresAt": null,
+      "isSingleUse": false,
+      "usedCount": 0,
+      "isRevoked": false
+    },
+    "cf_inv_36e8107a57c01010cf5684ebedd11b2c": {
+      "id": "inv_a25233b56b7a",
+      "roomId": "room_637221ead0bfde90",
+      "token": "cf_inv_36e8107a57c01010cf5684ebedd11b2c",
+      "createdBy": "usr_owner_2",
+      "createdAt": 1794815039537,
+      "expiresAt": null,
+      "isSingleUse": false,
+      "usedCount": 0,
+      "isRevoked": false
+    },
+    "cf_inv_d652b00f575fc12b3bd1d39dba368d99": {
+      "id": "inv_06f3d026b3c4",
+      "roomId": "room_510e15f2443d5a58",
+      "token": "cf_inv_d652b00f575fc12b3bd1d39dba368d99",
+      "createdBy": "usr_owner_3",
+      "createdAt": 1794815039539,
+      "expiresAt": null,
+      "isSingleUse": false,
+      "usedCount": 0,
+      "isRevoked": false
+    },
+    "cf_inv_944c4483c989643b46611b899caca851": {
+      "id": "inv_a9336974d943",
+      "roomId": "room_cd88c09b365d45d8",
+      "token": "cf_inv_944c4483c989643b46611b899caca851",
+      "createdBy": "usr_owner_4",
+      "createdAt": 1794815039539,
+      "expiresAt": null,
+      "isSingleUse": false,
+      "usedCount": 1,
+      "isRevoked": false
+    },
+    "cf_inv_218fe953c26578cb3d43ea63e917415e": {
+      "id": "inv_75f5a2ae0413",
+      "roomId": "room_8836612358e19f71",
+      "token": "cf_inv_218fe953c26578cb3d43ea63e917415e",
+      "createdBy": "usr_owner_5",
+      "createdAt": 1794815039540,
+      "expiresAt": null,
+      "isSingleUse": false,
+      "usedCount": 1,
+      "isRevoked": false
+    },
+    "cf_inv_e606464bd942930267494d4d7c4c570f": {
+      "id": "inv_aa3b7e009d1e",
+      "roomId": "room_918d56a0613b4906",
+      "token": "cf_inv_e606464bd942930267494d4d7c4c570f",
+      "createdBy": "usr_owner_6",
+      "createdAt": 1794815039542,
+      "expiresAt": null,
+      "isSingleUse": false,
+      "usedCount": 0,
+      "isRevoked": false
     }
   },
   "messages": {},
@@ -2639,6 +2929,9 @@
     ],
     "test_yjs_room_1794234339334:main.py": [
       "AQHmvbSxCQAEAQRjb2RlIENvbnNvbGUuV3JpdGVMaW5lKCJIZWxsbyBDUkRUIik7AA=="
+    ],
+    "test_yjs_room_1794815039544:main.py": [
+      "AQGMxuGcAwAEAQRjb2RlIENvbnNvbGUuV3JpdGVMaW5lKCJIZWxsbyBDUkRUIik7AA=="
     ]
   },
   "snapshots": {
@@ -2767,6 +3060,23 @@
         "roomId": "room_4e4f03cac9517269",
         "name": "v1.0 Milestone",
         "createdAt": 1794234339333,
+        "createdBy": "dave",
+        "fileCount": 1,
+        "files": [
+          {
+            "name": "main.py",
+            "lang": "python",
+            "code": "print(\"Hello Snapshot\")"
+          }
+        ]
+      }
+    ],
+    "room_918d56a0613b4906": [
+      {
+        "id": "snap_test_1",
+        "roomId": "room_918d56a0613b4906",
+        "name": "v1.0 Milestone",
+        "createdAt": 1794815039542,
         "createdBy": "dave",
         "fileCount": 1,
         "files": [

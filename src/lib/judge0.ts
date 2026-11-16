@@ -261,6 +261,7 @@ export async function executeCode(
         lang?: string;
         stdin?: string;
         signal?: AbortSignal;
+        env?: Record<string, string>;
       }
     | string,
   maybeLangId?: number | string,
@@ -373,6 +374,7 @@ export async function executeCode(
         lang: langKey,
         languageId,
         stdin: params.stdin || '',
+        env: params.env || {},
       }),
       signal: localController.signal,
     }, 1, 300, userSignal);

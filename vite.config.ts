@@ -165,6 +165,328 @@ function codeForgeApiServerPlugin(): Plugin {
       return
     }
 
+    // ── External Projects Public Execution API (/api/v1/execute & /api/v1/run) ─
+    if (url.startsWith("/api/v1/execute") || url.startsWith("/api/v1/run")) {
+      res.setHeader("Access-Control-Allow-Origin", "*")
+      res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS")
+      res.setHeader("Access-Control-Allow-Headers", "*")
+
+      if (req.method === "OPTIONS") {
+        res.writeHead(200)
+        res.end()
+        return
+      }
+
+      const envVars = getReliableEnv()
+      const configuredApiKey =
+        envVars.CODEFORGE_API_KEY ||
+        process.env.CODEFORGE_API_KEY ||
+        "cf_live_7e8b2a4c9f1d3e5a6b8c0d2e4f6a8b0c"
+
+      const reqApiKey = (
+        req.headers["x-api-key"] ||
+        (typeof req.headers["authorization"] === "string" &&
+          req.headers["authorization"].replace(/^Bearer\s+/i, "")) ||
+        new URL(req.url, "http://localhost").searchParams.get("api_key") ||
+        ""
+      ).trim()
+
+      if (!reqApiKey || reqApiKey !== configuredApiKey) {
+        res.writeHead(401, {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*",
+        })
+        res.end(
+          JSON.stringify({
+            ok: false,
+            error: "Unauthorized: Invalid or missing CodeForge API Key.",
+            message:
+              "Pass your API key via 'x-api-key' header or 'Authorization: Bearer <key>'.",
+            hint: "Check your .env file or open the 'API Keys & Secrets' modal in CodeForge to copy your active key.",
+          }),
+        )
+        return
+      }
+
+      let body = ""
+      req.on("data", (chunk: any) => {
+        body += chunk
+      })
+      req.on("end", async () => {
+        try {
+          const parsed = JSON.parse(body || "{}")
+          const code = parsed.code || parsed.sourceCode || ""
+          const language = parsed.language || parsed.lang || "python"
+          const stdin = parsed.stdin || ""
+          const timeoutMs = parsed.timeoutMs || 10000
+          const customEnv = parsed.env || {}
+
+          if (!code.trim()) {
+            res.writeHead(400, {
+              "Content-Type": "application/json",
+              "Access-Control-Allow-Origin": "*",
+            })
+            res.end(
+              JSON.stringify({
+                ok: false,
+                error: "No code provided to execute.",
+              }),
+            )
+            return
+          }
+
+          const handlerUrl = pathToFileURL(
+            path.resolve(process.cwd(), "api/compile/handler.js"),
+          ).href
+          // @ts-ignore
+          const { executeCodeServer } = await import(
+            `${handlerUrl}?t=${Date.now()}`
+          )
+          const result = await executeCodeServer(
+            code,
+            language,
+            stdin,
+            timeoutMs,
+            customEnv,
+          )
+
+          res.writeHead(200, {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*",
+          })
+          res.end(
+            JSON.stringify({
+              ok: result.exit_code === 0,
+              stdout: result.stdout,
+              stderr: result.stderr,
+              compile_output: result.compile_output,
+              exit_code: result.exit_code,
+              time: result.time,
+              memory: result.memory,
+              language,
+              engine: result.engine,
+              status: result.status,
+            }),
+          )
+        } catch (err: any) {
+          res.writeHead(500, {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*",
+          })
+          res.end(
+            JSON.stringify({
+              ok: false,
+              error: err.message || "External execution failed",
+            }),
+          )
+        }
+      })
+      return
+    }
+
+    // ── External Projects Health & Connection Status (/api/v1/status) ────────
+    if (url.startsWith("/api/v1/status")) {
+      res.setHeader("Access-Control-Allow-Origin", "*")
+      res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS")
+      res.setHeader("Access-Control-Allow-Headers", "*")
+
+      if (req.method === "OPTIONS") {
+        res.writeHead(200)
+        res.end()
+        return
+      }
+
+      const envVars = getReliableEnv()
+      const configuredApiKey =
+        envVars.CODEFORGE_API_KEY ||
+        process.env.CODEFORGE_API_KEY ||
+        "cf_live_7e8b2a4c9f1d3e5a6b8c0d2e4f6a8b0c"
+      const reqApiKey = (
+        req.headers["x-api-key"] ||
+        (typeof req.headers["authorization"] === "string" &&
+          req.headers["authorization"].replace(/^Bearer\s+/i, "")) ||
+        new URL(req.url, "http://localhost").searchParams.get("api_key") ||
+        ""
+      ).trim()
+
+      const isAuthed = reqApiKey === configuredApiKey
+
+      res.writeHead(isAuthed ? 200 : 401, {
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": "*",
+      })
+      res.end(
+        JSON.stringify({
+          ok: isAuthed,
+          status: isAuthed ? "connected" : "unauthorized",
+          service: "CodeForge Online Compiler API",
+          version: "1.0.0",
+          message: isAuthed
+            ? "Connected to CodeForge API successfully!"
+            : "Invalid or missing API key in request header.",
+          supported_languages: [
+            "python",
+            "javascript",
+            "typescript",
+            "c",
+            "cpp",
+            "java",
+            "go",
+            "rust",
+            "csharp",
+            "ruby",
+            "php",
+            "bash",
+            "r",
+          ],
+        }),
+      )
+      return
+    }
+
+    // ── Secrets & .env File Manager API (/api/secrets) ───────────────────────
+    if (url.startsWith("/api/secrets")) {
+      res.setHeader("Access-Control-Allow-Origin", "*")
+      res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+      res.setHeader("Access-Control-Allow-Headers", "*")
+
+      if (req.method === "OPTIONS") {
+        res.writeHead(200)
+        res.end()
+        return
+      }
+
+      if (req.method === "GET") {
+        const envPath = path.resolve(process.cwd(), ".env")
+        let rawContent = ""
+        if (fs.existsSync(envPath)) {
+          rawContent = fs.readFileSync(envPath, "utf-8")
+        }
+        const envVars = getReliableEnv()
+        const keysList = Object.keys(envVars).map((k) => ({
+          key: k,
+          value: envVars[k],
+          isSecret:
+            k.includes("KEY") ||
+            k.includes("SECRET") ||
+            k.includes("TOKEN") ||
+            k.includes("PASSWORD"),
+        }))
+
+        res.writeHead(200, {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*",
+        })
+        res.end(
+          JSON.stringify({
+            ok: true,
+            apiKey:
+              envVars.CODEFORGE_API_KEY ||
+              "cf_live_7e8b2a4c9f1d3e5a6b8c0d2e4f6a8b0c",
+            secrets: keysList,
+            rawEnv: rawContent,
+          }),
+        )
+        return
+      }
+
+      if (req.method === "POST") {
+        let body = ""
+        req.on("data", (chunk: any) => {
+          body += chunk
+        })
+        req.on("end", () => {
+          try {
+            const parsed = JSON.parse(body || "{}")
+            const envPath = path.resolve(process.cwd(), ".env")
+            let content = fs.existsSync(envPath)
+              ? fs.readFileSync(envPath, "utf-8")
+              : ""
+
+            // Option A: Save entire raw .env text
+            if (typeof parsed.rawEnv === "string") {
+              fs.writeFileSync(envPath, parsed.rawEnv, "utf-8")
+              res.writeHead(200, {
+                "Content-Type": "application/json",
+                "Access-Control-Allow-Origin": "*",
+              })
+              res.end(
+                JSON.stringify({
+                  ok: true,
+                  message: "Saved .env file successfully",
+                }),
+              )
+              return
+            }
+
+            // Option B: Key-Value update/addition
+            if (parsed.key && parsed.value !== undefined) {
+              const regex = new RegExp(`^${parsed.key}=.*$`, "m")
+              if (regex.test(content)) {
+                content = content.replace(
+                  regex,
+                  `${parsed.key}=${parsed.value}`,
+                )
+              } else {
+                content += `\n${parsed.key}=${parsed.value}\n`
+              }
+              fs.writeFileSync(envPath, content, "utf-8")
+              res.writeHead(200, {
+                "Content-Type": "application/json",
+                "Access-Control-Allow-Origin": "*",
+              })
+              res.end(
+                JSON.stringify({
+                  ok: true,
+                  message: `Updated ${parsed.key} in .env`,
+                }),
+              )
+              return
+            }
+
+            // Option C: Regenerate CODEFORGE_API_KEY
+            if (parsed.regenerateApiKey) {
+              const newKey = `cf_live_${Math.random().toString(36).slice(2)}${Math.random().toString(36).slice(2)}${Date.now().toString(36)}`
+              const regex = /^CODEFORGE_API_KEY=.*$/m
+              if (regex.test(content)) {
+                content = content.replace(regex, `CODEFORGE_API_KEY=${newKey}`)
+              } else {
+                content = `CODEFORGE_API_KEY=${newKey}\n` + content
+              }
+              fs.writeFileSync(envPath, content, "utf-8")
+              res.writeHead(200, {
+                "Content-Type": "application/json",
+                "Access-Control-Allow-Origin": "*",
+              })
+              res.end(
+                JSON.stringify({
+                  ok: true,
+                  apiKey: newKey,
+                  message: "Generated new CODEFORGE_API_KEY",
+                }),
+              )
+              return
+            }
+
+            res.writeHead(400, {
+              "Content-Type": "application/json",
+              "Access-Control-Allow-Origin": "*",
+            })
+            res.end(
+              JSON.stringify({ ok: false, error: "Invalid request payload" }),
+            )
+          } catch (err: any) {
+            res.writeHead(500, {
+              "Content-Type": "application/json",
+              "Access-Control-Allow-Origin": "*",
+            })
+            res.end(JSON.stringify({ ok: false, error: err.message }))
+          }
+        })
+        return
+      }
+    }
+
     // Compiler Execution API endpoint
     if (url.startsWith("/api/compile")) {
       try {

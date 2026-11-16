@@ -47,8 +47,9 @@ import DeveloperProfileModal from './components/profile/DeveloperProfileModal'
 import { LiveRoomsDashboard } from './components/collab/LiveRoomsDashboard'
 import { CollaborationToolbar } from './components/collab/CollaborationToolbar'
 import { LiveCollaborationSidePanel } from './components/collab/LiveCollaborationSidePanel'
-import { Users, Sparkles, Eye, BookOpen } from 'lucide-react'
+import { Users, Sparkles, Eye, BookOpen, Key } from 'lucide-react'
 import GitHubMarkdownPreview from './components/GitHubMarkdownPreview'
+import SecretsManagerModal from './components/SecretsManagerModal'
 import { CollabMonacoSession } from './lib/collab/yjsMonaco'
 import type { CollabRoom, DeveloperProfile, RoomRole, DocumentSnapshot } from './lib/collab/types'
 import socketClient from './lib/collab/socketClient'
@@ -300,6 +301,7 @@ export default function App() {
   const collabSessionRef = useRef<CollabMonacoSession | null>(null)
   const [followingUserId, setFollowingUserId] = useState<string | null>(null)
   const [markdownPreviewMode, setMarkdownPreviewMode] = useState<boolean>(false)
+  const [showSecretsModal, setShowSecretsModal] = useState<boolean>(false)
 
   // Auto-Save to Local Disk (VS Code Style)
   const [autoSaveDisk, setAutoSaveDisk] = useState<boolean>(() => {
@@ -1492,6 +1494,24 @@ export default function App() {
     let code = initialCode
     if (code === undefined && (name.toLowerCase() === 'readme.md' || name.toLowerCase().endsWith('.md'))) {
       code = `# Project Title 🚀\n\n[![CodeForge](https://img.shields.io/badge/CodeForge-Online%20IDE-8b5cf6)](https://codeforge.dev)\n[![Build](https://img.shields.io/badge/build-passing-brightgreen)](https://github.com)\n\nA high-performance project built with CodeForge.\n\n> [!NOTE]\n> This is a GitHub Flavored Markdown (GFM) document. Click **Run (⌃↵)** or **GitHub Preview** to preview this document live!\n\n> [!TIP]\n> You can add tables, task lists, alerts, and code blocks with syntax highlighting.\n\n## ✨ Features\n\n- [x] Real-time code execution\n- [x] GitHub Flavored Markdown Preview\n- [x] Multi-user live collaboration\n\n## 📦 Quick Start\n\n\`\`\`bash\n# Run the application\nnpm install\nnpm run dev\n\`\`\`\n\n## 📊 Overview\n\n| Feature | Status | Notes |\n| :--- | :---: | ---: |\n| Markdown Preview | ✅ Supported | GitHub Style |\n| Task Lists | ✅ Interactive | Instant |\n\n---\n*Rendered with GitHub Flavored Markdown.*`
+    } else if (code === undefined && (name.toLowerCase() === '.env' || name.toLowerCase().startsWith('.env.'))) {
+      code = `# ==============================================================================
+# ENVIRONMENT VARIABLES & SECRETS (.env)
+# Values defined here are automatically injected into your code (Python os.environ,
+# Node.js process.env, C++, Java, etc.) and can be loaded via dotenv.
+# ==============================================================================
+
+# Master API Key to connect external projects to CodeForge
+CODEFORGE_API_KEY=cf_live_7e8b2a4c9f1d3e5a6b8c0d2e4f6a8b0c
+
+# AI & Third-Party APIs
+# OPENAI_API_KEY=sk-...
+# ANTHROPIC_API_KEY=sk-ant-...
+
+# Custom Project Secrets
+DATABASE_URL=postgresql://localhost:5432/mydb
+CUSTOM_SECRET_KEY=my_secure_secret_value
+`
     }
     const t: Tab = { id: crypto.randomUUID(), name, lang: language.id, code: code ?? '' }
     setTabs(p => [...p, t]); setActiveTab(t.id)
@@ -2041,12 +2061,28 @@ export default function App() {
         }
       }
 
+      // Extract environment variables from any open .env tabs in workspace
+      const envTab = tabs.find(t => t.name.trim().toLowerCase() === '.env' || t.name.trim().toLowerCase().startsWith('.env.'))
+      const workspaceEnv: Record<string, string> = {}
+      if (envTab && envTab.code) {
+        for (const line of envTab.code.split('\n')) {
+          const trimmed = line.trim()
+          if (trimmed && !trimmed.startsWith('#') && trimmed.includes('=')) {
+            const idx = trimmed.indexOf('=')
+            const k = trimmed.slice(0, idx).trim()
+            const v = trimmed.slice(idx + 1).trim().replace(/^["']|["']$/g, '')
+            if (k) workspaceEnv[k] = v
+          }
+        }
+      }
+
       const res = await executeCode({
         sourceCode: codeToRun,
         languageId: targetJudge0Id,
         lang: langToRun.id,
         stdin,
         signal: controller.signal,
+        env: workspaceEnv,
       })
       setResult(res)
     } catch (err: any) {
@@ -4011,6 +4047,29 @@ export default function App() {
             </button>
           )}
 
+          {/* API Keys & Secrets Modal Button */}
+          <button
+            onClick={() => setShowSecretsModal(true)}
+            className="btn"
+            style={{
+              padding: '4px 11px',
+              fontSize: 12,
+              fontWeight: 600,
+              gap: 5,
+              background: 'var(--bg-hover)',
+              border: '1px solid var(--border)',
+              color: 'var(--text-base)',
+              borderRadius: 6,
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+            }}
+            title="API Keys & Secrets (.env) — Connect external projects & manage credentials"
+          >
+            <Key size={13} style={{ color: 'var(--accent)' }} />
+            <span className="hidden sm:inline">API & Secrets</span>
+          </button>
+
           {/* GitHub Developer Profile Dropdown */}
           <div style={{ marginLeft: 6 }}>
             <NavbarProfileDropdown
@@ -4020,6 +4079,7 @@ export default function App() {
               onOpenCollaborations={() => setShowLiveRoomsModal(true)}
               onOpenActivity={() => setShowProfileModal(true)}
               onOpenSettings={() => setShowSettings(true)}
+              onOpenSecrets={() => setShowSecretsModal(true)}
               onSignIn={() => setShowAuth(true)}
               onSignOut={signOut}
             />
@@ -5770,6 +5830,13 @@ export default function App() {
           recordCollaboration()
           showToast(`Entered live room: ${room.name} 🚀`)
         }}
+      />
+
+      {/* ── API Keys & .env Secrets Manager Modal ── */}
+      <SecretsManagerModal
+        isOpen={showSecretsModal}
+        onClose={() => setShowSecretsModal(false)}
+        showToast={showToast}
       />
 
       {/* Injected AI message styles */}

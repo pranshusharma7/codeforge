@@ -9,6 +9,7 @@ import {
   LogOut,
   ChevronDown,
   ExternalLink,
+  Key,
 } from 'lucide-react'
 
 const GithubIcon: React.FC<{ size?: number }> = ({ size = 16 }) => (
@@ -24,6 +25,7 @@ interface Props {
   onOpenCollaborations: () => void
   onOpenActivity: () => void
   onOpenSettings: () => void
+  onOpenSecrets?: () => void
   onSignIn: () => void
   onSignOut: () => void
 }
@@ -35,6 +37,7 @@ export default function NavbarProfileDropdown({
   onOpenCollaborations,
   onOpenActivity,
   onOpenSettings,
+  onOpenSecrets,
   onSignIn,
   onSignOut,
 }: Props) {
@@ -268,7 +271,22 @@ export default function NavbarProfileDropdown({
           {/* Divider */}
           <div style={{ height: 1, background: 'var(--border)', margin: '4px 6px' }} />
 
-          {/* Menu Item 5: Account Settings */}
+          {/* Menu Item 5: API Keys & Secrets */}
+          {onOpenSecrets && (
+            <button
+              onClick={() => {
+                setIsOpen(false)
+                onOpenSecrets()
+              }}
+              className="dropdown-item"
+              style={dropdownItemStyle}
+            >
+              <Key size={14} style={{ color: 'var(--accent)' }} />
+              <span>API Keys & Secrets (.env)</span>
+            </button>
+          )}
+
+          {/* Menu Item 6: Account Settings */}
           <button
             onClick={() => {
               setIsOpen(false)
@@ -281,7 +299,7 @@ export default function NavbarProfileDropdown({
             <span>Account Settings</span>
           </button>
 
-          {/* Menu Item 6: Disconnect GitHub */}
+          {/* Menu Item 7: Disconnect GitHub */}
           <button
             onClick={() => {
               setIsOpen(false)

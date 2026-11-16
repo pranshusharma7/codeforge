@@ -71,7 +71,50 @@ function checkBinaryExists(bin) {
  * Preserves binary PATHs and user HOME so user code and package managers (pip, npm, R)
  * can access installed site-packages, libraries, and tools just like real VS Code.
  */
-export function getSanitizedChildEnv() {
+// Load environment variables from .env file
+export function loadDotEnvFile(dir = process.cwd()) {
+  const envVars = {}
+  try {
+    const envPaths = [
+      path.resolve(dir, ".env"),
+      path.resolve(dir, ".env.local"),
+    ]
+    for (const p of envPaths) {
+      if (fs.existsSync(p)) {
+        const content = fs.readFileSync(p, "utf-8")
+        for (const line of content.split("\n")) {
+          const trimmed = line.trim()
+          if (trimmed && !trimmed.startsWith("#") && trimmed.includes("=")) {
+            const idx = trimmed.indexOf("=")
+            const key = trimmed.slice(0, idx).trim()
+            const val = trimmed.slice(idx + 1).trim().replace(/^["']|["']$/g, "")
+            if (key) {
+              envVars[key] = val
+            }
+          }
+        }
+      }
+    }
+  } catch {}
+  return envVars
+}
+
+// Writes a temporary .env file in the sandbox directory for dotenv-compatible libraries
+export function writeSandboxDotEnv(dir, customEnv = {}) {
+  try {
+    const rootVars = loadDotEnvFile(process.cwd())
+    const combined = { ...rootVars, ...customEnv }
+    const ignored = new Set(["PATH", "TMPDIR", "TEMP", "TMP", "HOME", "USER", "LANG", "LC_ALL"])
+    const lines = Object.entries(combined)
+      .filter(([k]) => k && !ignored.has(k))
+      .map(([k, v]) => `${k}=${v}`)
+    if (lines.length > 0) {
+      fs.writeFileSync(path.join(dir, ".env"), lines.join("\n"), "utf-8")
+    }
+  } catch {}
+}
+
+export function getSanitizedChildEnv(customEnv = {}) {
   const home = process.env.HOME || os.homedir()
   const customPath = [
     "/Library/Frameworks/Python.framework/Versions/3.14/bin",
@@ -87,6 +130,8 @@ export function getSanitizedChildEnv() {
     .filter(Boolean)
     .join(":")
 
+  const fileVars = loadDotEnvFile(process.cwd())
+
   return {
     PATH: customPath,
     TMPDIR: os.tmpdir(),
@@ -99,13 +144,15 @@ export function getSanitizedChildEnv() {
     PYTHONUNBUFFERED: "1",
     NODE_ENV: "production",
     PAGER: "cat",
+    ...fileVars,
+    ...customEnv,
   }
 }
 
 /**
  * Spawns a child process with timeout, stdin, and output buffer protection
  */
-function runProcess(command, args, { stdin = "", timeout = 3500, cwd } = {}) {
+function runProcess(command, args, { stdin = "", timeout = 3500, cwd, env = {} } = {}) {
   return new Promise((resolve) => {
     let stdout = ""
     let stderr = ""
@@ -115,7 +162,7 @@ function runProcess(command, args, { stdin = "", timeout = 3500, cwd } = {}) {
     try {
       const child = spawn(command, args, {
         cwd,
-        env: getSanitizedChildEnv(),
+        env: getSanitizedChildEnv(env),
         stdio: ["pipe", "pipe", "pipe"],
       })
 
@@ -200,7 +247,7 @@ function runProcess(command, args, { stdin = "", timeout = 3500, cwd } = {}) {
 /**
  * Execute locally if compilers/interpreters exist on host
  */
-async function executeLocally(code, lang, stdin = "", timeoutMs = 7000) {
+async function executeLocally(code, lang, stdin = "", timeoutMs = 7000, customEnv = {}) {
   const norm = (lang || "").toLowerCase().trim()
   const startTime = Date.now()
 
@@ -217,6 +264,7 @@ async function executeLocally(code, lang, stdin = "", timeoutMs = 7000) {
           : null
     if (pythonCmd) {
       const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "cf_py_"))
+      writeSandboxDotEnv(tmpDir, customEnv)
       const scriptPath = path.join(tmpDir, "script.py")
       try {
         fs.writeFileSync(scriptPath, code, "utf-8")
@@ -224,6 +272,7 @@ async function executeLocally(code, lang, stdin = "", timeoutMs = 7000) {
           stdin,
           timeout: timeoutMs,
           cwd: tmpDir,
+          env: customEnv,
         })
 
         // Auto-install missing Python package if ModuleNotFoundError occurs
@@ -316,6 +365,7 @@ async function executeLocally(code, lang, stdin = "", timeoutMs = 7000) {
     const nodeCmd = checkBinaryExists("node") ? "node" : null
     if (nodeCmd) {
       const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "cf_js_"))
+      writeSandboxDotEnv(tmpDir, customEnv)
       const isESM = /import\s+[\s\S]*?from|export\s+/.test(code)
       if (isESM) {
         try {
@@ -346,6 +396,7 @@ async function executeLocally(code, lang, stdin = "", timeoutMs = 7000) {
           stdin,
           timeout: timeoutMs,
           cwd: tmpDir,
+          env: customEnv,
         })
 
         // Auto-install missing npm package if module not found
@@ -1016,6 +1067,7 @@ export async function executeCodeServer(
   langOrId,
   stdin = "",
   timeoutMs = 12000,
+  customEnv = {},
 ) {
   let lang = typeof langOrId === "string" ? langOrId.toLowerCase() : ""
   let languageId =
@@ -1032,7 +1084,7 @@ export async function executeCodeServer(
 
   // Tier 1: Host compiler execution sandbox
   try {
-    const localRes = await executeLocally(code, lang, stdin, timeoutMs)
+    const localRes = await executeLocally(code, lang, stdin, timeoutMs, customEnv)
     if (localRes) return localRes
   } catch (localErr) {
     console.warn(
@@ -1229,11 +1281,13 @@ export async function handleCompileApi(req, res) {
         return
       }
 
+      const customEnv = parsed.env || {}
       const result = await executeCodeServer(
         sourceCode,
         languageId,
         stdin,
         timeoutMs,
+        customEnv,
       )
       res.writeHead(200, {
         "Content-Type": "application/json",
