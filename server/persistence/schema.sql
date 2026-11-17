@@ -136,3 +136,4 @@ CREATE INDEX IF NOT EXISTS idx_doc_updates_room_file ON document_updates(room_id
 CREATE INDEX IF NOT EXISTS idx_snapshots_room ON snapshots(room_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_code_comments_file ON code_comments(room_id, file_id, line_number);
 
+qq
