@@ -53,7 +53,7 @@ export default function FileIcon({ fileName, name, size = 16, className, style }
   }
 
   // Python
-  if (ext === 'py' || ext === 'pyw' || ext === 'ipynb') {
+  if (ext === 'py' || ext === 'pyw' || ext === 'ipynb' || ext === 'pynb') {
     return (
       <svg width={size} height={size} viewBox="0 0 24 24" fill="none" style={style} className={className}>
         <path d="M11.9 2c-3.8 0-3.6 1.6-3.6 1.6l.01 1.7h3.7v.5H6.3S4 5.5 4 9.4c0 3.8 2 3.7 2 3.7h1.2v-1.8s-.1-2 2-2h3.5s1.9.03 1.9-1.9V4c0-2-2.7-2-2.7-2zm-1.8 1.2c.4 0 .7.3.7.7s-.3.7-.7.7-.7-.3-.7-.7.3-.7.7-.7z" fill="#387eb8"/>

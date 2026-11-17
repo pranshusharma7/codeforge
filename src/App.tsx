@@ -47,9 +47,8 @@ import DeveloperProfileModal from './components/profile/DeveloperProfileModal'
 import { LiveRoomsDashboard } from './components/collab/LiveRoomsDashboard'
 import { CollaborationToolbar } from './components/collab/CollaborationToolbar'
 import { LiveCollaborationSidePanel } from './components/collab/LiveCollaborationSidePanel'
-import { Users, Sparkles, Eye, BookOpen, Key } from 'lucide-react'
+import { Users, Sparkles, Eye, BookOpen } from 'lucide-react'
 import GitHubMarkdownPreview from './components/GitHubMarkdownPreview'
-import SecretsManagerModal from './components/SecretsManagerModal'
 import { CollabMonacoSession } from './lib/collab/yjsMonaco'
 import type { CollabRoom, DeveloperProfile, RoomRole, DocumentSnapshot } from './lib/collab/types'
 import socketClient from './lib/collab/socketClient'
@@ -156,6 +155,7 @@ const COMMANDS = [
   { id: 'repos', label: 'GitHub Repositories', detail: 'Manage repositories and commit code', key: '', icon: '📦' },
   { id: 'packages', label: 'Package Installer', detail: 'Manage R (CRAN), Python (pip), and npm packages', key: '', icon: '📦' },
   { id: 'new-csharp', label: 'New C# Program', detail: 'Create a runnable Program.cs with C# 10 boilerplate', key: '', icon: '🔷' },
+  { id: 'new-ml-model', label: 'New Python ML Model', detail: 'Create a runnable linear-regression model in Python', key: '', icon: '🤖' },
   { id: 'switch-csharp', label: 'Change Language: C#', detail: 'Switch current file to C# (.cs)', key: '', icon: '🔷' },
   { id: 'select-language', label: 'Change Language Mode', detail: 'Configure programming language for active file', key: 'Ctrl K M', icon: '🌐' },
   { id: 'new-r', label: 'New R Script', detail: 'Create a runnable R data science file', key: '', icon: '📊' },
@@ -168,6 +168,8 @@ type RuntimeLanguage = typeof LANGUAGES[number]
 
 const EXT_MAP: Record<string, string> = {
   json: 'json',
+  ipynb: 'jupyter',
+  pynb: 'jupyter',
   md: 'markdown',
   markdown: 'markdown',
   yaml: 'yaml',
@@ -178,7 +180,7 @@ const EXT_MAP: Record<string, string> = {
   ini: 'toml',
   txt: 'plaintext',
   log: 'plaintext',
-  env: 'plaintext',
+  env: 'dotenv',
   gitignore: 'plaintext',
   dockerignore: 'plaintext',
   dockerfile: 'dockerfile',
@@ -239,6 +241,27 @@ const detectLanguage = (filename: string): RuntimeLanguage => {
 }
 
 const MAX_FREE_MONTHLY_AI = 20
+const ML_MODEL_STARTER_CODE = `# A tiny linear-regression model, using only Python's standard library.
+training_data = [(1, 2), (2, 4), (3, 5), (4, 8), (5, 10)]
+
+x_mean = sum(x for x, _ in training_data) / len(training_data)
+y_mean = sum(y for _, y in training_data) / len(training_data)
+slope = sum((x - x_mean) * (y - y_mean) for x, y in training_data) / sum(
+    (x - x_mean) ** 2 for x, _ in training_data
+)
+intercept = y_mean - slope * x_mean
+
+prediction = slope * 6 + intercept
+print(f"Predicted value for x=6: {prediction:.2f}")
+`
+
+const isJupyterNotebook = (value: unknown): value is { cells: unknown[]; nbformat: 4 } =>
+  typeof value === 'object' &&
+  value !== null &&
+  'cells' in value &&
+  Array.isArray(value.cells) &&
+  'nbformat' in value &&
+  value.nbformat === 4
 
 const DEFAULT_STARTER_TAB: Tab = {
   id: 'starter-main-py',
@@ -301,7 +324,6 @@ export default function App() {
   const collabSessionRef = useRef<CollabMonacoSession | null>(null)
   const [followingUserId, setFollowingUserId] = useState<string | null>(null)
   const [markdownPreviewMode, setMarkdownPreviewMode] = useState<boolean>(false)
-  const [showSecretsModal, setShowSecretsModal] = useState<boolean>(false)
 
   // Auto-Save to Local Disk (VS Code Style)
   const [autoSaveDisk, setAutoSaveDisk] = useState<boolean>(() => {
@@ -1496,22 +1518,18 @@ export default function App() {
       code = `# Project Title 🚀\n\n[![CodeForge](https://img.shields.io/badge/CodeForge-Online%20IDE-8b5cf6)](https://codeforge.dev)\n[![Build](https://img.shields.io/badge/build-passing-brightgreen)](https://github.com)\n\nA high-performance project built with CodeForge.\n\n> [!NOTE]\n> This is a GitHub Flavored Markdown (GFM) document. Click **Run (⌃↵)** or **GitHub Preview** to preview this document live!\n\n> [!TIP]\n> You can add tables, task lists, alerts, and code blocks with syntax highlighting.\n\n## ✨ Features\n\n- [x] Real-time code execution\n- [x] GitHub Flavored Markdown Preview\n- [x] Multi-user live collaboration\n\n## 📦 Quick Start\n\n\`\`\`bash\n# Run the application\nnpm install\nnpm run dev\n\`\`\`\n\n## 📊 Overview\n\n| Feature | Status | Notes |\n| :--- | :---: | ---: |\n| Markdown Preview | ✅ Supported | GitHub Style |\n| Task Lists | ✅ Interactive | Instant |\n\n---\n*Rendered with GitHub Flavored Markdown.*`
     } else if (code === undefined && (name.toLowerCase() === '.env' || name.toLowerCase().startsWith('.env.'))) {
       code = `# ==============================================================================
-# ENVIRONMENT VARIABLES & SECRETS (.env)
-# Values defined here are automatically injected into your code (Python os.environ,
-# Node.js process.env, C++, Java, etc.) and can be loaded via dotenv.
+# Environment variables are injected into code runs from this workspace.
 # ==============================================================================
 
-# Master API Key to connect external projects to CodeForge
-CODEFORGE_API_KEY=cf_live_7e8b2a4c9f1d3e5a6b8c0d2e4f6a8b0c
-
-# AI & Third-Party APIs
-# OPENAI_API_KEY=sk-...
-# ANTHROPIC_API_KEY=sk-ant-...
-
-# Custom Project Secrets
-DATABASE_URL=postgresql://localhost:5432/mydb
-CUSTOM_SECRET_KEY=my_secure_secret_value
+APP_NAME=CodeForge
+APP_ENV=development
+LOG_LEVEL=info
 `
+    } else if (
+      code === undefined &&
+      (name.toLowerCase().endsWith('.ipynb') || name.toLowerCase().endsWith('.pynb'))
+    ) {
+      code = getLangById('jupyter').defaultCode
     }
     const t: Tab = { id: crypto.randomUUID(), name, lang: language.id, code: code ?? '' }
     setTabs(p => [...p, t]); setActiveTab(t.id)
@@ -1525,7 +1543,9 @@ CUSTOM_SECRET_KEY=my_secure_secret_value
     if (!raw) return
     const fullName = newFileParentFolder ? `${newFileParentFolder}/${raw}` : raw
     const finalName = fullName.includes('.') ? fullName : `${fullName}.py`
-    newTab(finalName, '')
+    const fileLanguage = detectLanguage(finalName)
+    const initialCode = fileLanguage.id === 'dotenv' || fileLanguage.id === 'jupyter' ? fileLanguage.defaultCode : ''
+    newTab(finalName, initialCode)
     setNewFileOpen(false)
     setNewFileName('untitled.py')
     setNewFileParentFolder('')
@@ -2017,11 +2037,17 @@ CUSTOM_SECRET_KEY=my_secure_secret_value
       let langToRun = getLangById(activeTabToUse.lang)
       let targetJudge0Id = langToRun.judge0Id
       if (targetJudge0Id === 0) {
-        if (langToRun.id === 'json') {
+        if (langToRun.id === 'json' || langToRun.id === 'jupyter') {
           try {
-            JSON.parse(codeToRun)
+            const parsed: unknown = JSON.parse(codeToRun)
+            const notebook = isJupyterNotebook(parsed) ? parsed : null
+            if (langToRun.id === 'jupyter' && !notebook) {
+              throw new Error('Expected a Jupyter Notebook document with nbformat 4 and a cells array.')
+            }
             setResult({
-              stdout: `✓ Valid JSON Syntax!\nFile: ${activeTabToUse.name}\nSize: ${codeToRun.length} bytes\nLines: ${codeToRun.split('\n').length}`,
+              stdout: langToRun.id === 'jupyter'
+                ? `✓ Valid Jupyter Notebook!\nFile: ${activeTabToUse.name}\nCells: ${notebook?.cells.length ?? 0}`
+                : `✓ Valid JSON Syntax!\nFile: ${activeTabToUse.name}\nSize: ${codeToRun.length} bytes\nLines: ${codeToRun.split('\n').length}`,
               stderr: null,
               compile_output: null,
               status: { id: 3, description: 'Accepted' },
@@ -2042,6 +2068,23 @@ CUSTOM_SECRET_KEY=my_secure_secret_value
               engine: '⚡ In-Browser JSON Engine',
             })
           }
+          return
+        } else if (langToRun.id === 'dotenv') {
+          const variableNames = codeToRun.split('\n')
+            .map(line => line.trim())
+            .filter(line => line && !line.startsWith('#') && line.includes('='))
+            .map(line => line.slice(0, line.indexOf('=')).trim())
+            .filter(Boolean)
+          setResult({
+            stdout: `✓ Parsed ${variableNames.length} environment variable(s).\n${variableNames.length ? `Available to code runs: ${variableNames.join(', ')}` : 'No variables found.'}`,
+            stderr: null,
+            compile_output: null,
+            status: { id: 3, description: 'Accepted' },
+            time: '0.001',
+            memory: 1024,
+            exit_code: 0,
+            engine: '⚡ In-Browser Environment File Parser',
+          })
           return
         } else if (langToRun.id === 'markdown') {
           setResult({
@@ -2665,6 +2708,17 @@ CUSTOM_SECRET_KEY=my_secure_secret_value
         const csLang = getLangById('csharp')
         newTab(candidate, csLang.defaultCode)
         showToast(`Created ${candidate} (C#) 🚀`)
+        break
+      }
+      case 'new-ml-model': {
+        let candidate = 'ml_model.py'
+        let idx = 1
+        while (tabs.some(t => t.name === candidate)) {
+          idx++
+          candidate = `ml_model_${idx}.py`
+        }
+        newTab(candidate, ML_MODEL_STARTER_CODE)
+        showToast(`Created ${candidate} (Python ML starter) 🤖`)
         break
       }
       case 'switch-r': switchLang('r'); showToast('Switched to R ✨'); break
@@ -4047,29 +4101,6 @@ CUSTOM_SECRET_KEY=my_secure_secret_value
             </button>
           )}
 
-          {/* API Keys & Secrets Modal Button */}
-          <button
-            onClick={() => setShowSecretsModal(true)}
-            className="btn"
-            style={{
-              padding: '4px 11px',
-              fontSize: 12,
-              fontWeight: 600,
-              gap: 5,
-              background: 'var(--bg-hover)',
-              border: '1px solid var(--border)',
-              color: 'var(--text-base)',
-              borderRadius: 6,
-              cursor: 'pointer',
-              display: 'inline-flex',
-              alignItems: 'center',
-            }}
-            title="API Keys & Secrets (.env) — Connect external projects & manage credentials"
-          >
-            <Key size={13} style={{ color: 'var(--accent)' }} />
-            <span className="hidden sm:inline">API & Secrets</span>
-          </button>
-
           {/* GitHub Developer Profile Dropdown */}
           <div style={{ marginLeft: 6 }}>
             <NavbarProfileDropdown
@@ -4079,7 +4110,6 @@ CUSTOM_SECRET_KEY=my_secure_secret_value
               onOpenCollaborations={() => setShowLiveRoomsModal(true)}
               onOpenActivity={() => setShowProfileModal(true)}
               onOpenSettings={() => setShowSettings(true)}
-              onOpenSecrets={() => setShowSecretsModal(true)}
               onSignIn={() => setShowAuth(true)}
               onSignOut={signOut}
             />
@@ -5830,13 +5860,6 @@ CUSTOM_SECRET_KEY=my_secure_secret_value
           recordCollaboration()
           showToast(`Entered live room: ${room.name} 🚀`)
         }}
-      />
-
-      {/* ── API Keys & .env Secrets Manager Modal ── */}
-      <SecretsManagerModal
-        isOpen={showSecretsModal}
-        onClose={() => setShowSecretsModal(false)}
-        showToast={showToast}
       />
 
       {/* Injected AI message styles */}

@@ -834,7 +834,27 @@ puts "Sum: $sum"
     id: 'dotenv', judge0Id: 0, label: '.env (Environment Variables)', monacoId: 'ini', ext: 'env', color: '#ecd53f', version: 'Environment variables',
     defaultCode: `# Environment variables
 APP_NAME=CodeForge
-NODE_ENV=development
+APP_ENV=development
+LOG_LEVEL=info
+`,
+  },
+  {
+    id: 'jupyter', judge0Id: 0, label: 'Jupyter Notebook (.ipynb / .pynb)', monacoId: 'json', ext: 'ipynb', color: '#f37626', version: 'nbformat 4',
+    defaultCode: `{
+  "cells": [],
+  "metadata": {
+    "kernelspec": {
+      "display_name": "Python 3",
+      "language": "python",
+      "name": "python3"
+    },
+    "language_info": {
+      "name": "python"
+    }
+  },
+  "nbformat": 4,
+  "nbformat_minor": 5
+}
 `,
   },
   {
