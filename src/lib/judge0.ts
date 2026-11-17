@@ -50,6 +50,11 @@ function decodeBase64(b64: string | null | undefined): string | null {
 const WANDBOX_COMPILERS: Record<string, { compiler: string; options?: string }> = {
   python:     { compiler: 'cpython-3.12.7' },
   py:         { compiler: 'cpython-3.12.7' },
+  python_ml:  { compiler: 'cpython-3.12.7' },
+  ml:         { compiler: 'cpython-3.12.7' },
+  jupyter:    { compiler: 'cpython-3.12.7' },
+  ipynb:      { compiler: 'cpython-3.12.7' },
+  pynb:       { compiler: 'cpython-3.12.7' },
   cpp:        { compiler: 'gcc-13.2.0', options: 'warning,gnu++17' },
   'c++':      { compiler: 'gcc-13.2.0', options: 'warning,gnu++17' },
   c:          { compiler: 'gcc-13.2.0-c' },
@@ -124,7 +129,7 @@ export const JUDGE0_ID_TO_LANG: Record<number, string> = {
 };
 
 export const LANG_TO_JUDGE0_ID: Record<string, number> = {
-  python: 71, py: 71, python3: 71,
+  python: 71, py: 71, python3: 71, python_ml: 71, ml: 71, jupyter: 71, ipynb: 71, pynb: 71,
   cpp: 54, 'c++': 54,
   c: 50,
   java: 62,

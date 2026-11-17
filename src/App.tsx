@@ -49,6 +49,7 @@ import { CollaborationToolbar } from './components/collab/CollaborationToolbar'
 import { LiveCollaborationSidePanel } from './components/collab/LiveCollaborationSidePanel'
 import { Users, Sparkles, Eye, BookOpen } from 'lucide-react'
 import GitHubMarkdownPreview from './components/GitHubMarkdownPreview'
+import JupyterNotebookEditor from './components/JupyterNotebookEditor'
 import { CollabMonacoSession } from './lib/collab/yjsMonaco'
 import type { CollabRoom, DeveloperProfile, RoomRole, DocumentSnapshot } from './lib/collab/types'
 import socketClient from './lib/collab/socketClient'
@@ -155,7 +156,9 @@ const COMMANDS = [
   { id: 'repos', label: 'GitHub Repositories', detail: 'Manage repositories and commit code', key: '', icon: '📦' },
   { id: 'packages', label: 'Package Installer', detail: 'Manage R (CRAN), Python (pip), and npm packages', key: '', icon: '📦' },
   { id: 'new-csharp', label: 'New C# Program', detail: 'Create a runnable Program.cs with C# 10 boilerplate', key: '', icon: '🔷' },
-  { id: 'new-ml-model', label: 'New Python ML Model', detail: 'Create a runnable linear-regression model in Python', key: '', icon: '🤖' },
+  { id: 'new-ml-model', label: 'New Python ML Model', detail: 'Create a runnable machine learning model in Python', key: '', icon: '🤖' },
+  { id: 'new-notebook', label: 'New Jupyter Notebook (.ipynb)', detail: 'Create an interactive data science & ML notebook (.ipynb)', key: '', icon: '🪐' },
+  { id: 'new-dotenv', label: 'New .env File', detail: 'Create a workspace environment file for API keys & secrets', key: '', icon: '🔐' },
   { id: 'switch-csharp', label: 'Change Language: C#', detail: 'Switch current file to C# (.cs)', key: '', icon: '🔷' },
   { id: 'select-language', label: 'Change Language Mode', detail: 'Configure programming language for active file', key: 'Ctrl K M', icon: '🌐' },
   { id: 'new-r', label: 'New R Script', detail: 'Create a runnable R data science file', key: '', icon: '📊' },
@@ -263,6 +266,18 @@ const isJupyterNotebook = (value: unknown): value is { cells: unknown[]; nbforma
   'nbformat' in value &&
   value.nbformat === 4
 
+const isJupyterTab = (t?: Tab | null): boolean => {
+  if (!t) return false
+  const lower = t.name.toLowerCase().trim()
+  return lower.endsWith('.ipynb') || lower.endsWith('.pynb') || t.lang === 'jupyter'
+}
+
+const isEnvTab = (t?: Tab | null): boolean => {
+  if (!t) return false
+  const lower = t.name.toLowerCase().trim()
+  return lower === '.env' || lower.startsWith('.env.') || t.lang === 'dotenv'
+}
+
 const DEFAULT_STARTER_TAB: Tab = {
   id: 'starter-main-py',
   name: 'main.py',
@@ -324,6 +339,7 @@ export default function App() {
   const collabSessionRef = useRef<CollabMonacoSession | null>(null)
   const [followingUserId, setFollowingUserId] = useState<string | null>(null)
   const [markdownPreviewMode, setMarkdownPreviewMode] = useState<boolean>(false)
+  const [rawCodeModeTabs, setRawCodeModeTabs] = useState<Record<string, boolean>>({})
 
   // Auto-Save to Local Disk (VS Code Style)
   const [autoSaveDisk, setAutoSaveDisk] = useState<boolean>(() => {
@@ -2034,20 +2050,98 @@ LOG_LEVEL=info
     }, 12000)
 
     try {
+      // Extract environment variables from any open .env tabs in workspace
+      const envTab = tabs.find(t => isEnvTab(t))
+      const workspaceEnv: Record<string, string> = {}
+      if (envTab && envTab.code) {
+        for (const line of envTab.code.split('\n')) {
+          const trimmed = line.trim()
+          if (trimmed && !trimmed.startsWith('#') && trimmed.includes('=')) {
+            const idx = trimmed.indexOf('=')
+            const k = trimmed.slice(0, idx).trim()
+            const v = trimmed.slice(idx + 1).trim().replace(/^["']|["']$/g, '')
+            if (k) workspaceEnv[k] = v
+          }
+        }
+      }
+
       let langToRun = getLangById(activeTabToUse.lang)
       let targetJudge0Id = langToRun.judge0Id
       if (targetJudge0Id === 0) {
-        if (langToRun.id === 'json' || langToRun.id === 'jupyter') {
+        if (langToRun.id === 'jupyter') {
           try {
             const parsed: unknown = JSON.parse(codeToRun)
             const notebook = isJupyterNotebook(parsed) ? parsed : null
-            if (langToRun.id === 'jupyter' && !notebook) {
+            if (!notebook) {
               throw new Error('Expected a Jupyter Notebook document with nbformat 4 and a cells array.')
             }
+            const codeCells = (notebook.cells as any[]).filter(c => c.cell_type === 'code')
+            if (codeCells.length === 0) {
+              setResult({
+                stdout: `🪐 Jupyter Notebook: ${activeTabToUse.name}\n✓ Valid structure (0 code cells to execute, ${notebook.cells.length} markdown cells).`,
+                stderr: null,
+                compile_output: null,
+                status: { id: 3, description: 'Accepted' },
+                time: '0.001',
+                memory: 1024,
+                exit_code: 0,
+                engine: 'Jupyter Notebook (nbformat 4)',
+              })
+              return
+            }
+
+            const cellSummaries: string[] = []
+            let totalTime = 0
+            let hadError = false
+            for (let i = 0; i < codeCells.length; i++) {
+              const cell = codeCells[i]
+              const src = Array.isArray(cell.source) ? cell.source.join('') : (cell.source || '')
+              if (!src.trim()) continue
+              const res = await executeCode({
+                sourceCode: src,
+                languageId: 71,
+                lang: 'python',
+                stdin,
+                signal: controller.signal,
+                env: workspaceEnv,
+              })
+              totalTime += parseFloat(res.time || '0.01')
+              const snippet = src.trim().split('\n')[0].slice(0, 50)
+              cellSummaries.push(`In [${i + 1}]: ${snippet}...\n${res.stdout || res.stderr || '(no output)'}`)
+              if (res.stderr && res.status.id !== 3) {
+                hadError = true
+                break
+              }
+            }
+
             setResult({
-              stdout: langToRun.id === 'jupyter'
-                ? `✓ Valid Jupyter Notebook!\nFile: ${activeTabToUse.name}\nCells: ${notebook?.cells.length ?? 0}`
-                : `✓ Valid JSON Syntax!\nFile: ${activeTabToUse.name}\nSize: ${codeToRun.length} bytes\nLines: ${codeToRun.split('\n').length}`,
+              stdout: `🪐 Jupyter Notebook Execution Summary:\nFile: ${activeTabToUse.name}\nTotal Cells: ${notebook.cells.length} (${codeCells.length} code cells executed)\n\n${cellSummaries.join('\n\n')}`,
+              stderr: null,
+              compile_output: null,
+              status: { id: hadError ? 11 : 3, description: hadError ? 'Runtime Error' : 'Accepted' },
+              time: totalTime.toFixed(3),
+              memory: 4096,
+              exit_code: hadError ? 1 : 0,
+              engine: 'Python 3 (Jupyter Notebook Engine)',
+            })
+          } catch (jsonErr: any) {
+            setResult({
+              stdout: null,
+              stderr: `✕ Jupyter Notebook Error:\n${jsonErr.message}`,
+              compile_output: null,
+              status: { id: 6, description: 'Compilation Error' },
+              time: '0.001',
+              memory: 1024,
+              exit_code: 1,
+              engine: 'Jupyter Engine',
+            })
+          }
+          return
+        } else if (langToRun.id === 'json') {
+          try {
+            JSON.parse(codeToRun)
+            setResult({
+              stdout: `✓ Valid JSON Syntax!\nFile: ${activeTabToUse.name}\nSize: ${codeToRun.length} bytes\nLines: ${codeToRun.split('\n').length}`,
               stderr: null,
               compile_output: null,
               status: { id: 3, description: 'Accepted' },
@@ -2070,13 +2164,12 @@ LOG_LEVEL=info
           }
           return
         } else if (langToRun.id === 'dotenv') {
-          const variableNames = codeToRun.split('\n')
+          const variableLines = codeToRun.split('\n')
             .map(line => line.trim())
             .filter(line => line && !line.startsWith('#') && line.includes('='))
-            .map(line => line.slice(0, line.indexOf('=')).trim())
-            .filter(Boolean)
+          const variableNames = variableLines.map(line => line.slice(0, line.indexOf('=')).trim()).filter(Boolean)
           setResult({
-            stdout: `✓ Parsed ${variableNames.length} environment variable(s).\n${variableNames.length ? `Available to code runs: ${variableNames.join(', ')}` : 'No variables found.'}`,
+            stdout: `✓ Parsed ${variableNames.length} environment variable(s).\n${variableNames.length ? `Injected into code runs: ${variableNames.join(', ')}` : 'No variables defined.'}`,
             stderr: null,
             compile_output: null,
             status: { id: 3, description: 'Accepted' },
@@ -2101,21 +2194,6 @@ LOG_LEVEL=info
         } else {
           // Fallback plain text with code: execute with Python 3
           targetJudge0Id = 71
-        }
-      }
-
-      // Extract environment variables from any open .env tabs in workspace
-      const envTab = tabs.find(t => t.name.trim().toLowerCase() === '.env' || t.name.trim().toLowerCase().startsWith('.env.'))
-      const workspaceEnv: Record<string, string> = {}
-      if (envTab && envTab.code) {
-        for (const line of envTab.code.split('\n')) {
-          const trimmed = line.trim()
-          if (trimmed && !trimmed.startsWith('#') && trimmed.includes('=')) {
-            const idx = trimmed.indexOf('=')
-            const k = trimmed.slice(0, idx).trim()
-            const v = trimmed.slice(idx + 1).trim().replace(/^["']|["']$/g, '')
-            if (k) workspaceEnv[k] = v
-          }
         }
       }
 
@@ -2719,6 +2797,30 @@ LOG_LEVEL=info
         }
         newTab(candidate, ML_MODEL_STARTER_CODE)
         showToast(`Created ${candidate} (Python ML starter) 🤖`)
+        break
+      }
+      case 'new-notebook': {
+        let candidate = 'notebook.ipynb'
+        let idx = 1
+        while (tabs.some(t => t.name === candidate)) {
+          idx++
+          candidate = `notebook_${idx}.ipynb`
+        }
+        const jupLang = getLangById('jupyter')
+        newTab(candidate, jupLang.defaultCode)
+        showToast(`Created ${candidate} (Jupyter Notebook) 🪐`)
+        break
+      }
+      case 'new-dotenv': {
+        let candidate = '.env'
+        let idx = 1
+        while (tabs.some(t => t.name === candidate)) {
+          idx++
+          candidate = `.env.${idx}`
+        }
+        const envLang = getLangById('dotenv')
+        newTab(candidate, envLang.defaultCode)
+        showToast(`Created ${candidate} (Environment variables) 🔐`)
         break
       }
       case 'switch-r': switchLang('r'); showToast('Switched to R ✨'); break
@@ -5101,8 +5203,159 @@ LOG_LEVEL=info
                 markdown={curTab.code}
                 fileName={curTab.name}
               />
+            ) : isJupyterTab(curTab) && !rawCodeModeTabs[curTab.id] ? (
+              <JupyterNotebookEditor
+                tabId={curTab.id}
+                fileName={curTab.name}
+                code={curTab.code}
+                onChange={(newJson) => {
+                  updateCode(newJson)
+                }}
+                onRunCode={async (cellCode, stdin) => {
+                  const envTab = tabs.find(t => isEnvTab(t))
+                  const workspaceEnv: Record<string, string> = {}
+                  if (envTab && envTab.code) {
+                    for (const line of envTab.code.split('\n')) {
+                      const trimmed = line.trim()
+                      if (trimmed && !trimmed.startsWith('#') && trimmed.includes('=')) {
+                        const idx = trimmed.indexOf('=')
+                        const k = trimmed.slice(0, idx).trim()
+                        const v = trimmed.slice(idx + 1).trim().replace(/^["']|["']$/g, '')
+                        if (k) workspaceEnv[k] = v
+                      }
+                    }
+                  }
+                  return executeCode({
+                    sourceCode: cellCode,
+                    languageId: 71,
+                    lang: 'python',
+                    stdin: stdin || '',
+                    env: workspaceEnv,
+                  })
+                }}
+                onToggleRawMode={() => {
+                  setRawCodeModeTabs(prev => ({ ...prev, [curTab.id]: true }))
+                }}
+                isCollabSession={!!activeRoom}
+              />
             ) : (
               <>
+                {/* Jupyter Raw Mode Switcher Banner */}
+                {isJupyterTab(curTab) && rawCodeModeTabs[curTab.id] && (
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      padding: '6px 14px',
+                      backgroundColor: 'var(--bg-card)',
+                      borderBottom: '1px solid var(--border)',
+                      fontSize: 12,
+                      color: 'var(--text-muted)',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span>🪐 Viewing Raw Jupyter Notebook JSON</span>
+                    </div>
+                    <button
+                      onClick={() => setRawCodeModeTabs(prev => ({ ...prev, [curTab.id]: false }))}
+                      className="btn"
+                      style={{
+                        padding: '3px 10px',
+                        fontSize: 11,
+                        fontWeight: 600,
+                        backgroundColor: 'var(--accent)',
+                        color: '#ffffff',
+                        borderRadius: 5,
+                        cursor: 'pointer',
+                        border: 'none',
+                      }}
+                    >
+                      ✨ Switch to Interactive Notebook View
+                    </button>
+                  </div>
+                )}
+
+                {/* .env Environment Workspace Helper Banner */}
+                {isEnvTab(curTab) && (
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      padding: '6px 14px',
+                      backgroundColor: 'var(--bg-card)',
+                      borderBottom: '1px solid var(--border)',
+                      fontSize: 12,
+                      flexWrap: 'wrap',
+                      gap: 8,
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ fontSize: 13 }}>🔐</span>
+                      <span style={{ fontWeight: 600, color: 'var(--text-base)' }}>
+                        Workspace Environment (.env)
+                      </span>
+                      <span
+                        style={{
+                          fontSize: 10,
+                          padding: '1px 6px',
+                          borderRadius: 4,
+                          backgroundColor: 'rgba(236, 213, 63, 0.15)',
+                          color: '#ecd53f',
+                          fontWeight: 600,
+                        }}
+                      >
+                        Auto-Injected into Python & Node.js
+                      </span>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <button
+                        onClick={() => {
+                          const mlTemplate = `\n# 🤖 AI & Machine Learning Configuration\nOPENAI_API_KEY=sk-proj-sample_key\nANTHROPIC_API_KEY=sk-ant-sample_key\nHUGGINGFACE_TOKEN=hf_sample_token\nMODEL_DIR=./models\n`
+                          updateCode((curTab.code || '') + mlTemplate)
+                          showToast('Added ML / AI Keys template! 🤖')
+                        }}
+                        className="btn"
+                        style={{
+                          padding: '3px 8px',
+                          fontSize: 11,
+                          backgroundColor: 'var(--bg-hover)',
+                          border: '1px solid var(--border)',
+                          color: 'var(--text-base)',
+                          borderRadius: 4,
+                          cursor: 'pointer',
+                        }}
+                        title="Append AI & Machine Learning API Keys"
+                      >
+                        + ML / AI Keys
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          const serverTemplate = `\n# 🌐 Server & Database Settings\nPORT=8000\nNODE_ENV=development\nDATABASE_URL=postgresql://user:pass@localhost:5432/app_db\nREDIS_URL=redis://localhost:6379\n`
+                          updateCode((curTab.code || '') + serverTemplate)
+                          showToast('Added Server & DB template! 🌐')
+                        }}
+                        className="btn"
+                        style={{
+                          padding: '3px 8px',
+                          fontSize: 11,
+                          backgroundColor: 'var(--bg-hover)',
+                          border: '1px solid var(--border)',
+                          color: 'var(--text-base)',
+                          borderRadius: 4,
+                          cursor: 'pointer',
+                        }}
+                        title="Append Server and Database environment variables"
+                      >
+                        + Server & DB
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 <FloatingDebugBar
                   isDebugging={isDebugging}
                   currentLine={activeDebugLine}

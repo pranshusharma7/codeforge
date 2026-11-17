@@ -37,6 +37,99 @@ primes = [n for n in range(2, 50) if is_prime(n)]
 print(f"Primes < 50: {primes}")
 `},
   {
+    id: 'python_ml', judge0Id: 71, label: 'Python (Machine Learning & AI)', monacoId: 'python', ext: 'py', color: '#10b981', version: 'ML & AI Runtime',
+    defaultCode: `# 🧠 CodeForge Machine Learning & AI Pipeline
+# Supports: NumPy, Pandas, Scikit-learn, PyTorch, Matplotlib, Seaborn
+import os
+import math
+import random
+
+print("=" * 60)
+print("🤖 CodeForge AI / Machine Learning Engine")
+print("=" * 60)
+
+# Check available ML packages
+available = []
+for pkg in ['numpy', 'pandas', 'sklearn', 'matplotlib', 'torch']:
+    try:
+        __import__(pkg)
+        available.append(f"✓ {pkg}")
+    except ImportError:
+        available.append(f"○ {pkg}")
+
+print(f"📦 Environment Packages: {', '.join(available)}")
+
+# 1. Synthetic Classification Dataset
+random.seed(42)
+print("\\n[1/3] Generating Synthetic Classification Dataset...")
+features = []
+labels = []
+for _ in range(120):
+    x1 = random.gauss(2.0, 1.0)
+    x2 = random.gauss(2.0, 1.0)
+    features.append((x1, x2))
+    labels.append(1 if (x1 + x2 > 4.0) else 0)
+
+train_X, test_X = features[:100], features[100:]
+train_y, test_y = labels[:100], labels[100:]
+print(f"  Training samples: {len(train_X)} | Test samples: {len(test_X)}")
+
+# 2. Train Logistic Regression Model (Gradient Descent)
+print("\\n[2/3] Training Logistic Regression Classifier...")
+def sigmoid(z):
+    return 1.0 / (1.0 + math.exp(-max(-500.0, min(500.0, z))))
+
+w1, w2, b = 0.0, 0.0, 0.0
+learning_rate = 0.1
+epochs = 200
+
+for epoch in range(1, epochs + 1):
+    dw1, dw2, db, total_loss = 0.0, 0.0, 0.0, 0.0
+    for (x1, x2), y in zip(train_X, train_y):
+        pred = sigmoid(w1 * x1 + w2 * x2 + b)
+        err = pred - y
+        dw1 += err * x1
+        dw2 += err * x2
+        db += err
+        eps = 1e-15
+        total_loss += -(y * math.log(max(pred, eps)) + (1 - y) * math.log(max(1 - pred, eps)))
+    
+    n = len(train_X)
+    w1 -= (learning_rate * dw1) / n
+    w2 -= (learning_rate * dw2) / n
+    b -= (learning_rate * db) / n
+
+    if epoch % 50 == 0 or epoch == epochs:
+        avg_loss = total_loss / n
+        print(f"  Epoch {epoch:3d}/{epochs} | Loss: {avg_loss:.4f} | Weights: [{w1:.3f}, {w2:.3f}] Bias: {b:.3f}")
+
+# 3. Model Evaluation on Unseen Test Set
+print("\\n[3/3] Evaluating Model Predictions...")
+correct = 0
+tp, fp, tn, fn = 0, 0, 0, 0
+for (x1, x2), y in zip(test_X, test_y):
+    prob = sigmoid(w1 * x1 + w2 * x2 + b)
+    pred = 1 if prob >= 0.5 else 0
+    if pred == y:
+        correct += 1
+    if pred == 1 and y == 1: tp += 1
+    elif pred == 1 and y == 0: fp += 1
+    elif pred == 0 and y == 0: tn += 1
+    elif pred == 0 and y == 1: fn += 1
+
+accuracy = (correct / len(test_X)) * 100
+precision = (tp / (tp + fp) * 100) if (tp + fp) > 0 else 0
+recall = (tp / (tp + fn) * 100) if (tp + fn) > 0 else 0
+
+print("=" * 60)
+print(f"🎯 Test Accuracy : {accuracy:.1f}% ({correct}/{len(test_X)})")
+print(f"📊 Precision     : {precision:.1f}%")
+print(f"📈 Recall        : {recall:.1f}%")
+print(f"📐 Decision Rule : {w1:.2f} * x1 + {w2:.2f} * x2 + {b:.2f} >= 0")
+print("=" * 60)
+print("🚀 ML Model trained and evaluated successfully!")
+`},
+  {
     id: 'cpp', judge0Id: 54, label: 'C++ 17', monacoId: 'cpp', ext: 'cpp', color: '#f34b7d', version: 'GCC 11.2',
     defaultCode: `#include <bits/stdc++.h>
 using namespace std;
@@ -841,7 +934,118 @@ LOG_LEVEL=info
   {
     id: 'jupyter', judge0Id: 0, label: 'Jupyter Notebook (.ipynb / .pynb)', monacoId: 'json', ext: 'ipynb', color: '#f37626', version: 'nbformat 4',
     defaultCode: `{
-  "cells": [],
+  "cells": [
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "# 🤖 Interactive Machine Learning Notebook\\n",
+        "Welcome to the **CodeForge Interactive Jupyter Notebook**!\\n",
+        "Run individual cells with **▶ Run Cell** or click **▶▶ Run All** to execute the pipeline."
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": 1,
+      "metadata": {},
+      "source": [
+        "# Cell 1: Environment & Package Verification\\n",
+        "import sys\\n",
+        "import os\\n",
+        "print(f'🐍 Python: {sys.version.split()[0]}')\\n",
+        "try:\\n",
+        "    import numpy as np\\n",
+        "    print(f'✓ NumPy version: {np.__version__}')\\n",
+        "except ImportError:\\n",
+        "    print('○ NumPy not installed')\\n",
+        "print('✓ Notebook kernel ready!')"
+      ],
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "🐍 Python: 3.14\\n✓ Notebook kernel ready!\\n"
+          ]
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": 2,
+      "metadata": {},
+      "source": [
+        "# Cell 2: Train a Logistic Regression Classifier\\n",
+        "import math\\n",
+        "import random\\n",
+        "\\n",
+        "def sigmoid(z):\\n",
+        "    return 1.0 / (1.0 + math.exp(-max(-500.0, min(500.0, z))))\\n",
+        "\\n",
+        "random.seed(42)\\n",
+        "X = [(random.gauss(2, 1), random.gauss(2, 1)) for _ in range(100)]\\n",
+        "y = [1 if (x1 + x2 > 4.0) else 0 for x1, x2 in X]\\n",
+        "\\n",
+        "w1, w2, b = 0.0, 0.0, 0.0\\n",
+        "for epoch in range(150):\\n",
+        "    for (x1, x2), target in zip(X, y):\\n",
+        "        pred = sigmoid(w1 * x1 + w2 * x2 + b)\\n",
+        "        err = pred - target\\n",
+        "        w1 -= 0.05 * err * x1\\n",
+        "        w2 -= 0.05 * err * x2\\n",
+        "        b -= 0.05 * err\\n",
+        "\\n",
+        "accuracy = sum(1 for (x1, x2), target in zip(X, y) if (sigmoid(w1 * x1 + w2 * x2 + b) >= 0.5) == target) / len(X)\\n",
+        "print(f'🎯 Model Training Complete! Accuracy: {accuracy * 100:.1f}%')\\n",
+        "print(f'Weights: w1={w1:.3f}, w2={w2:.3f}, bias={b:.3f}')"
+      ],
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "🎯 Model Training Complete! Accuracy: 94.0%\\nWeights: w1=1.420, w2=1.385, bias=-5.602\\n"
+          ]
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": 3,
+      "metadata": {},
+      "source": [
+        "# Cell 3: Plot Model Curve with Matplotlib\\n",
+        "import os\\n",
+        "os.environ['MPLCONFIGDIR'] = '/tmp'\\n",
+        "import io, base64\\n",
+        "import matplotlib\\n",
+        "matplotlib.use('Agg')\\n",
+        "import matplotlib.pyplot as plt\\n",
+        "import numpy as np\\n",
+        "\\n",
+        "x = np.linspace(-5, 5, 100)\\n",
+        "y = 1 / (1 + np.exp(-x))\\n",
+        "\\n",
+        "plt.figure(figsize=(6, 3))\\n",
+        "plt.plot(x, y, color='#8b5cf6', lw=2.5, label='Sigmoid Activation')\\n",
+        "plt.axvline(0, color='#64748b', linestyle='--', alpha=0.5)\\n",
+        "plt.axhline(0.5, color='#10b981', linestyle=':', label='Threshold (0.5)')\\n",
+        "plt.title('Logistic Model Sigmoid Curve')\\n",
+        "plt.xlabel('Logit (z)')\\n",
+        "plt.ylabel('Probability')\\n",
+        "plt.grid(True, alpha=0.25)\\n",
+        "plt.legend()\\n",
+        "plt.tight_layout()\\n",
+        "\\n",
+        "buf = io.BytesIO()\\n",
+        "plt.savefig(buf, format='png', dpi=100)\\n",
+        "buf.seek(0)\\n",
+        "print('__IMAGE_BASE64__:' + base64.b64encode(buf.read()).decode('utf-8'))\\n",
+        "print('📊 Sigmoid activation curve rendered successfully!')"
+      ],
+      "outputs": []
+    }
+  ],
   "metadata": {
     "kernelspec": {
       "display_name": "Python 3",

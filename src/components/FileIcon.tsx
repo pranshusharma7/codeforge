@@ -52,8 +52,32 @@ export default function FileIcon({ fileName, name, size = 16, className, style }
     )
   }
 
+  // Environment variables (.env)
+  if (lower === '.env' || lower.startsWith('.env.') || ext === 'env') {
+    return (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" style={style} className={className}>
+        <rect width="24" height="24" rx="4" fill="#ecd53f" fillOpacity="0.18"/>
+        <path d="M12.5 7a4.5 4.5 0 0 0-4.5 4.5c0 1.25.52 2.38 1.35 3.19l-3.05 3.06a.75.75 0 0 0 0 1.06l1.4 1.4a.75.75 0 0 0 1.06 0l1.06-1.06.7.7a.75.75 0 0 0 1.06 0l.7-.7.71.71a.75.75 0 0 0 1.06 0l.96-.96c.8.35 1.68.55 2.6.55a4.5 4.5 0 1 0 0-9zm1.5 3a1.2 1.2 0 1 1 0 2.4 1.2 1.2 0 0 1 0-2.4z" fill="#ecd53f"/>
+      </svg>
+    )
+  }
+
+  // Jupyter Notebook (.ipynb / .pynb)
+  if (ext === 'ipynb' || ext === 'pynb') {
+    return (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" style={style} className={className}>
+        <rect width="24" height="24" rx="4" fill="#f37626" fillOpacity="0.18"/>
+        <path d="M12 4.5c3.2 0 6 1.7 7.5 4.2-.6.4-1.3.8-2 1.1-1.3-1.8-3.4-3-5.5-3s-4.2 1.2-5.5 3c-.7-.3-1.4-.7-2-1.1C6 6.2 8.8 4.5 12 4.5z" fill="#f37626"/>
+        <path d="M12 19.5c-3.2 0-6-1.7-7.5-4.2.6-.4 1.3-.8 2-1.1 1.3 1.8 3.4 3 5.5 3s4.2-1.2 5.5-3c.7.3 1.4.7 2 1.1-1.5 2.5-4.3 4.2-7.5 4.2z" fill="#f37626"/>
+        <circle cx="12" cy="12" r="1.5" fill="#f37626"/>
+        <circle cx="6.5" cy="12" r="1.3" fill="#64748b"/>
+        <circle cx="17.5" cy="12" r="1.3" fill="#64748b"/>
+      </svg>
+    )
+  }
+
   // Python
-  if (ext === 'py' || ext === 'pyw' || ext === 'ipynb' || ext === 'pynb') {
+  if (ext === 'py' || ext === 'pyw') {
     return (
       <svg width={size} height={size} viewBox="0 0 24 24" fill="none" style={style} className={className}>
         <path d="M11.9 2c-3.8 0-3.6 1.6-3.6 1.6l.01 1.7h3.7v.5H6.3S4 5.5 4 9.4c0 3.8 2 3.7 2 3.7h1.2v-1.8s-.1-2 2-2h3.5s1.9.03 1.9-1.9V4c0-2-2.7-2-2.7-2zm-1.8 1.2c.4 0 .7.3.7.7s-.3.7-.7.7-.7-.3-.7-.7.3-.7.7-.7z" fill="#387eb8"/>

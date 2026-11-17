@@ -7,6 +7,11 @@ import { spawn, execSync } from "node:child_process"
 export const JUDGE0_MAP = {
   python: 71,
   py: 71,
+  python_ml: 71,
+  ml: 71,
+  jupyter: 71,
+  ipynb: 71,
+  pynb: 71,
   cpp: 54,
   "c++": 54,
   c: 50,
@@ -142,6 +147,7 @@ export function getSanitizedChildEnv(customEnv = {}) {
     LANG: "en_US.UTF-8",
     LC_ALL: "en_US.UTF-8",
     PYTHONUNBUFFERED: "1",
+    MPLCONFIGDIR: os.tmpdir(),
     NODE_ENV: "production",
     PAGER: "cat",
     ...fileVars,
@@ -251,8 +257,16 @@ async function executeLocally(code, lang, stdin = "", timeoutMs = 7000, customEn
   const norm = (lang || "").toLowerCase().trim()
   const startTime = Date.now()
 
-  // 1. Python
-  if (norm === "python" || norm === "py" || norm === "python3") {
+  // 1. Python & Machine Learning
+  if (
+    norm === "python" ||
+    norm === "py" ||
+    norm === "python3" ||
+    norm === "python_ml" ||
+    norm === "ml"
+  ) {
+    const isML = norm === "python_ml" || norm === "ml"
+    const pyTimeout = isML ? Math.max(timeoutMs, 15000) : timeoutMs
     const pythonCmd = fs.existsSync(
       "/Library/Frameworks/Python.framework/Versions/3.14/bin/python3",
     )
@@ -270,7 +284,7 @@ async function executeLocally(code, lang, stdin = "", timeoutMs = 7000, customEn
         fs.writeFileSync(scriptPath, code, "utf-8")
         let res = await runProcess(pythonCmd, ["-u", scriptPath], {
           stdin,
-          timeout: timeoutMs,
+          timeout: pyTimeout,
           cwd: tmpDir,
           env: customEnv,
         })
@@ -344,7 +358,7 @@ async function executeLocally(code, lang, stdin = "", timeoutMs = 7000, customEn
           time: elapsed,
           memory: 4096,
           exit_code: res.exitCode,
-          engine: "Python 3 (Local Sandbox)",
+          engine: isML ? "Python 3 (Machine Learning Engine)" : "Python 3 (Local Sandbox)",
         }
       } finally {
         try {
